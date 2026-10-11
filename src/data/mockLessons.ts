@@ -1,0 +1,142 @@
+import type { Lesson, QuizQuestion } from '@/types';
+
+/*
+ * Introductory learning material only. Lessons explain general ideas and avoid
+ * specific rates, limits or deadlines; those must come from verified sources.
+ * Member C owns the real lesson files (with sources), served by GET /api/v1/lessons.
+ */
+
+export const MOCK_LESSONS: Lesson[] = [
+  {
+    slug: 'loans-and-interest',
+    title: 'Loans and interest',
+    summary:
+      'What interest is, how simple and compound interest differ, and what to ask before you borrow.',
+    reading_minutes: 4,
+    icon: 'loan',
+    sections: [
+      {
+        heading: 'What is interest?',
+        body: 'Interest is the price of borrowing money. If you borrow ₹10,000 at 10% simple interest per year, you pay ₹1,000 of interest for each year, on top of the ₹10,000 you return.',
+      },
+      {
+        heading: 'Simple and compound interest',
+        body: 'Simple interest is charged only on the amount you borrowed. Compound interest is also charged on interest that has been added to the loan, so unpaid interest grows faster. Ask the lender which kind applies and how often it is added.',
+      },
+      {
+        heading: 'Before you borrow',
+        body: 'Ask for the interest rate per year, all fees, the repayment dates, and what happens if you pay late. Get the terms in writing and keep a copy.',
+      },
+    ],
+    key_points: [
+      'Always ask for the yearly rate and all fees.',
+      'Unpaid interest can grow quickly with compounding.',
+      'Keep written terms and every receipt.',
+    ],
+  },
+  {
+    slug: 'kcc-basics',
+    title: 'Kisan Credit Card basics',
+    summary: 'What a Kisan Credit Card is for, where it is offered, and how to use it responsibly.',
+    reading_minutes: 3,
+    icon: 'card',
+    sections: [
+      {
+        heading: 'What is it?',
+        body: 'A Kisan Credit Card (KCC) gives farmers a credit limit to meet crop and allied expenses when they need them, instead of taking a new loan each time.',
+      },
+      {
+        heading: 'Where to ask',
+        body: 'KCC is offered through banks and cooperative credit institutions, including many PACS. Your branch or PACS secretary can explain the documents and the current terms.',
+      },
+      {
+        heading: 'Use it well',
+        body: 'Borrow only what the season needs and repay on time. Ask how timely repayment affects the interest you pay; the exact benefits must be checked with your bank.',
+      },
+    ],
+    key_points: [
+      'A KCC is a credit limit, not free money.',
+      'Ask your bank or PACS for current terms.',
+      'Timely repayment keeps borrowing costs down.',
+    ],
+  },
+  {
+    slug: 'savings',
+    title: 'Saving regularly',
+    summary: 'Why small regular savings matter, and simple ways to keep money safe.',
+    reading_minutes: 3,
+    icon: 'savings',
+    sections: [
+      {
+        heading: 'Small amounts add up',
+        body: 'Setting aside a small fixed amount after each harvest or wage payment builds a cushion for emergencies, school fees or inputs for the next season.',
+      },
+      {
+        heading: 'Keep it safe',
+        body: 'Savings in a bank or a registered cooperative society are safer than cash at home. Ask how your deposit is protected and how to withdraw it.',
+      },
+    ],
+    key_points: [
+      'Save a fixed amount regularly.',
+      'Prefer registered institutions over cash at home.',
+      'Know how and when you can withdraw.',
+    ],
+  },
+  {
+    slug: 'spotting-fraud',
+    title: 'Spotting fraud',
+    summary: 'Common tricks fraudsters use, and the rules that keep your money safe.',
+    reading_minutes: 4,
+    icon: 'fraud',
+    sections: [
+      {
+        heading: 'Common tricks',
+        body: 'Fraudsters may pretend to be bank, insurance or government staff and ask for your OTP, PIN or card details, or promise a scheme benefit if you pay a fee first.',
+      },
+      {
+        heading: 'Golden rules',
+        body: 'Never share an OTP, PIN or password with anyone. Genuine officials do not ask for them. Do not pay money to receive a government benefit. When in doubt, visit the office in person.',
+      },
+      {
+        heading: 'If it happens',
+        body: 'Contact your bank immediately to block the account or card, and report the fraud to the police. Keep messages and receipts as evidence.',
+      },
+    ],
+    key_points: [
+      'Never share OTP, PIN or passwords.',
+      'No genuine scheme asks for a fee to release a benefit.',
+      'Act fast: inform your bank and the police.',
+    ],
+  },
+];
+
+export const MOCK_QUIZ: QuizQuestion[] = [
+  {
+    id: 'q1',
+    question:
+      'You borrow ₹10,000 at 10% simple interest per year. How much interest do you pay after one year?',
+    options: ['₹100', '₹1,000', '₹10,000'],
+    correct_index: 1,
+    explanation: '10% of ₹10,000 is ₹1,000 for one year of simple interest.',
+  },
+  {
+    id: 'q2',
+    question:
+      'Someone calls saying they are from your bank and asks for the OTP you just received. What should you do?',
+    options: ['Share it quickly', 'Share only half of it', 'Never share it and hang up'],
+    correct_index: 2,
+    explanation:
+      'Genuine bank staff never ask for your OTP. Hang up and contact your branch directly.',
+  },
+  {
+    id: 'q3',
+    question: 'Where should you ask about the current terms of a Kisan Credit Card?',
+    options: [
+      'At your bank branch or PACS',
+      'From a stranger on social media',
+      'Nowhere, they never change',
+    ],
+    correct_index: 0,
+    explanation: 'Terms can change, so ask your bank branch or PACS for the current details.',
+  },
+];

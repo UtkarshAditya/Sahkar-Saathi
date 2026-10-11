@@ -1,0 +1,97 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens. Deep green is the primary colour, saffron a restrained accent.
+ * Use them through Tailwind utilities, e.g. bg-brand-800, text-saffron-700, border-line.
+ */
+@theme {
+  --font-sans:
+    'Noto Sans', 'Noto Sans Devanagari', 'Segoe UI', system-ui, -apple-system, Roboto, Arial,
+    sans-serif;
+
+  --color-brand-50: #f0f7f2;
+  --color-brand-100: #dcede1;
+  --color-brand-200: #b9dbc4;
+  --color-brand-300: #8cc29f;
+  --color-brand-400: #5aa276;
+  --color-brand-500: #388659;
+  --color-brand-600: #276b46;
+  --color-brand-700: #1f5639;
+  --color-brand-800: #1a452f;
+  --color-brand-900: #143826;
+  --color-brand-950: #0b2016;
+
+  --color-saffron-50: #fff8ec;
+  --color-saffron-100: #ffeccc;
+  --color-saffron-200: #fed594;
+  --color-saffron-300: #fdb956;
+  --color-saffron-400: #f99d26;
+  --color-saffron-500: #e5800c;
+  --color-saffron-600: #c46207;
+  --color-saffron-700: #9c460a;
+  --color-saffron-800: #7f3910;
+
+  --color-canvas: #f7f6f1;
+  --color-surface: #ffffff;
+  --color-line: #e3e1d8;
+  --color-ink: #1c2420;
+  --color-ink-soft: #4a554f;
+  --color-ink-muted: #646d68;
+}
+
+@layer base {
+  html {
+    /* Slightly larger base size for readability on phones and for rural users. */
+    font-size: 17px;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-canvas font-sans text-ink antialiased;
+    line-height: 1.55;
+  }
+
+  /* Visible, consistent keyboard focus everywhere. */
+  :focus-visible {
+    outline: 3px solid var(--color-saffron-400);
+    outline-offset: 2px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    line-height: 1.25;
+  }
+
+  button:not(:disabled),
+  [role='button'] {
+    cursor: pointer;
+  }
+}
+
+@layer components {
+  .field-label {
+    @apply mb-1.5 block text-sm font-semibold text-ink;
+  }
+
+  .field-input {
+    @apply block w-full rounded-lg border border-line bg-surface px-3 py-2.5 text-base text-ink placeholder:text-ink-muted focus:border-brand-600 focus:ring-2 focus:ring-brand-200 focus:outline-none disabled:cursor-not-allowed disabled:bg-canvas;
+  }
+
+  .field-hint {
+    @apply mt-1 text-sm text-ink-muted;
+  }
+
+  .field-error {
+    @apply mt-1 text-sm font-medium text-red-700;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,148 @@
+{
+  "app": {
+    "name": "Sahkar Saathi",
+    "tagline": "Cooperative guidance in your language",
+    "demoBadge": "Demo build · sample data"
+  },
+  "nav": {
+    "primary": "Main navigation",
+    "skipToContent": "Skip to main content",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "more": "More",
+    "groups": {
+      "core": "Get help",
+      "guides": "Guides and library",
+      "staff": "Staff only"
+    },
+    "ask": "Ask",
+    "grievance": "Grievance helper",
+    "about": "About & help",
+    "cropInsurance": "Crop insurance",
+    "schemes": "Schemes & services",
+    "library": "Law library",
+    "learn": "Financial literacy",
+    "quality": "Quality dashboard",
+    "admin": "Admin"
+  },
+  "settings": {
+    "title": "Your choices",
+    "language": "Language",
+    "state": "State",
+    "stateNone": "Not selected",
+    "stateHint": "Cooperative law differs by state. We use this for by-law and grievance questions."
+  },
+  "header": {
+    "help": "Help",
+    "home": "Home"
+  },
+  "notice": {
+    "legalTitle": "Information, not legal advice",
+    "legalBody": "Answers explain what public documents say and where to complain. They never predict the outcome of a dispute. Check the cited source or ask an official before acting.",
+    "sidebar": "Information, not legal advice. Always check the cited source."
+  },
+  "pages": {
+    "ask": {
+      "title": "Ask Sahkar Saathi",
+      "description": "Ask about cooperative law, by-laws, crop insurance, schemes or grievances. Every answer shows its source."
+    },
+    "grievance": {
+      "title": "Grievance helper",
+      "description": "Describe your problem. We suggest where to complain, the steps, the documents you need and a draft you can edit."
+    },
+    "about": {
+      "title": "About & help",
+      "description": "How Sahkar Saathi works, what it cannot do, which sources it uses and how your privacy is protected."
+    },
+    "cropInsurance": {
+      "title": "Crop insurance guide",
+      "description": "Pradhan Mantri Fasal Bima Yojana (PMFBY), step by step: who can enrol, how, and what to do after crop loss."
+    },
+    "schemes": {
+      "title": "Schemes & services",
+      "description": "Browse schemes and services for cooperatives and their members. Each card shows its source and date."
+    },
+    "library": {
+      "title": "Law & by-laws library",
+      "description": "The public documents the assistant searches: Acts, rules, model by-laws and circulars."
+    },
+    "learn": {
+      "title": "Financial literacy",
+      "description": "Short lessons on loans, Kisan Credit Card, savings and avoiding fraud, with a quick quiz."
+    },
+    "quality": {
+      "title": "Quality dashboard",
+      "description": "How well the assistant does on the 80-question test set: retrieval, faithfulness and refusals."
+    },
+    "admin": {
+      "title": "Admin",
+      "description": "Document, feedback and evaluation management is provided by the Django admin site."
+    },
+    "notFound": {
+      "title": "Page not found",
+      "description": "We could not find that page. It may have moved."
+    }
+  },
+  "chat": {
+    "welcomeTitle": "Namaste! How can I help?",
+    "welcomeBody": "Type your question, or pick one below. Answers come from public cooperative documents and show their source, date and page.",
+    "suggested": "Try asking",
+    "followups": "You could also ask",
+    "inputLabel": "Your question",
+    "placeholder": "Type your question here…",
+    "send": "Send",
+    "sending": "Finding an answer…",
+    "mic": "Speak your question",
+    "micNotice": "Voice input is not connected yet. It will record in the browser, show an editable transcript, then send it (planned for Sprint 2).",
+    "listen": "Listen",
+    "listenSoon": "Listen (coming soon)",
+    "sources": "Sources",
+    "viewSources": "View sources",
+    "noSources": "Select an answer to see the documents it is based on.",
+    "demoAnswer": "Demonstration answer, not verified legal guidance",
+    "declinedTitle": "I could not find this in my sources",
+    "contactInstead": "Who to contact instead",
+    "stateNeeded": "Which state's rules apply?",
+    "stateNeededBody": "Cooperative law differs by state. Choose your state and I will answer for it.",
+    "chooseState": "Choose state",
+    "continue": "Continue",
+    "clear": "Clear conversation",
+    "conversation": "Conversation",
+    "limitedTo": "Next question limited to",
+    "removeLimit": "Remove document limit",
+    "errorTitle": "Something went wrong",
+    "errorBody": "The assistant did not respond. Please try again.",
+    "you": "You",
+    "assistant": "Sahkar Saathi"
+  },
+  "feedback": {
+    "question": "Was this helpful?",
+    "helpful": "Helpful",
+    "notHelpful": "Not helpful",
+    "reasonPrompt": "What went wrong?",
+    "thanks": "Thank you. Your rating is saved on this device only (demo)."
+  },
+  "common": {
+    "sample": "Sample data",
+    "demo": "Demo",
+    "placeholder": "Placeholder",
+    "source": "Source",
+    "asOf": "As of",
+    "page": "Page",
+    "sourcePending": "Source pending verification",
+    "datePending": "Date pending",
+    "linkPending": "Link pending",
+    "askAboutThis": "Ask about this",
+    "viewDetails": "View details",
+    "close": "Close",
+    "search": "Search",
+    "all": "All",
+    "loading": "Loading…",
+    "retry": "Try again",
+    "copy": "Copy",
+    "copied": "Copied",
+    "download": "Download",
+    "noResults": "No results",
+    "clearFilters": "Clear filters"
+  }
+}
