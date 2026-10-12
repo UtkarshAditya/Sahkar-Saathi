@@ -15,6 +15,7 @@ from ninja import File, Form, Router, UploadedFile
 from apps.chat.schemas import validate_language
 from config.errors import ApiError, ErrorOut
 from config.services import get_speech_provider
+from config.throttles import SPEECH_THROTTLE
 
 from .schemas import SynthesizeIn, TranscriptOut
 
@@ -36,9 +37,11 @@ def _base_content_type(value: str | None) -> str:
         413: ErrorOut,
         415: ErrorOut,
         422: ErrorOut,
+        429: ErrorOut,
         502: ErrorOut,
         503: ErrorOut,
     },
+    throttle=[SPEECH_THROTTLE],
     summary="Speech to text",
 )
 async def transcribe(
@@ -89,7 +92,8 @@ async def transcribe(
 
 @router.post(
     "/synthesize",
-    response={422: ErrorOut, 502: ErrorOut, 503: ErrorOut},
+    response={422: ErrorOut, 429: ErrorOut, 502: ErrorOut, 503: ErrorOut},
+    throttle=[SPEECH_THROTTLE],
     summary="Text to speech",
     openapi_extra={
         "responses": {

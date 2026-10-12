@@ -2,6 +2,9 @@ import json
 
 import pytest
 
+from apps.chat.models import Conversation, Message
+from config.throttles import CHAT_THROTTLE
+
 URL = "/api/v1/chat/ask"
 
 
@@ -62,9 +65,68 @@ def test_declined_has_contact_and_no_citations(client, text):
     assert body["contact"]["label"]
 
 
-def test_conversation_id_is_kept(client):
-    body = ask(client, text="PMFBY claim", conversation_id="abc123").json()
-    assert body["conversation_id"] == "abc123"
+def test_follow_up_reuses_the_conversation(client):
+    first = ask(client, text="PMFBY claim").json()
+    second = ask(client, text="Which documents?", conversation_id=first["conversation_id"]).json()
+    assert second["conversation_id"] == first["conversation_id"]
+    assert Conversation.objects.get().messages.count() == 2
+
+
+def test_unknown_conversation_id_starts_a_new_one(client):
+    body = ask(client, text="PMFBY claim", conversation_id="not-a-real-id").json()
+    assert body["conversation_id"] != "not-a-real-id"
+    assert Conversation.objects.filter(pk=body["conversation_id"]).exists()
+
+
+def test_answer_is_stored_with_citations_and_metrics(client):
+    body = ask(client, text="PMFBY crop damage", language="ta", state="TN").json()
+    message = Message.objects.get(pk=body["message_id"])
+    assert message.status == "answered"
+    assert message.language == "ta" and message.state == "TN"
+    assert message.top_score and message.top_score > 0.5
+    assert message.model_name == "stub"
+    assert message.latency_ms >= 0
+    assert message.is_demo
+    assert message.question_text == "PMFBY crop damage"
+    assert [c.chunk_id for c in message.citations.all()] == [c["id"] for c in body["citations"]]
+
+
+def test_declined_answer_stores_top_score_but_no_citations(client):
+    body = ask(client, text="asdf").json()
+    message = Message.objects.get(pk=body["message_id"])
+    assert message.status == "declined"
+    assert message.top_score is not None and message.top_score < 0.5
+    assert message.citations.count() == 0
+
+
+def test_personal_details_are_scrubbed_before_storing(client):
+    body = ask(client, text="PMFBY claim, call me on 98765 43210 or a@b.com").json()
+    stored = Message.objects.get(pk=body["message_id"]).question_text
+    assert "98765" not in stored and "a@b.com" not in stored
+    assert "[phone]" in stored and "[email]" in stored
+
+
+def test_no_text_is_stored_when_store_messages_is_off(client, settings):
+    settings.STORE_MESSAGES = False
+    body = ask(client, text="PMFBY claim").json()
+    message = Message.objects.get(pk=body["message_id"])
+    assert message.question_text == "" and message.answer_text == ""
+    assert message.status == "answered", "metrics are still stored"
+
+
+def test_rate_limit_returns_429_in_the_error_shape(client, monkeypatch):
+    monkeypatch.setattr(CHAT_THROTTLE, "num_requests", 2)
+    assert ask(client, text="PMFBY claim").status_code == 200
+    assert ask(client, text="PMFBY claim").status_code == 200
+    res = ask(client, text="PMFBY claim")
+    assert res.status_code == 429
+    assert res.json()["code"] == "rate_limited"
+    assert res.has_header("Retry-After")
+
+
+def test_health_reports_database(client):
+    body = client.get("/api/v1/health").json()
+    assert body["database"] == "ok"
 
 
 @pytest.mark.parametrize(

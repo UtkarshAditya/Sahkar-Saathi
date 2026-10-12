@@ -4,7 +4,7 @@ import logging
 
 from django.http import Http404
 from ninja import NinjaAPI, Schema
-from ninja.errors import HttpError, ValidationError
+from ninja.errors import HttpError, Throttled, ValidationError
 
 from services.types import ProviderError, ServiceError, ServiceNotReady
 
@@ -46,6 +46,13 @@ def register_error_handlers(api: NinjaAPI) -> None:
     @api.exception_handler(ApiError)
     def on_api_error(request, exc: ApiError):
         return respond(request, exc.status_code, exc.code, exc.message)
+
+    @api.exception_handler(Throttled)
+    def on_throttled(request, exc: Throttled):
+        response = respond(request, 429, "rate_limited", "Too many requests. Please wait a moment.")
+        if exc.wait:
+            response["Retry-After"] = str(int(exc.wait) + 1)
+        return response
 
     @api.exception_handler(HttpError)
     def on_http_error(request, exc: HttpError):

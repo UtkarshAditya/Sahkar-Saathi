@@ -242,7 +242,7 @@ export function buildDemoConversation(): ChatMessage[] {
     language: 'en',
     state: null,
   });
-  return [
+  const messages: ChatMessage[] = [
     { id: 'demo-u1', role: 'user', text: q1 },
     { id: 'demo-a1', role: 'assistant', text: '', response: buildMockAnswer(ask(q1)) },
     { id: 'demo-u2', role: 'user', text: q2 },
@@ -256,4 +256,5 @@ export function buildDemoConversation(): ChatMessage[] {
       pendingQuestion: q3,
     },
   ];
+  return messages.map((m) => ({ ...m, isExample: true }));
 }

@@ -14,31 +14,43 @@ const REASONS = [
   'Other',
 ];
 
-/** Thumbs up/down with a reason on "down". Mock mode keeps the rating on screen only. */
-export function FeedbackButtons({ messageId }: { messageId: string }) {
+interface FeedbackButtonsProps {
+  messageId: string;
+  /** Example answers exist only in the browser, so their ratings are not sent. */
+  localOnly?: boolean;
+}
+
+/** Thumbs up/down with a reason on "down". Sent to POST /feedback. */
+export function FeedbackButtons({ messageId, localOnly = false }: FeedbackButtonsProps) {
   const { t } = useTranslation();
   const [rating, setRating] = useState<FeedbackRating | null>(null);
   const [reason, setReason] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState(false);
 
   async function submit(r: FeedbackRating, why: string | null) {
     setSending(true);
+    setError(false);
     try {
-      await api.sendFeedback({
-        message_id: messageId,
-        rating: r,
-        comment: '',
-        reason: why ?? undefined,
-      });
+      if (!localOnly) {
+        await api.sendFeedback({
+          message_id: messageId,
+          rating: r,
+          comment: '',
+          reason: why ?? undefined,
+        });
+      }
       setSent(true);
+    } catch {
+      setError(true);
     } finally {
       setSending(false);
     }
   }
 
   function choose(r: FeedbackRating) {
-    if (sent) return;
+    if (sent || sending) return;
     setRating(r);
     if (r === 'up') void submit(r, null);
   }
@@ -60,7 +72,7 @@ export function FeedbackButtons({ messageId }: { messageId: string }) {
           className={toggle(rating === 'up')}
           aria-pressed={rating === 'up'}
           aria-label={t('feedback.helpful')}
-          disabled={sent}
+          disabled={sent || sending}
           onClick={() => choose('up')}
         >
           <ThumbsUp className="size-4" aria-hidden />
@@ -70,7 +82,7 @@ export function FeedbackButtons({ messageId }: { messageId: string }) {
           className={toggle(rating === 'down')}
           aria-pressed={rating === 'down'}
           aria-label={t('feedback.notHelpful')}
-          disabled={sent}
+          disabled={sent || sending}
           onClick={() => choose('down')}
         >
           <ThumbsDown className="size-4" aria-hidden />
@@ -108,6 +120,19 @@ export function FeedbackButtons({ messageId }: { messageId: string }) {
             Send feedback
           </Button>
         </fieldset>
+      )}
+
+      {error && (
+        <p role="alert" className="flex flex-wrap items-center gap-2 text-sm text-red-700">
+          Could not send your rating.
+          <button
+            type="button"
+            className="font-semibold underline"
+            onClick={() => rating && void submit(rating, reason)}
+          >
+            {t('common.retry')}
+          </button>
+        </p>
       )}
 
       {sent && (

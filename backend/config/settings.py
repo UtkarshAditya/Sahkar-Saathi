@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "ninja",  # needed for the export_openapi_schema command
     "apps.chat",
     "apps.speech",
+    "apps.feedback",
 ]
 
 MIDDLEWARE = [
@@ -129,6 +130,10 @@ SCORE_THRESHOLD = float(os.environ.get("SCORE_THRESHOLD", "0.5"))
 QDRANT_URL = os.environ.get("QDRANT_URL", "http://qdrant:6333")
 
 # Request limits.
+# Rate limits per client address, as "<count>/<s|m|h|d>". Each area has its own budget.
+CHAT_RATE_LIMIT = os.environ.get("CHAT_RATE_LIMIT") or "20/m"
+SPEECH_RATE_LIMIT = os.environ.get("SPEECH_RATE_LIMIT") or "20/m"
+FEEDBACK_RATE_LIMIT = os.environ.get("FEEDBACK_RATE_LIMIT") or "30/m"
 CHAT_MAX_QUESTION_CHARS = int(os.environ.get("CHAT_MAX_QUESTION_CHARS", "1000"))
 SPEECH_MAX_UPLOAD_BYTES = int(os.environ.get("SPEECH_MAX_UPLOAD_BYTES", str(5 * 1024 * 1024)))
 SPEECH_MAX_SYNTH_CHARS = int(os.environ.get("SPEECH_MAX_SYNTH_CHARS", "2000"))

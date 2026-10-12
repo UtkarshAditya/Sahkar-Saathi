@@ -18,6 +18,7 @@ import wave
 
 from .types import Answer, Contact, Passage, Transcript
 
+STUB_MODEL = "stub"
 COVERED_STATE = "TN"  # the one state whose Act is in the corpus (team decision)
 
 DEFAULT_CONTACT = Contact(
@@ -126,6 +127,13 @@ class StubAnswerService:
         state: str | None,
         document_id: str | None = None,
     ) -> Answer:
+        answer = await self._answer(text, language=language, state=state, document_id=document_id)
+        answer.model = STUB_MODEL
+        return answer
+
+    async def _answer(
+        self, text: str, *, language: str, state: str | None, document_id: str | None
+    ) -> Answer:
         q = text.lower()
 
         if _contains(q, _OUT_OF_SCOPE):
@@ -147,10 +155,13 @@ class StubAnswerService:
         passages = await self.retriever.search(
             text, state=state, language=language, document_id=document_id
         )
-        if not passages or max(p.score for p in passages) < self.score_threshold:
-            return self._decline(
+        top_score = max((p.score for p in passages), default=None)
+        if top_score is None or top_score < self.score_threshold:
+            answer = self._decline(
                 language, "I could not find this in my sources, so I will not guess."
             )
+            answer.top_score = top_score
+            return answer
 
         if _contains(q, _PMFBY_WORDS):
             return Answer(
@@ -164,6 +175,7 @@ class StubAnswerService:
                 citations=passages,
                 followups=["Which documents do I need for a crop loss claim?"],
                 is_demo=True,
+                top_score=top_score,
             )
 
         covered = state == COVERED_STATE
@@ -180,6 +192,7 @@ class StubAnswerService:
             citations=passages,
             followups=["Who conducts elections in a cooperative society?"],
             is_demo=True,
+            top_score=top_score,
         )
 
     @staticmethod

@@ -6,8 +6,9 @@ request announced in the team chat; a breaking change needs two approvals.
 Additions to the original sketch in the Member A plan, all additive:
 - ``Passage`` carries ``document_id``, ``publisher`` and ``section`` so the citations
   panel can show them.
-- ``Answer`` carries ``contact`` (a declined answer must name who to contact) and
-  ``is_demo`` (true for stub or cached answers).
+- ``Answer`` carries ``contact`` (a declined answer must name who to contact),
+  ``is_demo`` (true for stub or cached answers), and ``top_score`` and ``model``, which
+  are stored on each Message for evaluation.
 - ``AnswerService.ask`` accepts ``document_id`` for "Ask about this document".
 - ``Transcript`` carries ``is_demo``.
 """
@@ -63,6 +64,9 @@ class Answer:
     followups: list[str] = field(default_factory=list)
     contact: Contact | None = None
     is_demo: bool = False
+    # For evaluation and debugging; stored on the Message row, never shown to users.
+    top_score: float | None = None  # best retrieval score, also when declined
+    model: str = ""  # model name that wrote the answer
 
 
 class AnswerService(Protocol):  # implemented by C

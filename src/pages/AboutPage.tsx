@@ -25,7 +25,7 @@ import { Notice } from '@/components/common/Notice';
 import { PageHeader } from '@/components/common/PageHeader';
 import { MOCK_DOCUMENTS } from '@/data/mockDocuments';
 import { LANGUAGES } from '@/i18n';
-import { api } from '@/services/api';
+import { api, ApiError, USE_MOCKS } from '@/services/api';
 
 const HOW_IT_WORKS = [
   {
@@ -250,6 +250,7 @@ function FeedbackForm() {
   const [errors, setErrors] = useState<FeedbackErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   function validate(): FeedbackErrors {
     const next: FeedbackErrors = {};
@@ -267,14 +268,24 @@ function FeedbackForm() {
     setErrors(next);
     if (Object.keys(next).length > 0) return;
     setSubmitting(true);
-    await api.sendFeedback({
-      message_id: null,
-      rating: null,
-      comment: message,
-      reason: `${type}${page ? ` · ${page}` : ''}`,
-    });
-    setSubmitting(false);
-    setSubmitted(true);
+    setSendError(null);
+    try {
+      await api.sendFeedback({
+        message_id: null,
+        rating: null,
+        comment: message,
+        reason: `${type}${page ? ` · ${page}` : ''}`.slice(0, 100),
+      });
+      setSubmitted(true);
+    } catch (err) {
+      setSendError(
+        err instanceof ApiError && err.code === 'rate_limited'
+          ? 'Too many messages in a short time. Please wait a minute and try again.'
+          : 'Could not send your feedback. Please try again.',
+      );
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -287,8 +298,9 @@ function FeedbackForm() {
       {submitted ? (
         <div className="flex flex-col items-start gap-3">
           <Notice tone="success" role="status" title="Thank you for your feedback">
-            In this demo it is not sent anywhere. Once the backend is connected it will reach the
-            review queue.
+            {USE_MOCKS
+              ? 'In this demo it is not sent anywhere. With the backend connected it reaches the review queue.'
+              : 'It has reached the team’s review queue.'}
           </Notice>
           <Button
             variant="secondary"
@@ -336,6 +348,7 @@ function FeedbackForm() {
               className="field-input"
               value={page}
               onChange={(e) => setPage(e.target.value)}
+              maxLength={60}
               placeholder="e.g. Crop insurance guide"
             />
           </div>
@@ -357,7 +370,12 @@ function FeedbackForm() {
               <p className="field-hint">{message.length}/1000</p>
             </div>
           </div>
-          <div className="sm:col-span-2">
+          <div className="flex flex-col items-start gap-2 sm:col-span-2">
+            {sendError && (
+              <p role="alert" className="field-error">
+                {sendError}
+              </p>
+            )}
             <Button type="submit" loading={submitting}>
               Send feedback
             </Button>
