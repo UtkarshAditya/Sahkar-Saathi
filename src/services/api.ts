@@ -3,8 +3,9 @@
  *
  * While VITE_USE_MOCKS is "true" (the default), every function resolves local mock
  * data after a short delay so loading states are visible. No network calls are made.
- * When the backend exists, set VITE_USE_MOCKS=false; the `request` helper then calls
- * the real endpoints. Speech endpoints are intentionally not implemented yet.
+ * Set VITE_USE_MOCKS=false to call the real backend. /chat/ask and /speech/* exist in
+ * backend/ (run it with uvicorn; Vite proxies /api to it). The other endpoints are
+ * still mock-only until the backend adds them.
  */
 import { buildMockAnswer } from '@/data/mockChat';
 import { MOCK_DOCUMENTS } from '@/data/mockDocuments';
@@ -21,9 +22,12 @@ import type {
   FeedbackRequest,
   GrievanceGuide,
   GrievanceRequest,
+  LanguageCode,
   LibraryDocument,
   Lesson,
   Scheme,
+  SynthesizeRequest,
+  TranscribeResponse,
 } from '@/types';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
@@ -46,11 +50,14 @@ function delay<T>(value: T, ms = 600): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(value), ms));
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${BASE_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    ...init,
-  });
+/** fetch() that turns any non-2xx response into an ApiError with the contract's error shape. */
+async function send(path: string, init?: RequestInit): Promise<Response> {
+  let response: Response;
+  try {
+    response = await fetch(`${BASE_URL}${path}`, init);
+  } catch {
+    throw new ApiError({ code: 'network_error', message: 'Could not reach the server.' });
+  }
   if (!response.ok) {
     let body: ApiErrorBody = { code: `http_${response.status}`, message: response.statusText };
     try {
@@ -60,7 +67,37 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     }
     throw new ApiError(body);
   }
+  return response;
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await send(path, {
+    ...init,
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...init?.headers },
+  });
   return (await response.json()) as T;
+}
+
+/** A short silent 16 kHz mono WAV, so mock mode exercises the same code path as the API. */
+function silentWav(seconds = 0.5): Blob {
+  const rate = 16_000;
+  const samples = Math.round(rate * seconds);
+  const view = new DataView(new ArrayBuffer(44 + samples * 2));
+  const ascii = (offset: number, s: string) =>
+    [...s].forEach((c, i) => view.setUint8(offset + i, c.charCodeAt(0)));
+  ascii(0, 'RIFF');
+  view.setUint32(4, 36 + samples * 2, true);
+  ascii(8, 'WAVEfmt ');
+  view.setUint32(16, 16, true); // fmt chunk size
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, 1, true); // mono
+  view.setUint32(24, rate, true);
+  view.setUint32(28, rate * 2, true); // byte rate
+  view.setUint16(32, 2, true); // block align
+  view.setUint16(34, 16, true); // bits per sample
+  ascii(36, 'data');
+  view.setUint32(40, samples * 2, true);
+  return new Blob([view], { type: 'audio/wav' });
 }
 
 function toQuery(params: Record<string, string | undefined>): string {
@@ -125,11 +162,39 @@ export const api = {
     return delay(MOCK_EVAL_SUMMARY, 500);
   },
 
-  /** POST /speech/transcribe and /speech/synthesize: planned for Sprint 2. */
-  async transcribe(): Promise<never> {
-    throw new ApiError({ code: 'not_implemented', message: 'Speech input is not connected yet.' });
+  /**
+   * POST /speech/transcribe (multipart). Send the MediaRecorder blob; show the returned
+   * text as an editable transcript before calling ask().
+   */
+  async transcribe(audio: Blob, languageHint?: LanguageCode): Promise<TranscribeResponse> {
+    if (!USE_MOCKS) {
+      const form = new FormData();
+      form.append('audio', audio, 'question.webm');
+      if (languageHint) form.append('language_hint', languageHint);
+      const response = await send('/speech/transcribe', { method: 'POST', body: form });
+      return (await response.json()) as TranscribeResponse;
+    }
+    return delay(
+      {
+        text: 'What should I do if my insured crop is damaged under PMFBY?',
+        language: 'en',
+        confidence: 0.9,
+        is_demo: true,
+      },
+      700,
+    );
   },
-  async synthesize(): Promise<never> {
-    throw new ApiError({ code: 'not_implemented', message: 'Speech output is not connected yet.' });
+
+  /** POST /speech/synthesize. Returns WAV audio for the Listen button. */
+  async synthesize(body: SynthesizeRequest): Promise<Blob> {
+    if (!USE_MOCKS) {
+      const response = await send('/speech/synthesize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'audio/wav' },
+        body: JSON.stringify(body),
+      });
+      return response.blob();
+    }
+    return delay(silentWav(), 500);
   },
 };

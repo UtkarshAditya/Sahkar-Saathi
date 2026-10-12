@@ -17,8 +17,8 @@ export function CitationList({ citations }: { citations: Citation[] }) {
             {i + 1}
           </span>
           <span className="text-ink-soft">
-            <span className="font-medium text-ink">{c.title}</span> · {formatDate(c.published_date)}{' '}
-            · {t('common.page')} {c.page}
+            <span className="font-medium text-ink">{c.title}</span> · {formatDate(c.published_date)}
+            {c.page != null && ` · ${t('common.page')} ${c.page}`}
           </span>
         </li>
       ))}
@@ -63,7 +63,7 @@ export function CitationPanel({ citations }: CitationPanelProps) {
                 <dd>{formatDate(c.published_date)}</dd>
                 <dt className="text-ink-muted">{t('common.page')}</dt>
                 <dd>
-                  {c.page}
+                  {c.page ?? '—'}
                   {c.section ? ` · ${c.section}` : ''}
                 </dd>
               </dl>

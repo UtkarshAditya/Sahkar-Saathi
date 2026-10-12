@@ -25,3 +25,7 @@ Thumbs.db
 __pycache__/
 *.pyc
 .venv/
+*.sqlite3
+backend/staticfiles/
+.pytest_cache/
+.ruff_cache/

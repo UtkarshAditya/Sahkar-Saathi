@@ -1,0 +1,25 @@
+[project]
+name = "sahkar-saathi-backend"
+version = "0.1.0"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [".venv", "staticfiles"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC"]
+
+[tool.ruff.lint.flake8-bugbear]
+# Ninja parameter markers are declarations, not calls with side effects.
+extend-immutable-calls = [
+  "ninja.File", "ninja.Form", "ninja.Query", "ninja.Body", "ninja.Header", "ninja.Path",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["apps", "config", "services", "ai"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+testpaths = ["tests"]

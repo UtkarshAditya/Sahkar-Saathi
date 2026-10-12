@@ -54,10 +54,10 @@ function lawCitations(stateCode: string): Citation[] {
   return [
     {
       id: 'cit-law-1',
-      document_id: stateCode === COVERED_STATE_CODE ? 'doc-mh-act' : 'doc-mscs-act',
+      document_id: stateCode === COVERED_STATE_CODE ? 'doc-tn-act' : 'doc-mscs-act',
       title:
         stateCode === COVERED_STATE_CODE
-          ? 'Maharashtra Co-operative Societies Act, 1960'
+          ? 'Tamil Nadu Co-operative Societies Act, 1983'
           : 'Multi-State Co-operative Societies Act, 2002',
       publisher: 'Sample metadata',
       published_date: '2024-03-01',
@@ -242,7 +242,7 @@ export function buildDemoConversation(): ChatMessage[] {
     language: 'en',
     state: null,
   });
-  return [
+  const messages: ChatMessage[] = [
     { id: 'demo-u1', role: 'user', text: q1 },
     { id: 'demo-a1', role: 'assistant', text: '', response: buildMockAnswer(ask(q1)) },
     { id: 'demo-u2', role: 'user', text: q2 },
@@ -256,4 +256,5 @@ export function buildDemoConversation(): ChatMessage[] {
       pendingQuestion: q3,
     },
   ];
+  return messages.map((m) => ({ ...m, isExample: true }));
 }

@@ -105,7 +105,7 @@ export const MOCK_EVAL_SUMMARY: EvalSummary = {
     {
       id: 'fq-3',
       question: 'Sample: How much premium do I pay for cotton?',
-      language: 'mr',
+      language: 'ta',
       failure: 'unfaithful',
       note: 'Number in answer not present in cited passage.',
     },

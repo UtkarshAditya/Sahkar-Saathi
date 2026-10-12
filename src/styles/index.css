@@ -6,8 +6,8 @@
  */
 @theme {
   --font-sans:
-    'Noto Sans', 'Noto Sans Devanagari', 'Segoe UI', system-ui, -apple-system, Roboto, Arial,
-    sans-serif;
+    'Noto Sans', 'Noto Sans Devanagari', 'Noto Sans Tamil', 'Nirmala UI', 'Segoe UI', system-ui,
+    -apple-system, Roboto, Arial, sans-serif;
 
   --color-brand-50: #f0f7f2;
   --color-brand-100: #dcede1;

@@ -35,7 +35,7 @@ export interface Citation {
   title: string;
   publisher: string;
   published_date: string;
-  page: number;
+  page: number | null;
   section?: string;
   /** Null until a verified source URL is recorded for the document. */
   url: string | null;
@@ -80,6 +80,8 @@ export interface ChatMessage {
   response?: AskResponse;
   /** For needs_state prompts: the question to re-ask once a state is chosen. */
   pendingQuestion?: string;
+  /** Part of the built-in example conversation: never sent to or stored by the API. */
+  isExample?: boolean;
 }
 
 export type QuestionTopic = 'law' | 'pmfby' | 'schemes' | 'grievance';
@@ -88,6 +90,22 @@ export interface SuggestedQuestion {
   id: string;
   topic: QuestionTopic;
   text: string;
+}
+
+/* ----- Speech (/speech/transcribe, /speech/synthesize) ----- */
+
+export interface TranscribeResponse {
+  /** Show as an editable transcript before sending to /chat/ask. */
+  text: string;
+  language: LanguageCode;
+  /** 0..1 */
+  confidence: number;
+  is_demo: boolean;
+}
+
+export interface SynthesizeRequest {
+  text: string;
+  language: LanguageCode;
 }
 
 /* ----- Feedback (/feedback) ----- */

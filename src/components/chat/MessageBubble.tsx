@@ -156,7 +156,7 @@ export function MessageBubble({
               </span>
             )}
           </div>
-          <FeedbackButtons messageId={response.message_id} />
+          <FeedbackButtons messageId={response.message_id} localOnly={message.isExample} />
         </footer>
       )}
     </article>
