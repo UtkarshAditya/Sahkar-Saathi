@@ -113,7 +113,7 @@ DEMO_CACHE = env_bool("DEMO_CACHE", False)
 # Turn off to keep no message text at all (Sprint 2, when messages are stored).
 STORE_MESSAGES = env_bool("STORE_MESSAGES", True)
 
-REGIONAL_LANGUAGE_CODE = os.environ.get("REGIONAL_LANGUAGE_CODE", "mr")
+REGIONAL_LANGUAGE_CODE = os.environ.get("REGIONAL_LANGUAGE_CODE", "ta")
 SUPPORTED_LANGUAGES = ["en", "hi", REGIONAL_LANGUAGE_CODE]
 
 # Agent and language model (member C).

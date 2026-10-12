@@ -18,7 +18,7 @@ import wave
 
 from .types import Answer, Contact, Passage, Transcript
 
-COVERED_STATE = "MH"  # the one state whose Act is in the corpus (team decision)
+COVERED_STATE = "TN"  # the one state whose Act is in the corpus (team decision)
 
 DEFAULT_CONTACT = Contact(
     label="Your district cooperative office (Registrar of Co-operative Societies)",
@@ -44,16 +44,16 @@ _CANNED: list[Passage] = [
         section="Localised calamities (sample section)",
     ),
     Passage(
-        chunk_id="stub-mh-act-18",
+        chunk_id="stub-tn-act-18",
         text="Stub passage about the management of cooperative societies.",
-        document_id="doc-mh-act",
-        document_title="Maharashtra Co-operative Societies Act, 1960",
+        document_id="doc-tn-act",
+        document_title="Tamil Nadu Co-operative Societies Act, 1983",
         publisher="Sample metadata",
         source_url=None,
         published_date="2024-03-01",
         page=18,
         score=0.74,
-        state="MH",
+        state="TN",
         section="Management of societies (sample section)",
     ),
     Passage(

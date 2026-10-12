@@ -10,11 +10,11 @@ import regional from './locales/regional.json';
  * VITE_REGIONAL_LANGUAGE_LABEL in .env.local and put its strings in
  * locales/regional.json. Missing keys fall back to English.
  *
- * The starter regional.json is Marathi and must be reviewed by a native speaker.
+ * The starter regional.json is Tamil and must be reviewed by a native speaker.
  */
 export const REGIONAL_LANGUAGE: LanguageOption = {
-  code: import.meta.env.VITE_REGIONAL_LANGUAGE_CODE || 'mr',
-  label: import.meta.env.VITE_REGIONAL_LANGUAGE_LABEL || 'मराठी',
+  code: import.meta.env.VITE_REGIONAL_LANGUAGE_CODE || 'ta',
+  label: import.meta.env.VITE_REGIONAL_LANGUAGE_LABEL || 'தமிழ்',
   englishLabel: 'Regional',
 };
 

@@ -43,7 +43,7 @@ Vite proxies `/api` to port 8000, so there is no CORS setup, just as with Caddy 
   `validation_error` (422), `unsupported_audio_type` (415), `audio_too_large` (413),
   `empty_audio` (400), `service_not_ready` (503), `provider_error` (502),
   `internal_error` (500).
-- Language codes are `en`, `hi` and `REGIONAL_LANGUAGE_CODE` (default `mr`).
+- Language codes are `en`, `hi` and `REGIONAL_LANGUAGE_CODE` (default `ta`).
 - Audio uploads are checked for type and size (`SPEECH_MAX_UPLOAD_BYTES`, default 5 MB)
   before they are read.
 - Logs record status and latency, never question or answer text.
@@ -90,7 +90,7 @@ backend/
    a 502 with the standard error shape.
 
 The stubs exercise every state: PMFBY questions are answered with citations; by-law
-questions without a state return `needs_state`; a state other than `MH` gives `partial`;
+questions without a state return `needs_state`; a state other than `TN` gives `partial`;
 gibberish and out-of-scope questions are declined with a contact. Transcription returns a
 fixed sentence, and synthesis returns silent WAV audio.
 

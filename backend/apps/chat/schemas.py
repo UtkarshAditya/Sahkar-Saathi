@@ -22,7 +22,7 @@ class AskIn(Schema):
     text: str = Field(..., min_length=1, description="The question, typed or confirmed transcript.")
     language: str = Field("en", description="Short ISO code: en, hi or the regional language.")
     state: str | None = Field(
-        None, max_length=8, description="State code such as MH, or null if not chosen."
+        None, max_length=8, description="State code such as TN, or null if not chosen."
     )
     document_id: str | None = Field(
         None, max_length=64, description="Limit retrieval to one library document."

@@ -44,8 +44,13 @@ def test_partial_for_uncovered_state(client):
     assert body["needs_state"] is False
 
 
+def test_regional_language_is_tamil(client):
+    assert ask(client, text="PMFBY claim", language="ta").status_code == 200
+    assert ask(client, text="PMFBY claim", language="mr").status_code == 422
+
+
 def test_answered_for_covered_state(client):
-    res = ask(client, text="How are board members of a PACS elected?", state="MH")
+    res = ask(client, text="How are board members of a PACS elected?", state="TN")
     assert res.json()["status"] == "answered"
 
 

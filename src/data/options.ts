@@ -45,7 +45,7 @@ export const STATES: StateOption[] = [
 ];
 
 /** The one state whose Act and rules are in the knowledge base (team decision). */
-export const COVERED_STATE_CODE = 'MH';
+export const COVERED_STATE_CODE = 'TN';
 
 export function stateName(code: string | null | undefined): string {
   if (!code) return '';

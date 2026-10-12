@@ -524,7 +524,7 @@
                 "type": "null"
               }
             ],
-            "description": "State code such as MH, or null if not chosen.",
+            "description": "State code such as TN, or null if not chosen.",
             "title": "State"
           },
           "document_id": {

@@ -91,7 +91,7 @@ least 44px tall, and focus rings are visible everywhere.
   sidebar, header, notices, page titles and the chat UI. Page body content is English for now.
 - The third language is **configurable**. Set `VITE_REGIONAL_LANGUAGE_CODE` and
   `VITE_REGIONAL_LANGUAGE_LABEL`, then put its strings in `regional.json`. Missing keys
-  fall back to English. The starter file is Marathi and needs review by a native speaker.
+  fall back to English. The starter file is Tamil and needs review by a native speaker.
 - The chosen language and state are saved in `localStorage` (preferences only, nothing personal).
 
 To add a string: add the key to `en.json`, then `hi.json` and `regional.json`, and use
