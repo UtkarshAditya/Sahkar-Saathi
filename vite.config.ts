@@ -24,8 +24,9 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    // When the Django backend runs locally, uncomment to proxy API calls
-    // (mirrors what Caddy does in the deployed setup, so no CORS config is needed).
-    // proxy: { '/api': 'http://localhost:8000' },
+    // Same-origin API calls to the local Django backend (uvicorn on port 8000), mirroring
+    // what Caddy does in deployment, so no CORS config is needed. Only used when
+    // VITE_USE_MOCKS=false. 127.0.0.1, not localhost, avoids IPv6 lookups on Windows.
+    proxy: { '/api': 'http://127.0.0.1:8000' },
   },
 });

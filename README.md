@@ -3,10 +3,12 @@
 Multilingual Cooperative Governance & Legal Assistance Chatbot. SIH 2026, problem statement
 **26088** (Ministry of Cooperation, NCCT).
 
-This repository currently holds the **React front-end scaffold** and an empty **backend
-folder structure**. Every page works with local mock data. There is no backend, AI,
-speech or real API call yet. All sample content is labelled as sample or placeholder in
-the UI, and no premium amounts, deadlines, helpline numbers or document URLs are invented.
+This repository holds the **React front end** and a **Django + Ninja backend** that
+serves `/chat/ask` and the two `/speech` endpoints from stub services. By default every
+page works with local mock data; set `VITE_USE_MOCKS=false` to use the backend instead.
+There is no real AI, retrieval or speech provider yet. All sample content is labelled as
+sample or placeholder in the UI, and no premium amounts, deadlines, helpline numbers or
+document URLs are invented.
 
 ## Quick start
 
@@ -17,14 +19,14 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
-| Command | What it does |
-|---|---|
-| `npm run dev` | Start the Vite dev server with hot reload |
-| `npm run build` | Type-check (`tsc -b`) and build to `dist/` |
-| `npm run preview` | Serve the production build locally |
-| `npm run lint` | ESLint (flat config, TypeScript, React hooks) |
-| `npm run format` / `format:check` | Prettier write / check |
-| `npm run typecheck` | TypeScript only |
+| Command                           | What it does                                  |
+| --------------------------------- | --------------------------------------------- |
+| `npm run dev`                     | Start the Vite dev server with hot reload     |
+| `npm run build`                   | Type-check (`tsc -b`) and build to `dist/`    |
+| `npm run preview`                 | Serve the production build locally            |
+| `npm run lint`                    | ESLint (flat config, TypeScript, React hooks) |
+| `npm run format` / `format:check` | Prettier write / check                        |
+| `npm run typecheck`               | TypeScript only                               |
 
 Optional: copy `.env.example` to `.env.local` to change settings (see below).
 
@@ -36,17 +38,17 @@ Node 20.19+.
 
 ## Pages
 
-| Route | Page | Priority (architecture doc) |
-|---|---|---|
-| `/` | Ask Sahkar Saathi: chat, citations panel, state prompt, declined state, feedback | Must |
-| `/grievance` | Grievance helper: category, forum, steps, checklist, editable draft, copy and download | Must |
-| `/about` | About and help: how it works, limits, privacy, sources, feedback form | Must |
-| `/crop-insurance` | Crop insurance guide (PMFBY) with season and crop selectors | Should |
-| `/schemes` | Schemes and services: search, category filter, details dialog | Should |
-| `/library` | Law and by-laws library: search, state, language and type filters | Could |
-| `/learn` | Financial literacy lessons and a three-question quiz | Could |
-| `/staff/quality` | Quality dashboard (sample metrics, no auth yet) | Could |
-| `/admin` | Placeholder. The real admin is Django admin | Free |
+| Route             | Page                                                                                   | Priority (architecture doc) |
+| ----------------- | -------------------------------------------------------------------------------------- | --------------------------- |
+| `/`               | Ask Sahkar Saathi: chat, citations panel, state prompt, declined state, feedback       | Must                        |
+| `/grievance`      | Grievance helper: category, forum, steps, checklist, editable draft, copy and download | Must                        |
+| `/about`          | About and help: how it works, limits, privacy, sources, feedback form                  | Must                        |
+| `/crop-insurance` | Crop insurance guide (PMFBY) with season and crop selectors                            | Should                      |
+| `/schemes`        | Schemes and services: search, category filter, details dialog                          | Should                      |
+| `/library`        | Law and by-laws library: search, state, language and type filters                      | Could                       |
+| `/learn`          | Financial literacy lessons and a three-question quiz                                   | Could                       |
+| `/staff/quality`  | Quality dashboard (sample metrics, no auth yet)                                        | Could                       |
+| `/admin`          | Placeholder. The real admin is Django admin                                            | Free                        |
 
 "Ask about this" on the schemes, library and crop pages opens `/` with the question prefilled
 (`/?q=…`). The library also passes `&doc=<id>` to limit the next question to that document.
@@ -72,7 +74,7 @@ src/
 ├── i18n/         i18next setup and locales/{en,hi,regional}.json
 ├── lib/          Small helpers (date and percent formatting, text download, cn)
 └── styles/       Tailwind entry and design tokens
-backend/          Directory scaffold only, see backend/README.md
+backend/          Django + Ninja API (chat and speech endpoints), see backend/README.md
 ```
 
 ## Design system
@@ -97,29 +99,34 @@ To add a string: add the key to `en.json`, then `hi.json` and `regional.json`, a
 
 ## Connecting the backend
 
-1. When the backend freezes `openapi.json`, run
-   `npx openapi-typescript openapi.json -o src/types/api.ts` and re-export those types
-   from `src/types/index.ts` in place of the hand-written ones.
-2. Set `VITE_USE_MOCKS=false`. `src/services/api.ts` then calls `VITE_API_BASE_URL`
-   (default `/api/v1`) instead of returning mock data. Pages do not change.
-3. For local development, uncomment the `/api` proxy in `vite.config.ts`. In deployment
-   Caddy serves `dist/` and proxies `/api` (and `/admin`) to Django on the same origin.
-4. Consider TanStack Query in place of `useAsync` once real endpoints exist.
+The Django backend in `backend/` already serves `POST /chat/ask`, `POST /speech/transcribe`
+and `POST /speech/synthesize` (stub-backed for now). To use them:
+
+1. Start the backend (see [backend/README.md](backend/README.md)):
+   `uvicorn config.asgi:application --reload --port 8000`.
+2. Run the front end with `VITE_USE_MOCKS=false npm run dev`. Vite proxies `/api` to
+   port 8000, so no CORS setup is needed. In deployment Caddy does the same.
+3. Endpoints the backend does not have yet (schemes, documents, lessons, grievance,
+   feedback, eval) will fail in that mode until member A adds them.
+4. The contract is `backend/openapi.json`. Once it is frozen, run
+   `npx openapi-typescript backend/openapi.json -o src/types/api.ts` and re-export those
+   types from `src/types/index.ts` in place of the hand-written ones.
+5. Consider TanStack Query in place of `useAsync` once real endpoints exist.
 
 Testing hook: in mock mode, sending `/error` on the Ask page shows the error state.
 
 ## Not implemented yet (by design)
 
-| Item | Current state | Planned |
-|---|---|---|
-| Voice input (mic) | Button shows a "not connected yet" notice | Sprint 2: `useRecorder` hook, `/speech/transcribe`, editable transcript |
-| Listen (text to speech) | Disabled, labelled "coming soon" | Sprint 2: `/speech/synthesize` |
-| Grievance voice description | Hint text only | Sprint 3 |
-| Answers, schemes, documents, lessons, metrics | Local mock data with sample labels | Real endpoints |
-| Feedback | Shown on screen only, not stored | `POST /feedback` |
-| Staff auth for `/staff/quality` | None | Staff token (member A) |
-| Admin page | Placeholder cards, no links | Django admin at `/admin/` |
-| Body content translation | English only | Language service |
+| Item                                          | Current state                             | Planned                                                                 |
+| --------------------------------------------- | ----------------------------------------- | ----------------------------------------------------------------------- |
+| Voice input (mic)                             | Button shows a "not connected yet" notice | Sprint 2: `useRecorder` hook, `/speech/transcribe`, editable transcript |
+| Listen (text to speech)                       | Disabled, labelled "coming soon"          | Sprint 2: `/speech/synthesize`                                          |
+| Grievance voice description                   | Hint text only                            | Sprint 3                                                                |
+| Answers, schemes, documents, lessons, metrics | Local mock data with sample labels        | Real endpoints                                                          |
+| Feedback                                      | Shown on screen only, not stored          | `POST /feedback`                                                        |
+| Staff auth for `/staff/quality`               | None                                      | Staff token (member A)                                                  |
+| Admin page                                    | Placeholder cards, no links               | Django admin at `/admin/`                                               |
+| Body content translation                      | English only                              | Language service                                                        |
 
 ## Team ownership
 
