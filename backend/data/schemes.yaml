@@ -1,0 +1,147 @@
+# Schemes and services shown on the Schemes page, plus the PMFBY guide facts for the
+# Crop insurance page (GET /api/v1/schemes/pmfby). Owned by member C.
+#
+# Rules, enforced when the file is loaded (see apps/schemes/content.py):
+# - Every scheme and fact has a source_label.
+# - A scheme with is_sample: false, or a fact with is_placeholder: false, MUST have a
+#   source_url and an as_of date. Do not mark anything verified until both are checked.
+# - Never put premium amounts, deadlines or helpline numbers in a placeholder fact.
+#
+# Everything below is SAMPLE content to exercise the UI. Titles name real programmes;
+# summaries are simplified and eligibility and access steps are placeholders.
+
+schemes:
+  - slug: pacs-computerisation
+    title: Computerisation of PACS
+    category: digital-services
+    summary: >-
+      Support for primary agricultural credit societies to move accounts and services onto
+      a common software system.
+    eligibility: "Placeholder: which PACS qualify will be quoted from the verified scheme note."
+    how_to_access: >-
+      Placeholder: steps will be added from the official source. Ask your PACS secretary or
+      district cooperative office in the meantime.
+    source_label: Official scheme page (link to be verified)
+    source_url: null
+    as_of: 2026-10-01
+    is_sample: true
+
+  - slug: pacs-common-service-centres
+    title: PACS as Common Service Centres
+    category: digital-services
+    summary: >-
+      Lets PACS offer common digital services to villagers, such as applications and
+      payments, from the society office.
+    eligibility: "Placeholder: eligibility will be confirmed from the official source."
+    how_to_access: "Placeholder: access steps will be added after verification."
+    source_label: Official scheme page (link to be verified)
+    source_url: null
+    as_of: 2026-10-01
+    is_sample: true
+
+  - slug: grain-storage-plan
+    title: Grain storage plan in the cooperative sector
+    category: storage-marketing
+    summary: >-
+      Builds storage and allied agri-infrastructure at the PACS level so members can store
+      produce closer to home.
+    eligibility: "Placeholder: which societies can take part will be quoted from the scheme note."
+    how_to_access: "Placeholder: process to be added from the official source."
+    source_label: Official scheme page (link to be verified)
+    source_url: null
+    as_of: 2026-10-01
+    is_sample: true
+
+  - slug: kisan-credit-card
+    title: Kisan Credit Card (KCC)
+    category: credit
+    summary: >-
+      A credit facility that helps farmers meet crop and allied expenses, available through
+      banks and cooperative credit institutions.
+    eligibility: "Placeholder: eligibility and limits will be quoted from the verified source."
+    how_to_access: "Placeholder: ask at your bank branch or PACS; exact steps to be verified."
+    source_label: Official scheme page (link to be verified)
+    source_url: null
+    as_of: 2026-10-01
+    is_sample: true
+
+  - slug: pmfby
+    title: Pradhan Mantri Fasal Bima Yojana (PMFBY)
+    category: insurance
+    summary: >-
+      Crop insurance that protects farmers against crop loss from natural risks. See the
+      Crop insurance guide for step-by-step help.
+    eligibility: "Placeholder: see the Crop insurance guide; figures will be added after verification."
+    how_to_access: "Placeholder: enrolment routes will be quoted from the verified guidelines."
+    source_label: Official scheme page (link to be verified)
+    source_url: null
+    as_of: 2026-10-01
+    is_sample: true
+    facts:
+      - id: eligibility
+        kind: eligibility
+        title: Who can enrol
+        body: >-
+          Farmers growing notified crops in notified areas, including sharecroppers and
+          tenant farmers, can generally enrol. The exact conditions will be quoted from the
+          verified guidelines.
+        source_label: "Pending: schemes.yaml (PMFBY)"
+        source_url: null
+        as_of: null
+        is_placeholder: true
+      - id: premium
+        kind: premium
+        title: Your premium share
+        body: >-
+          The farmer's premium share for your season and crop type will appear here from the
+          verified source. No figure is shown until it is verified.
+        source_label: "Pending: schemes.yaml (PMFBY)"
+        source_url: null
+        as_of: null
+        is_placeholder: true
+      - id: enrolment
+        kind: enrolment
+        title: How and where to enrol
+        body: >-
+          Farmers usually enrol through their bank, PACS, a common service centre or the
+          insurance company. The enrolment window for this season will be added from the
+          verified source.
+        source_label: "Pending: schemes.yaml (PMFBY)"
+        source_url: null
+        as_of: null
+        is_placeholder: true
+      - id: loss
+        kind: loss-reporting
+        title: Reporting crop loss
+        body: >-
+          Report a loss as early as possible to the insurance company, your bank or the
+          agriculture office, with crop, area and cause. The exact reporting time limit will
+          be quoted from the guidelines, not estimated.
+        source_label: "Pending: schemes.yaml (PMFBY)"
+        source_url: null
+        as_of: null
+        is_placeholder: true
+      - id: official
+        kind: official-info
+        title: Official information and helpline
+        body: >-
+          The official PMFBY portal and helpline number will be listed here once verified.
+          Until then, ask your bank branch, PACS or district agriculture office.
+        source_label: "Pending: schemes.yaml (PMFBY)"
+        source_url: null
+        as_of: null
+        is_placeholder: true
+
+  - slug: model-bylaws-pacs
+    title: Model by-laws for multipurpose PACS
+    category: cooperative-development
+    summary: >-
+      Model by-laws that states can adopt so PACS can take up more business activities
+      beyond credit.
+    eligibility: "Placeholder: adoption depends on each state; to be confirmed."
+    how_to_access: >-
+      Placeholder: open the Law library to see the document, or ask a question about it.
+    source_label: Official scheme page (link to be verified)
+    source_url: null
+    as_of: 2026-10-01
+    is_sample: true

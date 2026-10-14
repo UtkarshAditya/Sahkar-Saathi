@@ -1,8 +1,10 @@
 # Sahkar Saathi backend
 
 Django 5.2 + Django Ninja, served by uvicorn (ASGI). This is member A's platform layer from
-the Member A plan. Today it serves **stub** answers and speech, so B, C and D can build
-against the real API before the real services exist.
+the Member A plan. Every endpoint in the API contract exists and is frozen in
+[`openapi.json`](openapi.json). Answers, retrieval, speech and grievance guidance still
+come from **stubs**, so B, C and D can build against the real API before the real
+services exist.
 
 ## Run it
 
@@ -14,7 +16,8 @@ py -3.13 -m venv .venv            # macOS/Linux: python3 -m venv .venv
 .venv/Scripts/activate            # macOS/Linux: source .venv/bin/activate
 pip install -r requirements-dev.txt
 cp .env.example .env              # local settings; never commit .env
-python manage.py migrate          # SQLite by default; tables for the admin site
+python manage.py migrate          # SQLite by default
+python manage.py loaddata sample_documents   # sample library entries (is_sample=true)
 uvicorn config.asgi:application --reload --port 8000
 ```
 
@@ -26,34 +29,63 @@ uvicorn config.asgi:application --reload --port 8000
 `VITE_USE_MOCKS=false npm run dev` (PowerShell: `$env:VITE_USE_MOCKS='false'; npm run dev`).
 Vite proxies `/api` to port 8000, so there is no CORS setup, just as with Caddy later.
 
-## Endpoints (all under `/api/v1/`)
+## The API contract (all under `/api/v1/`)
 
-| Method and path           | Purpose                                   | In                                                                  | Out                                                                                                                                                           |
-| ------------------------- | ----------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `POST /chat/ask`          | Ask a question in text                    | JSON: `text`, `language`, `state`, `conversation_id`, `document_id` | `conversation_id`, `message_id`, `answer_text`, `status` (`answered`/`partial`/`declined`), `needs_state`, `citations[]`, `followups[]`, `contact`, `is_demo` |
-| `POST /speech/transcribe` | Speech to text                            | multipart: `audio` file, `language_hint`                            | `text`, `language`, `confidence`, `is_demo`                                                                                                                   |
-| `POST /speech/synthesize` | Text to speech                            | JSON: `text`, `language`                                            | `audio/wav` (16 kHz mono)                                                                                                                                     |
-| `POST /feedback`          | Rate an answer, or send a general comment | JSON: `message_id`, `rating` (`up`/`down`), `reason`, `comment`     | `201` with `id`, `ok`                                                                                                                                         |
-| `GET /health`             | Deployment check                          |                                                                     | `status` (`ok`/`degraded`), `version`, `stubs`, `database`                                                                                                    |
+| Method and path               | Purpose                                     | Used by                   | Source today                     |
+| ----------------------------- | ------------------------------------------- | ------------------------- | -------------------------------- |
+| `GET /health`                 | Deployment check (database, vector store)   | demo checklist            | real                             |
+| `GET /meta/languages`         | Options for the language selector           | sidebar                   | settings                         |
+| `GET /meta/states`            | States, with the covered one marked         | sidebar                   | settings                         |
+| `POST /chat/ask`              | Ask a question in text                      | Ask                       | stub answer service, stored      |
+| `POST /speech/transcribe`     | Speech to text (multipart upload)           | Ask, Grievance            | stub speech provider             |
+| `POST /speech/synthesize`     | Text to speech (`audio/wav`)                | Ask                       | stub speech provider             |
+| `POST /feedback`              | Rate an answer, or send a general comment   | Ask, About                | real, stored                     |
+| `GET /grievance/categories`   | Categories for the problem-type chips       | Grievance                 | stub grievance guide             |
+| `POST /grievance/guide`       | Category, forum, steps, checklist, draft    | Grievance                 | stub grievance guide             |
+| `GET /schemes`                | Scheme cards (`?category=`)                 | Schemes                   | `data/schemes.yaml`              |
+| `GET /schemes/{slug}`         | One scheme; `pmfby` has the guide facts     | Schemes, Crop insurance   | `data/schemes.yaml`              |
+| `GET /lessons`                | Lessons and the quiz (`?language=`)         | Learn                     | `data/lessons.yaml`              |
+| `GET /documents`              | Library (`?state=&type=&language=&include_retired=`) | Library, About   | `Document` table                 |
+| `GET /documents/{id}`         | One document                                | Library                   | `Document` table                 |
+| `GET /eval/latest`            | Evaluation summary (**staff only**)         | Quality dashboard         | sample data (`is_sample: true`)  |
+
+Field-level details, examples and every error response are in the interactive docs and
+`openapi.json`.
 
 **Contract rules**
 
-- A declined answer has no citations and always names a `contact`. The API layer enforces
+- Every error has the shape `{"code": "...", "message": "..."}`. Codes: `validation_error`
+  (422), `empty_audio` (400), `not_authenticated` (401), `staff_only` (403),
+  `message_not_found` / `document_not_found` / `scheme_not_found` / `not_found` (404),
+  `audio_too_large` (413), `unsupported_audio_type` (415), `rate_limited` (429, with
+  `Retry-After`), `internal_error` (500), `provider_error` (502), `service_not_ready` (503).
+- A declined answer has no citations and always names a `contact`; the API layer enforces
   this even if a service gets it wrong.
-- Every error has the shape `{"code": "...", "message": "..."}`. The codes are:
-  `validation_error` (422), `unsupported_audio_type` (415), `audio_too_large` (413),
-  `empty_audio` (400), `message_not_found` (404), `rate_limited` (429, with
-  `Retry-After`), `service_not_ready` (503), `provider_error` (502), `internal_error` (500).
-- Pass the returned `conversation_id` back with follow-up questions. An unknown id
-  starts a new conversation. `message_id` is what `POST /feedback` rates.
-- A rating needs a `message_id`; a general comment (About page) needs only `comment`.
-- Language codes are `en`, `hi` and `REGIONAL_LANGUAGE_CODE` (default `ta`).
-- Audio uploads are checked for type and size (`SPEECH_MAX_UPLOAD_BYTES`, default 5 MB)
-  before they are read.
-- Logs record status and latency, never question or answer text.
-- Public endpoints are rate-limited per client address, with separate budgets for chat,
-  speech and feedback (`CHAT_RATE_LIMIT`, `SPEECH_RATE_LIMIT`, `FEEDBACK_RATE_LIMIT`).
-  This protects free-tier quotas; it is not a security control.
+- Fields the API always sends are required in the contract, even when they can be `null`
+  (for example `contact`, `source_url`). Null means "not available", never "omitted".
+- Pass the returned `conversation_id` back with follow-up questions; an unknown id starts
+  a new conversation. `message_id` is what `POST /feedback` rates.
+- Language codes are `en`, `hi` and `REGIONAL_LANGUAGE_CODE` (default `ta`). The covered
+  state is `COVERED_STATE_CODE` (default `TN`).
+- Public write endpoints are rate-limited per client address, with separate budgets for
+  chat, speech, feedback and grievance. This protects free-tier quotas; it is not a
+  security control.
+- `/eval/latest` uses the Django session from `/admin/`; log in as a staff user first.
+- Logs record status and latency, never question, answer or grievance text.
+
+## Changing the contract
+
+The contract is **frozen**. Following the working agreement:
+
+1. Open a pull request and announce it in the team chat. A **breaking** change (removing
+   or renaming a field, tightening a type, changing a status code) needs two approvals.
+   Adding an optional field or a new endpoint is not breaking.
+2. Re-export: `python manage.py export_openapi_schema --api config.api.api --output openapi.json --indent 2`
+3. Regenerate the front-end types from the repository root: `npm run gen:api`, then fix
+   anything `src/types/contract-check.ts` reports in `npm run build`.
+
+CI fails if `openapi.json` is stale (`tests/test_contract.py`), if `src/types/api.gen.ts`
+was not regenerated, or if the UI's types no longer fit the contract.
 
 ## What is stored
 
@@ -68,38 +100,51 @@ Every `/chat/ask` call saves an anonymous **Conversation**, a **Message** and it
 - **Feedback:** rating, reason and comment (also scrubbed), linked to the Message.
 
 No name, account or IP address is stored. If the database is down, `/chat/ask` still
-answers; that exchange just cannot be rated.
+answers; that exchange just cannot be rated. Grievance descriptions and drafts are not
+stored yet (GrievanceCase is a Sprint 2 task).
 
-In the admin (`/admin/`), filter **Feedback** by _Not helpful_ to review weak answers.
-Messages are read-only there.
+In the admin (`/admin/`): filter **Feedback** by _Not helpful_ to review weak answers;
+add, edit or **retire** (never delete) **Documents**; inspect **Chunks**.
 
-The machine-readable contract is [`openapi.json`](openapi.json). Re-export it after any
-schema change:
+## Content files (`data/`)
 
-```bash
-python manage.py export_openapi_schema --api config.api.api --output openapi.json --indent 2
-```
+Stable facts live in YAML with a source and date, so answers can quote them exactly:
+
+- `schemes.yaml`: scheme cards, plus `facts` for the PMFBY crop insurance guide.
+- `lessons.yaml`: lessons and the quiz. Add `lessons.hi.yaml` / `lessons.ta.yaml` for
+  translations; the API falls back to English.
+
+They are validated when loaded, and the tests load them, so CI catches mistakes. A scheme
+not marked `is_sample`, or a fact not marked `is_placeholder`, **must** have a `source_url`
+and date. Never put premium amounts, deadlines or helpline numbers into a placeholder.
+Everything in them today is sample content.
 
 ## How the code is organised
 
 ```text
 backend/
 ├── manage.py
-├── config/          settings (all from env), urls, asgi, api.py (NinjaAPI),
-│                    errors.py (one error shape), services.py (wiring functions),
-│                    throttles.py (rate limits)
-├── apps/            Django apps: thin Ninja routers and (later) models
-│   ├── chat/        POST /chat/ask; Conversation, Message, Citation models + admin
-│   ├── feedback/    POST /feedback; Feedback model + admin review queue
-│   ├── speech/      POST /speech/transcribe, /speech/synthesize
-│   └── knowledge/ grievance/ schemes/ lessons/ evaluation/   (not started)
+├── config/          settings (all from env), urls, asgi, api.py (NinjaAPI + /health),
+│                    errors.py (one error shape), services.py (wiring), throttles.py
+├── apps/            Django apps: thin Ninja routers, schemas and models
+│   ├── chat/        /chat/ask; Conversation, Message, Citation
+│   ├── speech/      /speech/transcribe, /speech/synthesize
+│   ├── feedback/    /feedback; Feedback (admin review queue)
+│   ├── grievance/   /grievance/categories, /grievance/guide
+│   ├── schemes/     /schemes, /schemes/{slug} from data/schemes.yaml
+│   ├── lessons/     /lessons from data/lessons*.yaml
+│   ├── knowledge/   /documents; Document, Chunk; fixtures/sample_documents.json
+│   ├── meta/        /meta/languages, /meta/states
+│   └── evaluation/  /eval/latest (staff); sample data until EvalRun models exist
+├── data/            schemes.yaml, lessons.yaml (later forums.yaml, test questions)
 ├── services/        plain Python, no Django imports
-│   ├── types.py     the interfaces: Retriever, AnswerService, SpeechProvider, + dataclasses
+│   ├── types.py     interfaces: Retriever, AnswerService, SpeechProvider, GrievanceGuide
 │   ├── stubs.py     stub implementations served while USE_STUBS=true
 │   ├── privacy.py   scrub_pii(): removes personal identifiers before storage
 │   └── retrieval/ speech/ translation/   real implementations go here (B, C)
 ├── ai/              agent, prompts, RAG, embeddings, safety (C, B). Not started
-└── tests/           pytest (pytest-django)
+├── tests/           pytest (pytest-django), including the contract tests
+└── openapi.json     the frozen contract
 ```
 
 **Rule:** handlers import only `services.types` and the wiring functions in
@@ -120,7 +165,8 @@ backend/
 The stubs exercise every state: PMFBY questions are answered with citations; by-law
 questions without a state return `needs_state`; a state other than `TN` gives `partial`;
 gibberish and out-of-scope questions are declined with a contact. Transcription returns a
-fixed sentence, and synthesis returns silent WAV audio.
+fixed sentence, synthesis returns silent WAV audio, and the grievance guide detects a
+category by keyword and fills a template draft.
 
 ## Settings
 
@@ -132,7 +178,8 @@ are the ones the team shares:
 | `USE_STUBS`                                                   | everyone | Serve stubs until the real services land (default `true`)               |
 | `DEMO_CACHE`                                                  | A, D     | Saved answers for the scripted demo (not wired yet)                     |
 | `STORE_MESSAGES`                                              | A        | Turn off to store no question or answer text (metrics are still stored) |
-| `CHAT_RATE_LIMIT`, `SPEECH_RATE_LIMIT`, `FEEDBACK_RATE_LIMIT` | A        | Per-client limits, e.g. `20/m`                                          |
+| `REGIONAL_LANGUAGE_*`, `COVERED_STATE_CODE`                   | team     | The third language (default Tamil) and the covered state (default TN)  |
+| `CHAT_RATE_LIMIT`, `SPEECH_RATE_LIMIT`, `FEEDBACK_RATE_LIMIT`, `GRIEVANCE_RATE_LIMIT` | A | Per-client limits, e.g. `20/m`                          |
 | `LLM_PROVIDER`, `LLM_MODEL`, `BHASHINI_*`                     | C        | Model and speech access                                                 |
 | `EMBEDDING_MODEL`, `TOP_K`, `SCORE_THRESHOLD`, `QDRANT_URL`   | B        | Retrieval behaviour                                                     |
 | `DATABASE_URL`                                                | A        | PostgreSQL in Compose; SQLite when unset                                |
@@ -141,17 +188,19 @@ are the ones the team shares:
 ## Quality checks
 
 ```bash
-python -m pytest            # 49 tests: every endpoint, error path, storage and privacy rule
+python -m pytest            # 87 tests: every endpoint, error path, storage, privacy, contract
 python -m ruff check .
 python -m ruff format --check .
+python manage.py makemigrations --check --dry-run
 ```
+
+The same checks, plus the front-end ones, run on every pull request in
+`.github/workflows/ci.yml`.
 
 ## Not done yet (Member A plan)
 
-- **Ask page:** `DEMO_CACHE` (saved answers for the five scripted conversations when a
-  service is down) and Qdrant reachability in `/health`. Real answers, retrieval and
-  speech come from members B and C through the interfaces above.
-- **Platform:** Docker Compose with PostgreSQL, Qdrant and Caddy; CI with the
-  `openapi.json` drift check.
-- **Other pages:** knowledge (Document, Chunk), `/documents`, `/schemes`, `/lessons`,
-  `/grievance/guide`, `/meta/*`, and staff-only `/eval/latest`.
+- **Sprint 2 models:** GrievanceCase (only when `STORE_MESSAGES` is on), and TestQuestion,
+  EvalRun and EvalResult so `/eval/latest` serves real runs instead of sample data.
+- **Resilience:** `DEMO_CACHE` (saved answers for the five scripted conversations).
+- **Platform:** Docker Compose with PostgreSQL, Qdrant and Caddy; HTTPS demo environment.
+- **Real services** from members B and C, plugged in through `config/services.py`.

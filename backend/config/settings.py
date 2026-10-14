@@ -43,6 +43,12 @@ INSTALLED_APPS = [
     "apps.chat",
     "apps.speech",
     "apps.feedback",
+    "apps.knowledge",
+    "apps.grievance",
+    "apps.schemes",
+    "apps.lessons",
+    "apps.meta",
+    "apps.evaluation",
 ]
 
 MIDDLEWARE = [
@@ -115,6 +121,12 @@ DEMO_CACHE = env_bool("DEMO_CACHE", False)
 STORE_MESSAGES = env_bool("STORE_MESSAGES", True)
 
 REGIONAL_LANGUAGE_CODE = os.environ.get("REGIONAL_LANGUAGE_CODE", "ta")
+REGIONAL_LANGUAGE_LABEL = os.environ.get("REGIONAL_LANGUAGE_LABEL", "தமிழ்")
+REGIONAL_LANGUAGE_ENGLISH_NAME = os.environ.get("REGIONAL_LANGUAGE_ENGLISH_NAME", "Tamil")
+# The one state whose Act and rules are in the knowledge base (team decision).
+COVERED_STATE_CODE = os.environ.get("COVERED_STATE_CODE", "TN")
+# Structured content with sources: schemes.yaml, lessons.yaml (and later forums.yaml).
+CONTENT_DIR = Path(os.environ.get("CONTENT_DIR") or BASE_DIR / "data")
 SUPPORTED_LANGUAGES = ["en", "hi", REGIONAL_LANGUAGE_CODE]
 
 # Agent and language model (member C).
@@ -128,12 +140,14 @@ EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "intfloat/multilingual-e5-sm
 TOP_K = int(os.environ.get("TOP_K", "4"))
 SCORE_THRESHOLD = float(os.environ.get("SCORE_THRESHOLD", "0.5"))
 QDRANT_URL = os.environ.get("QDRANT_URL", "http://qdrant:6333")
+HEALTH_CHECK_TIMEOUT_SECONDS = float(os.environ.get("HEALTH_CHECK_TIMEOUT_SECONDS", "1.5"))
 
 # Request limits.
 # Rate limits per client address, as "<count>/<s|m|h|d>". Each area has its own budget.
 CHAT_RATE_LIMIT = os.environ.get("CHAT_RATE_LIMIT") or "20/m"
 SPEECH_RATE_LIMIT = os.environ.get("SPEECH_RATE_LIMIT") or "20/m"
 FEEDBACK_RATE_LIMIT = os.environ.get("FEEDBACK_RATE_LIMIT") or "30/m"
+GRIEVANCE_RATE_LIMIT = os.environ.get("GRIEVANCE_RATE_LIMIT") or "10/m"
 CHAT_MAX_QUESTION_CHARS = int(os.environ.get("CHAT_MAX_QUESTION_CHARS", "1000"))
 SPEECH_MAX_UPLOAD_BYTES = int(os.environ.get("SPEECH_MAX_UPLOAD_BYTES", str(5 * 1024 * 1024)))
 SPEECH_MAX_SYNTH_CHARS = int(os.environ.get("SPEECH_MAX_SYNTH_CHARS", "2000"))

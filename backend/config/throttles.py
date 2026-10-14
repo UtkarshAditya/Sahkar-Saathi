@@ -24,6 +24,11 @@ class FeedbackThrottle(AnonRateThrottle):
     scope = "feedback"
 
 
+class GrievanceThrottle(AnonRateThrottle):
+    scope = "grievance"
+
+
 CHAT_THROTTLE = ChatThrottle(settings.CHAT_RATE_LIMIT)
 SPEECH_THROTTLE = SpeechThrottle(settings.SPEECH_RATE_LIMIT)
 FEEDBACK_THROTTLE = FeedbackThrottle(settings.FEEDBACK_RATE_LIMIT)
+GRIEVANCE_THROTTLE = GrievanceThrottle(settings.GRIEVANCE_RATE_LIMIT)

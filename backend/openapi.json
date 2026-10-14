@@ -3,7 +3,7 @@
   "info": {
     "title": "Sahkar Saathi API",
     "version": "v1",
-    "description": "Multilingual cooperative governance and legal-information assistant (SIH 2026, problem statement 26088). Every error uses the shape `{\"code\": \"...\", \"message\": \"...\"}`."
+    "description": "Multilingual cooperative governance and legal-information assistant (SIH 2026, problem statement 26088). Every error uses the shape `{\"code\": \"...\", \"message\": \"...\"}`. Language codes are short ISO codes (en, hi and the regional language). Public endpoints are rate-limited."
   },
   "paths": {
     "/api/v1/health": {
@@ -18,6 +18,59 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HealthOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Warm this up before a demo. ``degraded`` means a dependency is down.",
+        "tags": [
+          "meta"
+        ]
+      }
+    },
+    "/api/v1/meta/languages": {
+      "get": {
+        "operationId": "apps_meta_api_languages",
+        "summary": "Supported languages",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LanguageOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "meta"
+        ]
+      }
+    },
+    "/api/v1/meta/states": {
+      "get": {
+        "operationId": "apps_meta_api_states",
+        "summary": "States and union territories",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StateOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
                 }
               }
             }
@@ -364,6 +417,443 @@
           "required": true
         }
       }
+    },
+    "/api/v1/grievance/categories": {
+      "get": {
+        "operationId": "apps_grievance_api_categories",
+        "summary": "Grievance categories",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GrievanceCategoryOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Categories the user can pick before asking for guidance.",
+        "tags": [
+          "grievance"
+        ]
+      }
+    },
+    "/api/v1/grievance/guide": {
+      "post": {
+        "operationId": "apps_grievance_api_guide",
+        "summary": "Guided complaint help",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrievanceGuideOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Category, forum, steps, a documents checklist and an editable draft.\n\nNothing is submitted to any office. The draft contains [placeholders] for the\nmember's own details, which the client never sends back.",
+        "tags": [
+          "grievance"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GrievanceIn"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/v1/schemes": {
+      "get": {
+        "operationId": "apps_schemes_api_list_schemes",
+        "summary": "Scheme cards",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "category",
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "cooperative-development",
+                    "credit",
+                    "insurance",
+                    "storage-marketing",
+                    "digital-services"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SchemeOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "description": "Structured scheme cards with source and date, for the Schemes page.",
+        "tags": [
+          "schemes"
+        ]
+      }
+    },
+    "/api/v1/schemes/{slug}": {
+      "get": {
+        "operationId": "apps_schemes_api_get_scheme",
+        "summary": "One scheme",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchemeDetailOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "One scheme with its guide facts. ``pmfby`` powers the Crop insurance guide.",
+        "tags": [
+          "schemes"
+        ]
+      }
+    },
+    "/api/v1/lessons": {
+      "get": {
+        "operationId": "apps_lessons_api_lessons",
+        "summary": "Financial-literacy lessons",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "language",
+            "schema": {
+              "default": "en",
+              "title": "Language",
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Short lessons and the optional three-question quiz. Falls back to English when the\nrequested language has no translation yet; ``language`` in the response says which.",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/api/v1/documents": {
+      "get": {
+        "operationId": "apps_knowledge_api_list_documents",
+        "summary": "Knowledge-base documents",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "state",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A state code or \"central\".",
+              "title": "State"
+            },
+            "required": false,
+            "description": "A state code or \"central\"."
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "act",
+                    "rules",
+                    "model-bylaws",
+                    "circular",
+                    "scheme-guideline"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Document type.",
+              "title": "Type"
+            },
+            "required": false,
+            "description": "Document type."
+          },
+          {
+            "in": "query",
+            "name": "language",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Language"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "include_retired",
+            "schema": {
+              "default": false,
+              "description": "Also return retired versions.",
+              "title": "Include Retired",
+              "type": "boolean"
+            },
+            "required": false,
+            "description": "Also return retired versions."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "description": "The public documents the assistant searches, for the Law library page.",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/documents/{document_id}": {
+      "get": {
+        "operationId": "apps_knowledge_api_get_document",
+        "summary": "One document",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "schema": {
+              "title": "Document Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/eval/latest": {
+      "get": {
+        "operationId": "apps_evaluation_api_latest",
+        "summary": "Latest evaluation run (staff only)",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvalSummaryOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Hit rate, faithfulness, correct refusals, failed questions and recent runs.\n\nLog in at /admin/ first; the browser then sends the session cookie. Returns sample\nnumbers (``is_sample: true``) until the eval runner saves real runs.",
+        "tags": [
+          "staff"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -393,15 +883,74 @@
             ],
             "title": "Database",
             "type": "string"
+          },
+          "vector_store": {
+            "enum": [
+              "ok",
+              "unreachable",
+              "not_used"
+            ],
+            "title": "Vector Store",
+            "type": "string"
           }
         },
         "required": [
           "status",
           "version",
           "stubs",
-          "database"
+          "database",
+          "vector_store"
         ],
         "title": "HealthOut",
+        "type": "object"
+      },
+      "LanguageOut": {
+        "properties": {
+          "code": {
+            "description": "Short ISO code, e.g. en, hi, ta.",
+            "title": "Code",
+            "type": "string"
+          },
+          "label": {
+            "description": "Name in its own script.",
+            "title": "Label",
+            "type": "string"
+          },
+          "english_label": {
+            "title": "English Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "english_label"
+        ],
+        "title": "LanguageOut",
+        "type": "object"
+      },
+      "StateOut": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "covered": {
+            "description": "True if this state's Act is in the knowledge base.",
+            "title": "Covered",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "covered"
+        ],
+        "title": "StateOut",
         "type": "object"
       },
       "AskOut": {
@@ -456,7 +1005,7 @@
                 "type": "null"
               }
             ],
-            "description": "Always set for a declined answer."
+            "description": "Null unless declined; always set when declined."
           },
           "is_demo": {
             "description": "True for stub or cached answers.",
@@ -472,6 +1021,7 @@
           "needs_state",
           "citations",
           "followups",
+          "contact",
           "is_demo"
         ],
         "title": "AskOut",
@@ -552,7 +1102,10 @@
           "title",
           "publisher",
           "published_date",
-          "page"
+          "page",
+          "section",
+          "url",
+          "excerpt"
         ],
         "title": "CitationOut",
         "type": "object"
@@ -774,6 +1327,835 @@
         },
         "title": "FeedbackIn",
         "type": "object"
+      },
+      "GrievanceCategoryOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "description"
+        ],
+        "title": "GrievanceCategoryOut",
+        "type": "object"
+      },
+      "GrievanceGuideOut": {
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/GrievanceCategoryOut"
+          },
+          "forum": {
+            "title": "Forum",
+            "type": "string"
+          },
+          "forum_note": {
+            "title": "Forum Note",
+            "type": "string"
+          },
+          "steps": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "documents_needed": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Documents Needed",
+            "type": "array"
+          },
+          "draft_text": {
+            "description": "Editable draft with [placeholders]. Never filed.",
+            "title": "Draft Text",
+            "type": "string"
+          },
+          "is_demo": {
+            "title": "Is Demo",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "category",
+          "forum",
+          "forum_note",
+          "steps",
+          "documents_needed",
+          "draft_text",
+          "is_demo"
+        ],
+        "title": "GrievanceGuideOut",
+        "type": "object"
+      },
+      "GrievanceIn": {
+        "properties": {
+          "description": {
+            "description": "The problem in the member's own words.",
+            "title": "Description",
+            "type": "string"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "maxLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "State code such as TN.",
+            "title": "State"
+          },
+          "language": {
+            "default": "en",
+            "description": "Short ISO code: en, hi or the regional language.",
+            "title": "Language",
+            "type": "string"
+          },
+          "category_hint": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A category id the user picked; null to detect.",
+            "title": "Category Hint"
+          }
+        },
+        "required": [
+          "description"
+        ],
+        "title": "GrievanceIn",
+        "type": "object"
+      },
+      "SchemeOut": {
+        "properties": {
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "category": {
+            "enum": [
+              "cooperative-development",
+              "credit",
+              "insurance",
+              "storage-marketing",
+              "digital-services"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "eligibility": {
+            "title": "Eligibility",
+            "type": "string"
+          },
+          "how_to_access": {
+            "title": "How To Access",
+            "type": "string"
+          },
+          "source_label": {
+            "minLength": 1,
+            "title": "Source Label",
+            "type": "string"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null until a verified link is recorded.",
+            "title": "Source Url"
+          },
+          "as_of": {
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "is_sample": {
+            "title": "Is Sample",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "slug",
+          "title",
+          "category",
+          "summary",
+          "eligibility",
+          "how_to_access",
+          "source_label",
+          "source_url",
+          "as_of",
+          "is_sample"
+        ],
+        "title": "SchemeOut",
+        "type": "object"
+      },
+      "SchemeDetailOut": {
+        "properties": {
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "category": {
+            "enum": [
+              "cooperative-development",
+              "credit",
+              "insurance",
+              "storage-marketing",
+              "digital-services"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "eligibility": {
+            "title": "Eligibility",
+            "type": "string"
+          },
+          "how_to_access": {
+            "title": "How To Access",
+            "type": "string"
+          },
+          "source_label": {
+            "minLength": 1,
+            "title": "Source Label",
+            "type": "string"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null until a verified link is recorded.",
+            "title": "Source Url"
+          },
+          "as_of": {
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "is_sample": {
+            "title": "Is Sample",
+            "type": "boolean"
+          },
+          "facts": {
+            "description": "Guide facts, e.g. for the PMFBY crop insurance guide.",
+            "items": {
+              "$ref": "#/components/schemas/SchemeFactOut"
+            },
+            "title": "Facts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "slug",
+          "title",
+          "category",
+          "summary",
+          "eligibility",
+          "how_to_access",
+          "source_label",
+          "source_url",
+          "as_of",
+          "is_sample"
+        ],
+        "title": "SchemeDetailOut",
+        "type": "object"
+      },
+      "SchemeFactOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "eligibility",
+              "enrolment",
+              "premium",
+              "loss-reporting",
+              "official-info"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "source_label": {
+            "minLength": 1,
+            "title": "Source Label",
+            "type": "string"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null until verified.",
+            "title": "Source Url"
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null until verified.",
+            "title": "As Of"
+          },
+          "is_placeholder": {
+            "title": "Is Placeholder",
+            "type": "boolean"
+          },
+          "season": {
+            "anyOf": [
+              {
+                "enum": [
+                  "kharif",
+                  "rabi",
+                  "commercial"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Applies to one season only; null means all seasons.",
+            "title": "Season"
+          },
+          "crop_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "food",
+                  "oilseed",
+                  "horticulture"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Applies to one crop type only; null means all.",
+            "title": "Crop Type"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "body",
+          "source_label",
+          "source_url",
+          "as_of",
+          "is_placeholder"
+        ],
+        "title": "SchemeFactOut",
+        "type": "object"
+      },
+      "LessonOut": {
+        "properties": {
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "reading_minutes": {
+            "maximum": 30,
+            "minimum": 1,
+            "title": "Reading Minutes",
+            "type": "integer"
+          },
+          "icon": {
+            "enum": [
+              "loan",
+              "card",
+              "savings",
+              "fraud"
+            ],
+            "title": "Icon",
+            "type": "string"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/LessonSectionOut"
+            },
+            "minItems": 1,
+            "title": "Sections",
+            "type": "array"
+          },
+          "key_points": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Key Points",
+            "type": "array"
+          }
+        },
+        "required": [
+          "slug",
+          "title",
+          "summary",
+          "reading_minutes",
+          "icon",
+          "sections",
+          "key_points"
+        ],
+        "title": "LessonOut",
+        "type": "object"
+      },
+      "LessonSectionOut": {
+        "properties": {
+          "heading": {
+            "title": "Heading",
+            "type": "string"
+          },
+          "body": {
+            "title": "Body",
+            "type": "string"
+          }
+        },
+        "required": [
+          "heading",
+          "body"
+        ],
+        "title": "LessonSectionOut",
+        "type": "object"
+      },
+      "LessonsOut": {
+        "properties": {
+          "language": {
+            "description": "Language of the content actually returned.",
+            "title": "Language",
+            "type": "string"
+          },
+          "lessons": {
+            "items": {
+              "$ref": "#/components/schemas/LessonOut"
+            },
+            "title": "Lessons",
+            "type": "array"
+          },
+          "quiz": {
+            "items": {
+              "$ref": "#/components/schemas/QuizQuestionOut"
+            },
+            "title": "Quiz",
+            "type": "array"
+          }
+        },
+        "required": [
+          "language",
+          "lessons",
+          "quiz"
+        ],
+        "title": "LessonsOut",
+        "type": "object"
+      },
+      "QuizQuestionOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "options": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 2,
+            "title": "Options",
+            "type": "array"
+          },
+          "correct_index": {
+            "minimum": 0,
+            "title": "Correct Index",
+            "type": "integer"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "question",
+          "options",
+          "correct_index",
+          "explanation"
+        ],
+        "title": "QuizQuestionOut",
+        "type": "object"
+      },
+      "DocumentOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "publisher": {
+            "title": "Publisher",
+            "type": "string"
+          },
+          "doc_type": {
+            "enum": [
+              "act",
+              "rules",
+              "model-bylaws",
+              "circular",
+              "scheme-guideline"
+            ],
+            "title": "Doc Type",
+            "type": "string"
+          },
+          "state": {
+            "description": "A state code, or \"central\".",
+            "title": "State",
+            "type": "string"
+          },
+          "language": {
+            "title": "Language",
+            "type": "string"
+          },
+          "published_date": {
+            "format": "date",
+            "title": "Published Date",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "retired"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null until a verified link is recorded.",
+            "title": "Source Url"
+          },
+          "is_sample": {
+            "title": "Is Sample",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "publisher",
+          "doc_type",
+          "state",
+          "language",
+          "published_date",
+          "version",
+          "status",
+          "source_url",
+          "is_sample"
+        ],
+        "title": "DocumentOut",
+        "type": "object"
+      },
+      "EvalMetricOut": {
+        "properties": {
+          "key": {
+            "enum": [
+              "hit_rate",
+              "faithfulness",
+              "correct_refusal"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "maximum": 1,
+            "minimum": 0,
+            "title": "Value",
+            "type": "number"
+          },
+          "target": {
+            "maximum": 1,
+            "minimum": 0,
+            "title": "Target",
+            "type": "number"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "value",
+          "target",
+          "description"
+        ],
+        "title": "EvalMetricOut",
+        "type": "object"
+      },
+      "EvalRunConfigOut": {
+        "properties": {
+          "embedding_model": {
+            "title": "Embedding Model",
+            "type": "string"
+          },
+          "llm": {
+            "title": "Llm",
+            "type": "string"
+          },
+          "top_k": {
+            "title": "Top K",
+            "type": "integer"
+          },
+          "threshold": {
+            "title": "Threshold",
+            "type": "number"
+          },
+          "prompt_version": {
+            "title": "Prompt Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "embedding_model",
+          "llm",
+          "top_k",
+          "threshold",
+          "prompt_version"
+        ],
+        "title": "EvalRunConfigOut",
+        "type": "object"
+      },
+      "EvalRunOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "run_at": {
+            "format": "date-time",
+            "title": "Run At",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "config": {
+            "$ref": "#/components/schemas/EvalRunConfigOut"
+          },
+          "hit_rate": {
+            "maximum": 1,
+            "minimum": 0,
+            "title": "Hit Rate",
+            "type": "number"
+          },
+          "faithfulness": {
+            "maximum": 1,
+            "minimum": 0,
+            "title": "Faithfulness",
+            "type": "number"
+          },
+          "correct_refusal": {
+            "maximum": 1,
+            "minimum": 0,
+            "title": "Correct Refusal",
+            "type": "number"
+          },
+          "questions": {
+            "title": "Questions",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "run_at",
+          "label",
+          "config",
+          "hit_rate",
+          "faithfulness",
+          "correct_refusal",
+          "questions"
+        ],
+        "title": "EvalRunOut",
+        "type": "object"
+      },
+      "EvalSummaryOut": {
+        "properties": {
+          "latest": {
+            "$ref": "#/components/schemas/EvalRunOut"
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/EvalMetricOut"
+            },
+            "title": "Metrics",
+            "type": "array"
+          },
+          "runs": {
+            "description": "Oldest first.",
+            "items": {
+              "$ref": "#/components/schemas/EvalRunOut"
+            },
+            "title": "Runs",
+            "type": "array"
+          },
+          "failed_questions": {
+            "items": {
+              "$ref": "#/components/schemas/FailedQuestionOut"
+            },
+            "title": "Failed Questions",
+            "type": "array"
+          },
+          "is_sample": {
+            "description": "True until real EvalRun rows exist.",
+            "title": "Is Sample",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "latest",
+          "metrics",
+          "runs",
+          "failed_questions",
+          "is_sample"
+        ],
+        "title": "EvalSummaryOut",
+        "type": "object"
+      },
+      "FailedQuestionOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "language": {
+            "title": "Language",
+            "type": "string"
+          },
+          "failure": {
+            "enum": [
+              "retrieval-miss",
+              "unfaithful",
+              "should-decline",
+              "wrong-state"
+            ],
+            "title": "Failure",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "question",
+          "language",
+          "failure",
+          "note"
+        ],
+        "title": "FailedQuestionOut",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "SessionAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "sessionid"
       }
     }
   },

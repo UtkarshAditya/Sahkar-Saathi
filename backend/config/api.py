@@ -1,9 +1,11 @@
-"""The NinjaAPI instance, mounted at /api/v1/.
+"""The NinjaAPI instance, mounted at /api/v1/. This is the whole API contract.
 
 Export the contract without running a server:
     python manage.py export_openapi_schema --api config.api.api --output openapi.json --indent 2
+tests/test_contract.py fails if the committed openapi.json is out of date.
 """
 
+import urllib.request
 from typing import Literal
 
 from asgiref.sync import sync_to_async
@@ -13,7 +15,13 @@ from django.db import DatabaseError, connection
 from ninja import NinjaAPI, Schema
 
 from apps.chat.api import router as chat_router
+from apps.evaluation.api import router as evaluation_router
 from apps.feedback.api import router as feedback_router
+from apps.grievance.api import router as grievance_router
+from apps.knowledge.api import router as knowledge_router
+from apps.lessons.api import router as lessons_router
+from apps.meta.api import router as meta_router
+from apps.schemes.api import router as schemes_router
 from apps.speech.api import router as speech_router
 
 from .errors import register_error_handlers
@@ -24,7 +32,8 @@ api = NinjaAPI(
     description=(
         "Multilingual cooperative governance and legal-information assistant "
         "(SIH 2026, problem statement 26088). Every error uses the shape "
-        '`{"code": "...", "message": "..."}`.'
+        '`{"code": "...", "message": "..."}`. Language codes are short ISO codes '
+        "(en, hi and the regional language). Public endpoints are rate-limited."
     ),
     urls_namespace="api-v1",
     # Interactive docs are public in development and staff-only everywhere else.
@@ -39,6 +48,7 @@ class HealthOut(Schema):
     version: str
     stubs: bool
     database: Literal["ok", "unreachable"]
+    vector_store: Literal["ok", "unreachable", "not_used"]
 
 
 def _database_ok() -> bool:
@@ -50,18 +60,39 @@ def _database_ok() -> bool:
         return False
 
 
+def _vector_store_ok() -> bool:
+    url = f"{settings.QDRANT_URL.rstrip('/')}/readyz"
+    try:
+        with urllib.request.urlopen(url, timeout=settings.HEALTH_CHECK_TIMEOUT_SECONDS) as res:
+            return res.status == 200
+    except OSError:
+        return False
+
+
 @api.get("/health", response=HealthOut, tags=["meta"], summary="Deployment check")
 async def health(request):
-    # Vector-store reachability is added when member B's Qdrant service exists.
+    """Warm this up before a demo. ``degraded`` means a dependency is down."""
     db_ok = await sync_to_async(_database_ok)()
+    if settings.USE_STUBS:
+        vector_store = "not_used"
+    else:
+        vector_store = "ok" if await sync_to_async(_vector_store_ok)() else "unreachable"
+    healthy = db_ok and vector_store != "unreachable"
     return {
-        "status": "ok" if db_ok else "degraded",
+        "status": "ok" if healthy else "degraded",
         "version": settings.APP_VERSION,
         "stubs": settings.USE_STUBS,
         "database": "ok" if db_ok else "unreachable",
+        "vector_store": vector_store,
     }
 
 
+api.add_router("/meta", meta_router, tags=["meta"])
 api.add_router("/chat", chat_router, tags=["chat"])
 api.add_router("/speech", speech_router, tags=["speech"])
 api.add_router("/feedback", feedback_router, tags=["feedback"])
+api.add_router("/grievance", grievance_router, tags=["grievance"])
+api.add_router("/schemes", schemes_router, tags=["schemes"])
+api.add_router("/lessons", lessons_router, tags=["lessons"])
+api.add_router("/documents", knowledge_router, tags=["documents"])
+api.add_router("/eval", evaluation_router, tags=["staff"])

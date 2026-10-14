@@ -4,7 +4,7 @@ import logging
 
 from django.http import Http404
 from ninja import NinjaAPI, Schema
-from ninja.errors import HttpError, Throttled, ValidationError
+from ninja.errors import AuthenticationError, HttpError, Throttled, ValidationError
 
 from services.types import ProviderError, ServiceError, ServiceNotReady
 
@@ -53,6 +53,10 @@ def register_error_handlers(api: NinjaAPI) -> None:
         if exc.wait:
             response["Retry-After"] = str(int(exc.wait) + 1)
         return response
+
+    @api.exception_handler(AuthenticationError)
+    def on_not_authenticated(request, exc: AuthenticationError):
+        return respond(request, 401, "not_authenticated", "Log in as staff at /admin/ first.")
 
     @api.exception_handler(HttpError)
     def on_http_error(request, exc: HttpError):

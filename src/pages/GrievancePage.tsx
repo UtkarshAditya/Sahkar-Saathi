@@ -63,6 +63,7 @@ export default function GrievancePage() {
       const result = await api.grievanceGuide({
         description,
         state: stateCode,
+        language: settings.language,
         category_hint: categoryHint,
       });
       setGuide(result);

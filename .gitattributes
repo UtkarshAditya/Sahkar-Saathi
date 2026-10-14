@@ -1,0 +1,12 @@
+# Keep LF line endings in the repository and in every checkout, on every OS.
+# Prettier and Ruff expect LF; CRLF checkouts on Windows made format checks fail.
+* text=auto eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.ico binary
+*.pdf binary
+*.wav binary
+*.webm binary
+*.sqlite3 binary

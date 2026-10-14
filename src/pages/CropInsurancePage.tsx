@@ -16,7 +16,10 @@ import { Card } from '@/components/common/Card';
 import { Notice } from '@/components/common/Notice';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SourceMeta } from '@/components/common/SourceMeta';
-import { CROP_TYPES, getCropFacts, SEASONS } from '@/data/mockCropInsurance';
+import { ErrorState, LoadingState } from '@/components/common/EmptyState';
+import { CROP_TYPES, factsFor, SEASONS } from '@/data/mockCropInsurance';
+import { useAsync } from '@/hooks/useAsync';
+import { api } from '@/services/api';
 import type { CropFactKind, CropType, Season } from '@/types';
 
 const FACT_ICONS: Record<CropFactKind, typeof Sprout> = {
@@ -35,7 +38,8 @@ export default function CropInsurancePage() {
   const [season, setSeason] = useState<Season>('kharif');
   const [crop, setCrop] = useState<CropType>('food');
 
-  const facts = useMemo(() => getCropFacts(season, crop), [season, crop]);
+  const { data: pmfby, loading, error, reload } = useAsync(() => api.getScheme('pmfby'));
+  const facts = useMemo(() => factsFor(pmfby?.facts ?? [], season, crop), [pmfby, season, crop]);
   const seasonLabel = SEASONS.find((s) => s.id === season)?.label ?? '';
   const cropLabel = CROP_TYPES.find((c) => c.id === crop)?.label ?? '';
 
@@ -127,6 +131,8 @@ export default function CropInsurancePage() {
           <p className="mb-4 text-sm text-ink-muted" aria-live="polite">
             Showing: {seasonLabel} · {cropLabel}
           </p>
+          {loading && <LoadingState />}
+          {error && <ErrorState message={error.message} onRetry={reload} />}
           <ul className="grid gap-4 md:grid-cols-2">
             {facts.map((fact) => {
               const Icon = FACT_ICONS[fact.kind];

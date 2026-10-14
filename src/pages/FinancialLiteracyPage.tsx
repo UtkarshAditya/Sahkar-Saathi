@@ -17,11 +17,11 @@ import { Card, CardTitle } from '@/components/common/Card';
 import { ErrorState, LoadingState } from '@/components/common/EmptyState';
 import { Notice } from '@/components/common/Notice';
 import { PageHeader } from '@/components/common/PageHeader';
-import { MOCK_QUIZ } from '@/data/mockLessons';
+
 import { useAsync } from '@/hooks/useAsync';
 import { cn } from '@/lib/format';
 import { api } from '@/services/api';
-import type { Lesson, LessonIcon } from '@/types';
+import type { Lesson, LessonIcon, QuizQuestion } from '@/types';
 
 const ICONS: Record<LessonIcon, typeof Wallet> = {
   loan: Wallet,
@@ -34,7 +34,7 @@ export default function FinancialLiteracyPage() {
   const { t } = useTranslation();
   const { data, loading, error, reload } = useAsync(api.listLessons);
   const [openSlug, setOpenSlug] = useState<string | null>(null);
-  const openLesson = data?.find((l) => l.slug === openSlug) ?? null;
+  const openLesson = data?.lessons.find((l) => l.slug === openSlug) ?? null;
 
   return (
     <>
@@ -59,7 +59,7 @@ export default function FinancialLiteracyPage() {
         <LessonDetail lesson={openLesson} onBack={() => setOpenSlug(null)} />
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2">
-          {(data ?? []).map((lesson) => {
+          {(data?.lessons ?? []).map((lesson) => {
             const Icon = ICONS[lesson.icon];
             return (
               <li key={lesson.slug}>
@@ -89,7 +89,7 @@ export default function FinancialLiteracyPage() {
         </ul>
       )}
 
-      <Quiz />
+      {data && data.quiz.length > 0 && <Quiz questions={data.quiz} />}
     </>
   );
 }
@@ -144,11 +144,11 @@ function LessonDetail({ lesson, onBack }: { lesson: Lesson; onBack: () => void }
   );
 }
 
-function Quiz() {
+function Quiz({ questions }: { questions: QuizQuestion[] }) {
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);
-  const score = MOCK_QUIZ.filter((q) => answers[q.id] === q.correct_index).length;
-  const allAnswered = MOCK_QUIZ.every((q) => answers[q.id] !== undefined);
+  const score = questions.filter((q) => answers[q.id] === q.correct_index).length;
+  const allAnswered = questions.every((q) => answers[q.id] !== undefined);
 
   function reset() {
     setAnswers({});
@@ -169,7 +169,7 @@ function Quiz() {
         }}
         className="flex flex-col gap-6"
       >
-        {MOCK_QUIZ.map((q, qi) => {
+        {questions.map((q, qi) => {
           const chosen = answers[q.id];
           const correct = chosen === q.correct_index;
           return (
@@ -234,11 +234,11 @@ function Quiz() {
         {submitted ? (
           <div className="flex flex-col items-start gap-3">
             <Notice
-              tone={score === MOCK_QUIZ.length ? 'success' : 'info'}
+              tone={score === questions.length ? 'success' : 'info'}
               role="status"
-              title={`You scored ${score} out of ${MOCK_QUIZ.length}`}
+              title={`You scored ${score} out of ${questions.length}`}
             >
-              {score === MOCK_QUIZ.length
+              {score === questions.length
                 ? 'Well done!'
                 : 'Read the lessons again and try once more.'}
             </Notice>

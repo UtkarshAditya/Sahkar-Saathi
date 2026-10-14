@@ -1,4 +1,9 @@
 import type { GrievanceCategory, GrievanceGuide, GrievanceRequest } from '@/types';
+
+/** Mock-only: keywords drive the local category detection. */
+interface MockGrievanceCategory extends GrievanceCategory {
+  keywords: string[];
+}
 import { stateName } from './options';
 
 /*
@@ -7,7 +12,7 @@ import { stateName } from './options';
  * POST /api/v1/grievance/guide. Nothing is ever filed automatically.
  */
 
-export const GRIEVANCE_CATEGORIES: GrievanceCategory[] = [
+export const GRIEVANCE_CATEGORIES: MockGrievanceCategory[] = [
   {
     id: 'deposit-refund',
     label: 'Deposit or share money not returned',
@@ -46,7 +51,7 @@ export const GRIEVANCE_CATEGORIES: GrievanceCategory[] = [
   },
 ];
 
-export function detectCategory(description: string, hint?: string | null): GrievanceCategory {
+export function detectCategory(description: string, hint?: string | null): MockGrievanceCategory {
   if (hint) {
     const chosen = GRIEVANCE_CATEGORIES.find((c) => c.id === hint);
     if (chosen) return chosen;

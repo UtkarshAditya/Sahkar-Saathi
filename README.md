@@ -99,19 +99,24 @@ To add a string: add the key to `en.json`, then `hi.json` and `regional.json`, a
 
 ## Connecting the backend
 
-The Django backend in `backend/` already serves `POST /chat/ask`, `POST /speech/transcribe`
-and `POST /speech/synthesize` (stub-backed for now). To use them:
+The Django backend in `backend/` serves every endpoint the pages use; the full list is in
+[backend/README.md](backend/README.md). To use it:
 
-1. Start the backend (see [backend/README.md](backend/README.md)):
-   `uvicorn config.asgi:application --reload --port 8000`.
+1. Start the backend: `uvicorn config.asgi:application --reload --port 8000`.
 2. Run the front end with `VITE_USE_MOCKS=false npm run dev`. Vite proxies `/api` to
    port 8000, so no CORS setup is needed. In deployment Caddy does the same.
-3. Endpoints the backend does not have yet (schemes, documents, lessons, grievance,
-   feedback, eval) will fail in that mode until member A adds them.
-4. The contract is `backend/openapi.json`. Once it is frozen, run
-   `npx openapi-typescript backend/openapi.json -o src/types/api.ts` and re-export those
-   types from `src/types/index.ts` in place of the hand-written ones.
-5. Consider TanStack Query in place of `useAsync` once real endpoints exist.
+3. For the Quality dashboard, log in as a staff user at `/admin/` first (on the same
+   origin, so through the Vite or Caddy address).
+
+**The contract is frozen** in `backend/openapi.json`:
+
+- `npm run gen:api` regenerates `src/types/api.gen.ts` from it. Never edit that file.
+- `src/types/contract-check.ts` checks at compile time that the hand-written types in
+  `src/types/index.ts` fit the contract, so `npm run build` fails if they drift.
+- After a contract change: re-export `openapi.json` in the backend, run `npm run gen:api`,
+  then fix anything `npm run build` reports. CI runs the same checks on every pull request.
+
+Consider TanStack Query in place of `useAsync` now that real endpoints exist.
 
 Testing hook: in mock mode, sending `/error` on the Ask page shows the error state.
 

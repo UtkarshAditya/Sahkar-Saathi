@@ -11,6 +11,8 @@ Additions to the original sketch in the Member A plan, all additive:
   are stored on each Message for evaluation.
 - ``AnswerService.ask`` accepts ``document_id`` for "Ask about this document".
 - ``Transcript`` carries ``is_demo``.
+- ``GrievanceResult.category`` is a small object (id, label, description) instead of a
+  string, and ``GrievanceGuide`` also lists the categories for the page's chips.
 """
 
 from __future__ import annotations
@@ -95,6 +97,39 @@ class SpeechProvider(Protocol):  # implemented by C
 
     async def synthesize(self, text: str, *, language: str) -> bytes:
         """Return 16 kHz mono WAV bytes."""
+        ...
+
+
+@dataclass
+class GrievanceCategory:
+    id: str  # stable slug, e.g. "deposit-refund"
+    label: str
+    description: str
+
+
+@dataclass
+class GrievanceResult:
+    category: GrievanceCategory
+    forum: str
+    forum_note: str  # where the forum comes from / what to verify
+    steps: list[str]
+    documents_needed: list[str]
+    draft_text: str  # editable; contains [placeholders] the user fills in
+    is_demo: bool = False
+
+
+class GrievanceGuide(Protocol):  # implemented by C (forums.yaml + the agent)
+    def categories(self) -> list[GrievanceCategory]: ...
+
+    async def guide(
+        self,
+        description: str,
+        *,
+        state: str | None,
+        language: str,
+        category_hint: str | None = None,
+    ) -> GrievanceResult:
+        """Never files anything; returns guidance and a draft only."""
         ...
 
 
