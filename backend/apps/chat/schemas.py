@@ -58,9 +58,9 @@ class CitationOut(Schema):
     publisher: str
     published_date: str = Field(..., description="ISO date.")
     page: int | None
-    section: str | None = None
-    url: str | None = Field(None, description="Null until a verified source URL is recorded.")
-    excerpt: str | None = None
+    section: str | None
+    url: str | None = Field(..., description="Null until a verified source URL is recorded.")
+    excerpt: str | None
 
 
 class ContactOut(Schema):
@@ -76,5 +76,7 @@ class AskOut(Schema):
     needs_state: bool = Field(..., description="True when the user must choose a state first.")
     citations: list[CitationOut] = Field(..., description="Always empty for a declined answer.")
     followups: list[str]
-    contact: ContactOut | None = Field(None, description="Always set for a declined answer.")
+    contact: ContactOut | None = Field(
+        ..., description="Null unless declined; always set when declined."
+    )
     is_demo: bool = Field(..., description="True for stub or cached answers.")

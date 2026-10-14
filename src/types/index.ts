@@ -1,10 +1,9 @@
 /**
  * Shared types.
  *
- * API-shaped types use the snake_case field names from the API contract in the
- * architecture document (section 4). Once the backend freezes openapi.json, generate
- * types with openapi-typescript and re-export the generated ones from here, so the
- * front end cannot drift from the contract.
+ * API-shaped types use the snake_case field names of the frozen contract,
+ * backend/openapi.json. `npm run gen:api` regenerates api.gen.ts from it, and
+ * contract-check.ts fails the build if any type here stops matching the contract.
  */
 
 /* ----- Settings ----- */
@@ -23,6 +22,15 @@ export interface LanguageOption {
 export interface StateOption {
   code: string;
   name: string;
+  /** True for the one state whose Act is in the knowledge base. */
+  covered?: boolean;
+}
+
+/** GET /meta/languages item. */
+export interface MetaLanguage {
+  code: LanguageCode;
+  label: string;
+  english_label: string;
 }
 
 /* ----- Chat (/chat/ask) ----- */
@@ -36,10 +44,10 @@ export interface Citation {
   publisher: string;
   published_date: string;
   page: number | null;
-  section?: string;
+  section?: string | null;
   /** Null until a verified source URL is recorded for the document. */
   url: string | null;
-  excerpt?: string;
+  excerpt?: string | null;
 }
 
 export interface Contact {
@@ -64,8 +72,8 @@ export interface AskResponse {
   needs_state: boolean;
   citations: Citation[];
   followups: string[];
-  /** Declined answers name who to contact instead. */
-  contact?: Contact;
+  /** Declined answers name who to contact instead; null otherwise. */
+  contact?: Contact | null;
   /** True for mock or cached demo answers. */
   is_demo: boolean;
 }
@@ -125,12 +133,12 @@ export interface GrievanceCategory {
   id: string;
   label: string;
   description: string;
-  keywords: string[];
 }
 
 export interface GrievanceRequest {
   description: string;
   state: string | null;
+  language: LanguageCode;
   category_hint?: string | null;
 }
 
@@ -180,6 +188,14 @@ export interface CropFact {
   as_of: string | null;
   /** True when the value waits for a verified figure. */
   is_placeholder: boolean;
+  /** Applies to one season / crop type only; null or absent means all. */
+  season?: Season | null;
+  crop_type?: CropType | null;
+}
+
+export interface SchemeDetail extends Scheme {
+  /** Guide facts, e.g. the PMFBY crop insurance guide. Absent or empty for most schemes. */
+  facts?: CropFact[];
 }
 
 /* ----- Law library (/documents) ----- */
@@ -229,6 +245,13 @@ export interface QuizQuestion {
   options: string[];
   correct_index: number;
   explanation: string;
+}
+
+export interface LessonsResponse {
+  /** Language of the content actually returned (falls back to English). */
+  language: LanguageCode;
+  lessons: Lesson[];
+  quiz: QuizQuestion[];
 }
 
 /* ----- Evaluation (/eval/latest) ----- */

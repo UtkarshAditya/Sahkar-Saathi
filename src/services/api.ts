@@ -3,16 +3,19 @@
  *
  * While VITE_USE_MOCKS is "true" (the default), every function resolves local mock
  * data after a short delay so loading states are visible. No network calls are made.
- * Set VITE_USE_MOCKS=false to call the real backend. /chat/ask and /speech/* exist in
- * backend/ (run it with uvicorn; Vite proxies /api to it). The other endpoints are
- * still mock-only until the backend adds them.
+ * Set VITE_USE_MOCKS=false to call the real backend (run it with uvicorn; Vite proxies
+ * /api to it). Every endpoint in the frozen contract, backend/openapi.json, is here, and
+ * src/types/contract-check.ts fails the build if the types drift from it.
  */
 import { buildMockAnswer } from '@/data/mockChat';
+import { CROP_FACTS } from '@/data/mockCropInsurance';
 import { MOCK_DOCUMENTS } from '@/data/mockDocuments';
 import { MOCK_EVAL_SUMMARY } from '@/data/mockEvaluation';
-import { buildMockGuide } from '@/data/mockGrievance';
-import { MOCK_LESSONS } from '@/data/mockLessons';
+import { buildMockGuide, GRIEVANCE_CATEGORIES } from '@/data/mockGrievance';
+import { MOCK_LESSONS, MOCK_QUIZ } from '@/data/mockLessons';
 import { MOCK_SCHEMES } from '@/data/mockSchemes';
+import { COVERED_STATE_CODE, STATES } from '@/data/options';
+import { LANGUAGES } from '@/i18n';
 import type {
   ApiErrorBody,
   AskRequest,
@@ -20,12 +23,16 @@ import type {
   DocumentFilters,
   EvalSummary,
   FeedbackRequest,
+  GrievanceCategory,
   GrievanceGuide,
   GrievanceRequest,
   LanguageCode,
+  LessonsResponse,
   LibraryDocument,
-  Lesson,
+  MetaLanguage,
   Scheme,
+  SchemeDetail,
+  StateOption,
   SynthesizeRequest,
   TranscribeResponse,
 } from '@/types';
@@ -120,7 +127,34 @@ export const api = {
     return delay(buildMockAnswer(body), 900);
   },
 
-  /** POST /grievance/guide */
+  /** GET /meta/languages */
+  async listLanguages(): Promise<MetaLanguage[]> {
+    if (!USE_MOCKS) return request('/meta/languages');
+    return delay(
+      LANGUAGES.map((l) => ({ code: l.code, label: l.label, english_label: l.englishLabel })),
+      100,
+    );
+  },
+
+  /** GET /meta/states */
+  async listStates(): Promise<StateOption[]> {
+    if (!USE_MOCKS) return request('/meta/states');
+    return delay(
+      STATES.map((s) => ({ ...s, covered: s.code === COVERED_STATE_CODE })),
+      100,
+    );
+  },
+
+  /** GET /grievance/categories */
+  async grievanceCategories(): Promise<GrievanceCategory[]> {
+    if (!USE_MOCKS) return request('/grievance/categories');
+    return delay(
+      GRIEVANCE_CATEGORIES.map(({ id, label, description }) => ({ id, label, description })),
+      100,
+    );
+  },
+
+  /** POST /grievance/guide. Never files anything. */
   async grievanceGuide(body: GrievanceRequest): Promise<GrievanceGuide> {
     if (!USE_MOCKS) {
       return request('/grievance/guide', { method: 'POST', body: JSON.stringify(body) });
@@ -134,29 +168,47 @@ export const api = {
     return delay(MOCK_SCHEMES, 400);
   },
 
-  /** GET /documents */
+  /** GET /schemes/{slug}. `pmfby` carries the crop insurance guide facts. */
+  async getScheme(slug: string): Promise<SchemeDetail> {
+    if (!USE_MOCKS) return request(`/schemes/${encodeURIComponent(slug)}`);
+    const scheme = MOCK_SCHEMES.find((s) => s.slug === slug);
+    if (!scheme) {
+      await delay(null, 200);
+      throw new ApiError({ code: 'scheme_not_found', message: 'That scheme was not found.' });
+    }
+    return delay({ ...scheme, facts: slug === 'pmfby' ? CROP_FACTS : [] }, 400);
+  },
+
+  /**
+   * GET /documents. Retired versions are included because the Library page filters on
+   * the client; pass filters to narrow on the server.
+   */
   async listDocuments(filters: DocumentFilters = {}): Promise<LibraryDocument[]> {
     if (!USE_MOCKS) {
-      return request(
-        `/documents${toQuery({ state: filters.state, language: filters.language, type: filters.doc_type || undefined })}`,
-      );
+      const query = toQuery({
+        state: filters.state,
+        language: filters.language,
+        type: filters.doc_type || undefined,
+        include_retired: 'true',
+      });
+      return request(`/documents${query}`);
     }
     return delay(MOCK_DOCUMENTS, 400);
   },
 
-  /** GET /lessons */
-  async listLessons(): Promise<Lesson[]> {
-    if (!USE_MOCKS) return request('/lessons');
-    return delay(MOCK_LESSONS, 300);
+  /** GET /lessons. Falls back to English when there is no translation yet. */
+  async listLessons(language: LanguageCode = 'en'): Promise<LessonsResponse> {
+    if (!USE_MOCKS) return request(`/lessons${toQuery({ language })}`);
+    return delay({ language: 'en', lessons: MOCK_LESSONS, quiz: MOCK_QUIZ }, 300);
   },
 
   /** POST /feedback. Mock mode keeps nothing; the UI shows local state only. */
-  async sendFeedback(body: FeedbackRequest): Promise<{ ok: true }> {
+  async sendFeedback(body: FeedbackRequest): Promise<{ ok: boolean; id?: number }> {
     if (!USE_MOCKS) return request('/feedback', { method: 'POST', body: JSON.stringify(body) });
-    return delay({ ok: true as const }, 300);
+    return delay({ ok: true }, 300);
   },
 
-  /** GET /eval/latest (staff token, to be added by member A). */
+  /** GET /eval/latest. Staff only: log in at /admin/ first (session cookie). */
   async latestEval(): Promise<EvalSummary> {
     if (!USE_MOCKS) return request('/eval/latest');
     return delay(MOCK_EVAL_SUMMARY, 500);

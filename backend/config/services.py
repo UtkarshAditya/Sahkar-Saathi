@@ -10,8 +10,19 @@ from functools import cache
 
 from django.conf import settings
 
-from services.stubs import StubAnswerService, StubRetriever, StubSpeechProvider
-from services.types import AnswerService, Retriever, ServiceNotReady, SpeechProvider
+from services.stubs import (
+    StubAnswerService,
+    StubGrievanceGuide,
+    StubRetriever,
+    StubSpeechProvider,
+)
+from services.types import (
+    AnswerService,
+    GrievanceGuide,
+    Retriever,
+    ServiceNotReady,
+    SpeechProvider,
+)
 
 
 def get_retriever() -> Retriever:
@@ -24,6 +35,10 @@ def get_answer_service() -> AnswerService:
 
 def get_speech_provider() -> SpeechProvider:
     return _speech_provider(settings.USE_STUBS)
+
+
+def get_grievance_guide() -> GrievanceGuide:
+    return _grievance_guide(settings.USE_STUBS)
 
 
 # Cached per USE_STUBS value, so real services (models, clients) are built once.
@@ -40,7 +55,11 @@ def _retriever(use_stubs: bool) -> Retriever:
 @cache
 def _answer_service(use_stubs: bool) -> AnswerService:
     if use_stubs:
-        return StubAnswerService(StubRetriever(), score_threshold=settings.SCORE_THRESHOLD)
+        return StubAnswerService(
+            StubRetriever(),
+            score_threshold=settings.SCORE_THRESHOLD,
+            covered_state=settings.COVERED_STATE_CODE,
+        )
     # Member C: return the agent / grounded answer service here, built with get_retriever().
     raise ServiceNotReady("The answer service is not connected yet. Set USE_STUBS=true.")
 
@@ -51,3 +70,11 @@ def _speech_provider(use_stubs: bool) -> SpeechProvider:
         return StubSpeechProvider()
     # Member C: return the Bhashini provider (with Whisper fallback) from services/speech/ here.
     raise ServiceNotReady("The speech service is not connected yet. Set USE_STUBS=true.")
+
+
+@cache
+def _grievance_guide(use_stubs: bool) -> GrievanceGuide:
+    if use_stubs:
+        return StubGrievanceGuide()
+    # Member C: return the forums.yaml-backed guide here.
+    raise ServiceNotReady("The grievance guide is not connected yet. Set USE_STUBS=true.")

@@ -1,0 +1,164 @@
+[
+  {
+    "model": "knowledge.document",
+    "pk": "doc-mscs-act",
+    "fields": {
+      "title": "Multi-State Co-operative Societies Act, 2002",
+      "publisher": "Government of India (sample metadata)",
+      "doc_type": "act",
+      "state": "central",
+      "language": "en",
+      "published_date": "2024-03-01",
+      "version": "Sample v1",
+      "status": "active",
+      "source_url": "",
+      "is_sample": true,
+      "created_at": "2026-10-14T00:00:00Z",
+      "updated_at": "2026-10-14T00:00:00Z"
+    }
+  },
+  {
+    "model": "knowledge.document",
+    "pk": "doc-mscs-amendment",
+    "fields": {
+      "title": "Multi-State Co-operative Societies (Amendment) Act, 2023",
+      "publisher": "Government of India (sample metadata)",
+      "doc_type": "act",
+      "state": "central",
+      "language": "en",
+      "published_date": "2024-03-01",
+      "version": "Sample v1",
+      "status": "active",
+      "source_url": "",
+      "is_sample": true,
+      "created_at": "2026-10-14T00:00:00Z",
+      "updated_at": "2026-10-14T00:00:00Z"
+    }
+  },
+  {
+    "model": "knowledge.document",
+    "pk": "doc-mscs-rules",
+    "fields": {
+      "title": "Multi-State Co-operative Societies Rules",
+      "publisher": "Government of India (sample metadata)",
+      "doc_type": "rules",
+      "state": "central",
+      "language": "en",
+      "published_date": "2024-03-01",
+      "version": "Sample v1",
+      "status": "active",
+      "source_url": "",
+      "is_sample": true,
+      "created_at": "2026-10-14T00:00:00Z",
+      "updated_at": "2026-10-14T00:00:00Z"
+    }
+  },
+  {
+    "model": "knowledge.document",
+    "pk": "doc-model-bylaws-en",
+    "fields": {
+      "title": "Model Bye-laws for PACS",
+      "publisher": "Ministry of Cooperation (sample metadata)",
+      "doc_type": "model-bylaws",
+      "state": "central",
+      "language": "en",
+      "published_date": "2023-01-05",
+      "version": "Sample v2",
+      "status": "active",
+      "source_url": "",
+      "is_sample": true,
+      "created_at": "2026-10-14T00:00:00Z",
+      "updated_at": "2026-10-14T00:00:00Z"
+    }
+  },
+  {
+    "model": "knowledge.document",
+    "pk": "doc-model-bylaws-hi",
+    "fields": {
+      "title": "पैक्स के लिए आदर्श उपनियम (Model Bye-laws for PACS, Hindi)",
+      "publisher": "Ministry of Cooperation (sample metadata)",
+      "doc_type": "model-bylaws",
+      "state": "central",
+      "language": "hi",
+      "published_date": "2023-01-05",
+      "version": "Sample v2",
+      "status": "active",
+      "source_url": "",
+      "is_sample": true,
+      "created_at": "2026-10-14T00:00:00Z",
+      "updated_at": "2026-10-14T00:00:00Z"
+    }
+  },
+  {
+    "model": "knowledge.document",
+    "pk": "doc-tn-act",
+    "fields": {
+      "title": "Tamil Nadu Co-operative Societies Act, 1983",
+      "publisher": "Government of Tamil Nadu (sample metadata)",
+      "doc_type": "act",
+      "state": "TN",
+      "language": "en",
+      "published_date": "2024-03-01",
+      "version": "Sample v1",
+      "status": "active",
+      "source_url": "",
+      "is_sample": true,
+      "created_at": "2026-10-14T00:00:00Z",
+      "updated_at": "2026-10-14T00:00:00Z"
+    }
+  },
+  {
+    "model": "knowledge.document",
+    "pk": "doc-tn-rules",
+    "fields": {
+      "title": "Tamil Nadu Co-operative Societies Rules, 1988",
+      "publisher": "Government of Tamil Nadu (sample metadata)",
+      "doc_type": "rules",
+      "state": "TN",
+      "language": "ta",
+      "published_date": "2024-03-01",
+      "version": "Sample v1",
+      "status": "active",
+      "source_url": "",
+      "is_sample": true,
+      "created_at": "2026-10-14T00:00:00Z",
+      "updated_at": "2026-10-14T00:00:00Z"
+    }
+  },
+  {
+    "model": "knowledge.document",
+    "pk": "doc-pmfby-guidelines",
+    "fields": {
+      "title": "PMFBY Operational Guidelines",
+      "publisher": "Government of India (sample metadata)",
+      "doc_type": "scheme-guideline",
+      "state": "central",
+      "language": "en",
+      "published_date": "2026-01-15",
+      "version": "Sample v3",
+      "status": "active",
+      "source_url": "",
+      "is_sample": true,
+      "created_at": "2026-10-14T00:00:00Z",
+      "updated_at": "2026-10-14T00:00:00Z"
+    }
+  },
+  {
+    "model": "knowledge.document",
+    "pk": "doc-circular-pacs",
+    "fields": {
+      "title": "Sample circular: PACS computerisation progress",
+      "publisher": "Sample publisher",
+      "doc_type": "circular",
+      "state": "central",
+      "language": "en",
+      "published_date": "2025-06-10",
+      "version": "Sample v1",
+      "status": "retired",
+      "source_url": "",
+      "is_sample": true,
+      "created_at": "2026-10-14T00:00:00Z",
+      "updated_at": "2026-10-14T00:00:00Z"
+    }
+  }
+]

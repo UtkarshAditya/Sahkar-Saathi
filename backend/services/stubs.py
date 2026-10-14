@@ -16,7 +16,14 @@ import io
 import re
 import wave
 
-from .types import Answer, Contact, Passage, Transcript
+from .types import (
+    Answer,
+    Contact,
+    GrievanceCategory,
+    GrievanceResult,
+    Passage,
+    Transcript,
+)
 
 STUB_MODEL = "stub"
 COVERED_STATE = "TN"  # the one state whose Act is in the corpus (team decision)
@@ -115,9 +122,15 @@ def _with_score(p: Passage, score: float) -> Passage:
 class StubAnswerService:
     """Wraps the stub retriever. Replaced by C's agent and grounded answer step."""
 
-    def __init__(self, retriever: StubRetriever, score_threshold: float = 0.5) -> None:
+    def __init__(
+        self,
+        retriever: StubRetriever,
+        score_threshold: float = 0.5,
+        covered_state: str = COVERED_STATE,
+    ) -> None:
         self.retriever = retriever
         self.score_threshold = score_threshold
+        self.covered_state = covered_state
 
     async def ask(
         self,
@@ -178,7 +191,7 @@ class StubAnswerService:
                 top_score=top_score,
             )
 
-        covered = state == COVERED_STATE
+        covered = state == self.covered_state
         return Answer(
             text=(
                 "Stub answer: board members are generally elected by members at the general "
@@ -237,3 +250,132 @@ class StubSpeechProvider:
             wav.setframerate(self.sample_rate)
             wav.writeframes(b"\x00\x00" * frames)
         return buffer.getvalue()
+
+
+# --- Grievance guide --------------------------------------------------------------------
+# Sample categories and forums. Member C replaces these with forums.yaml (verified
+# authorities per state) and the agent's category detection.
+
+_GRIEVANCE_CATEGORIES: list[tuple[GrievanceCategory, tuple[str, ...]]] = [
+    (
+        GrievanceCategory(
+            "deposit-refund",
+            "Deposit or share money not returned",
+            "The society has not refunded a deposit, share capital or dividend.",
+        ),
+        ("deposit", "refund", "share", "dividend", "money back"),
+    ),
+    (
+        GrievanceCategory(
+            "membership",
+            "Membership refused or removed",
+            "You were refused membership or removed without a proper reason.",
+        ),
+        ("membership", "expelled", "removed", "refused"),
+    ),
+    (
+        GrievanceCategory(
+            "election",
+            "Election of the board",
+            "Concerns about how a board election was announced or conducted.",
+        ),
+        ("election", "vote", "board", "director"),
+    ),
+    (
+        GrievanceCategory(
+            "records",
+            "Accounts or records not shared",
+            "You asked to see accounts, audit reports or minutes and were refused.",
+        ),
+        ("accounts", "audit", "records", "minutes", "balance sheet"),
+    ),
+    (
+        GrievanceCategory(
+            "loan",
+            "Loan or dues dispute",
+            "Disagreement about a loan, interest charged or dues recovered.",
+        ),
+        ("loan", "interest", "dues", "recovery", "kcc"),
+    ),
+    (
+        GrievanceCategory(
+            "crop-insurance",
+            "Crop insurance claim",
+            "A PMFBY claim was delayed, rejected or wrongly calculated.",
+        ),
+        ("crop", "insurance", "pmfby", "claim", "bima"),
+    ),
+]
+
+_REGISTRAR = "Registrar of Co-operative Societies, district office"
+_INSURANCE_FORUM = "Insurance company grievance cell, then the district grievance committee"
+
+
+class StubGrievanceGuide:
+    """Keyword category detection and a template draft. Never files anything."""
+
+    def categories(self) -> list[GrievanceCategory]:
+        return [category for category, _ in _GRIEVANCE_CATEGORIES]
+
+    async def guide(
+        self,
+        description: str,
+        *,
+        state: str | None,
+        language: str,
+        category_hint: str | None = None,
+    ) -> GrievanceResult:
+        category = self._detect(description, category_hint)
+        insurance = category.id == "crop-insurance"
+        forum = _INSURANCE_FORUM if insurance else _REGISTRAR
+        state_text = state or "[Your state]"
+        draft = (
+            f"To,\n{forum}\n{state_text}\n\n"
+            f"Subject: Complaint regarding {category.label.lower()}\n\n"
+            "Respected Sir/Madam,\n\n"
+            "I am a member of [name of cooperative society], [village/taluk], "
+            f"{state_text}, with membership number [membership number].\n\n"
+            f"{description.strip()}\n\n"
+            "I first raised this with the society on [date] but have not received a "
+            "resolution. I request you to look into this matter and take appropriate action.\n\n"
+            "Copies of the relevant documents are enclosed.\n\n"
+            "Yours faithfully,\n[Your name]\n[Address]\n[Date]"
+        )
+        return GrievanceResult(
+            category=category,
+            forum=f"{forum} (sample forum)",
+            forum_note=(
+                "Sample forum. The verified route and helpline will come from forums.yaml."
+                if insurance
+                else "Sample forum. The exact authority depends on your state Act and will be "
+                "confirmed from forums.yaml."
+            ),
+            steps=[
+                "Write to the secretary or board of your society first, and keep a dated copy.",
+                "Wait for a reply for a reasonable period. Note the date if there is no response.",
+                f"If unresolved, send the complaint below to the {forum}.",
+                "Attach copies (never originals) of the documents in the checklist.",
+                "Keep the acknowledgement or receipt number and follow up if needed.",
+            ],
+            documents_needed=[
+                "Proof of membership (pass book or share certificate)",
+                "Copy of your earlier letter to the society, with date",
+                "Receipts, statements or notices related to the problem",
+                "Any reply received from the society",
+                "Identity proof (show only, do not leave originals)",
+            ],
+            draft_text=draft,
+            is_demo=True,
+        )
+
+    @staticmethod
+    def _detect(description: str, hint: str | None) -> GrievanceCategory:
+        if hint:
+            for category, _ in _GRIEVANCE_CATEGORIES:
+                if category.id == hint:
+                    return category
+        text = description.lower()
+        for category, keywords in _GRIEVANCE_CATEGORIES:
+            if any(k in text for k in keywords):
+                return category
+        return _GRIEVANCE_CATEGORIES[0][0]
