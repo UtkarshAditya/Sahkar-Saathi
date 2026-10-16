@@ -15,7 +15,7 @@ import { buildDemoConversation, makeId, SUGGESTED_QUESTIONS } from '@/data/mockC
 import { MOCK_DOCUMENTS } from '@/data/mockDocuments';
 import { stateName } from '@/data/options';
 import { useSettings } from '@/hooks/useSettings';
-import { api, MOCK_ERROR_TRIGGER } from '@/services/api';
+import { api, MOCK_ERROR_TRIGGER, USE_MOCKS } from '@/services/api';
 import type { ChatMessage } from '@/types';
 
 export default function AskPage() {
@@ -24,12 +24,16 @@ export default function AskPage() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const [messages, setMessages] = useState<ChatMessage[]>(buildDemoConversation);
+  // The example conversation is shown up front only in mock mode; with the real API it
+  // stays one click away ("Show example conversation").
+  const [messages, setMessages] = useState<ChatMessage[]>(() =>
+    USE_MOCKS ? buildDemoConversation() : [],
+  );
   const [input, setInput] = useState(() => params.get('q') ?? '');
   const [loading, setLoading] = useState(false);
   const [failedText, setFailedText] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>('demo-a1');
+  const [selectedId, setSelectedId] = useState<string | null>(USE_MOCKS ? 'demo-a1' : null);
   const endRef = useRef<HTMLDivElement>(null);
   const shouldScroll = useRef(false);
 

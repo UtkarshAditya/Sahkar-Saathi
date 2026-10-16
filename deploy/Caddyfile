@@ -1,0 +1,61 @@
+# One origin for the React app and the API, so the browser never needs CORS.
+#
+# SITE_ADDRESS:
+#   http://localhost (default)  local run; localhost counts as a secure context, so the
+#                               microphone works without HTTPS.
+#   demo.example.org            a real domain: Caddy obtains and renews an HTTPS
+#                               certificate automatically. Also set DJANGO_HTTPS=true.
+{
+	servers {
+		# Never trust X-Forwarded-For from clients; Caddy sets it from the real address.
+		trusted_proxies static private_ranges
+	}
+}
+
+{$SITE_ADDRESS:http://localhost} {
+	encode zstd gzip
+
+	# Headers for every response. Django adds its own (HSTS, frame options) on /api and /admin.
+	header {
+		-Server
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "microphone=(self), camera=(), geolocation=(), payment=()"
+	}
+
+	# Cap request bodies: audio uploads are limited to 5 MB by the API, plus headroom.
+	request_body {
+		max_size 6MB
+	}
+
+	handle /api/* {
+		reverse_proxy web:8000
+	}
+
+	handle /admin* {
+		reverse_proxy web:8000
+	}
+
+	# Django admin and API-docs assets, collected into a volume shared with the web service.
+	handle /static/* {
+		root * /srv/django
+		header Cache-Control "public, max-age=86400"
+		file_server
+	}
+
+	# The React single-page app.
+	handle {
+		root * /srv/frontend
+		header {
+			Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+			X-Frame-Options DENY
+		}
+		# Hashed build assets never change; index.html must always be revalidated.
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		@html not path /assets/*
+		header @html Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}

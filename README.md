@@ -3,20 +3,76 @@
 Multilingual Cooperative Governance & Legal Assistance Chatbot. SIH 2026, problem statement
 **26088** (Ministry of Cooperation, NCCT).
 
-This repository holds the **React front end** and a **Django + Ninja backend** that
-serves `/chat/ask` and the two `/speech` endpoints from stub services. By default every
-page works with local mock data; set `VITE_USE_MOCKS=false` to use the backend instead.
-There is no real AI, retrieval or speech provider yet. All sample content is labelled as
-sample or placeholder in the UI, and no premium amounts, deadlines, helpline numbers or
-document URLs are invented.
+This repository holds the **React front end** and a **Django + Ninja backend** that serves
+the whole API contract (`backend/openapi.json`). Answers, retrieval and speech still come
+from stub services until members B and C plug in the real ones. All sample content is
+labelled as sample or placeholder in the UI, and no premium amounts, deadlines, helpline
+numbers or document URLs are invented.
 
-## Quick start
+## Run everything with Docker (one command)
 
-Requires Node.js 20 or newer (tested on 20.18) and npm.
+Requires Docker with Compose v2 (Docker Desktop on Windows and macOS). New to Docker? See
+the step-by-step guide: [docs/running-with-docker.md](docs/running-with-docker.md).
+
+```bash
+docker compose up --build
+```
+
+Open **http://localhost**. The first build takes a few minutes. You get:
+
+| Service   | What it runs                                                             | Reachable from your machine |
+| --------- | ------------------------------------------------------------------------ | --------------------------- |
+| `caddy`   | The React build, plus `/api`, `/admin` and `/static` proxied to Django   | ports 80 and 443            |
+| `web`     | Django + Ninja under uvicorn (2 workers)                                 | no                          |
+| `db`      | PostgreSQL 17                                                            | no                          |
+| `qdrant`  | Qdrant vector database (unauthenticated, so never published)             | no                          |
+| `secrets` | One-shot: generates the database password, Django key and admin password | no                          |
+
+- **Admin:** http://localhost/admin/ as `admin`. The password is generated on first start:
+  `docker compose exec web cat /secrets/admin_password`. In Windows Git Bash, prefix the
+  command with `MSYS_NO_PATHCONV=1`.
+- **Check it works:** `python scripts/smoke_test.py` runs 26 checks against the running
+  stack: API, admin, security headers, and that internal ports are closed.
+- **Settings:** copy `.env.example` to `.env` and change what you need; nothing is required.
+- **Data** lives in Docker volumes and survives `docker compose down`. To start from
+  scratch, including new secrets: `docker compose down --volumes`.
+- **Logs:** `docker compose logs -f web`.
+
+### Deploying publicly (HTTPS)
+
+Point a DNS name at the server, open ports 80 and 443, and create a `.env` with:
+
+```bash
+SITE_ADDRESS=demo.example.org
+SITE_HOST=demo.example.org
+DJANGO_HTTPS=true
+```
+
+Then run `docker compose up --build -d`. Caddy obtains and renews the certificate
+automatically. Django then enables HSTS, secure cookies and HTTPS redirects, and passes its
+own `check --deploy` checklist with no warnings. HTTPS also makes the microphone work on
+phones, which browsers allow only on HTTPS or localhost.
+
+**What is hardened:**
+
+- **Containers:** only Caddy is reachable from outside. Django runs as an unprivileged user
+  on a read-only filesystem; every container has `no-new-privileges`, and Linux
+  capabilities are dropped.
+- **Secrets:** they are random, generated once and never committed. Production refuses to
+  start without them, and DEBUG is forced off.
+- **Headers:** a strict Content-Security-Policy and other security headers.
+- **Limits:** request bodies are capped, and per-client rate limits are shared across workers.
+- **Logging:** errors are logged without any message text.
+
+## Front-end development
+
+Requires Node.js 20 or newer (tested on 20.18) and npm. The app calls the real backend by
+default, so start it first (see [backend/README.md](backend/README.md)), or set
+`VITE_USE_MOCKS=true` to work on the UI with local mock data and no backend.
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173
+npm run dev        # http://localhost:5173 (proxies /api, /admin and /static to :8000)
 ```
 
 | Command                           | What it does                                  |
@@ -103,10 +159,10 @@ The Django backend in `backend/` serves every endpoint the pages use; the full l
 [backend/README.md](backend/README.md). To use it:
 
 1. Start the backend: `uvicorn config.asgi:application --reload --port 8000`.
-2. Run the front end with `VITE_USE_MOCKS=false npm run dev`. Vite proxies `/api` to
-   port 8000, so no CORS setup is needed. In deployment Caddy does the same.
-3. For the Quality dashboard, log in as a staff user at `/admin/` first (on the same
-   origin, so through the Vite or Caddy address).
+2. Run the front end with `npm run dev`. Vite proxies `/api`, `/admin` and `/static` to
+   port 8000, exactly as Caddy does in Docker, so no CORS setup is needed.
+3. For the Quality dashboard, log in as a staff user at `/admin/` first, on the same
+   origin (the Vite or Caddy address).
 
 **The contract is frozen** in `backend/openapi.json`:
 
@@ -120,18 +176,17 @@ Consider TanStack Query in place of `useAsync` now that real endpoints exist.
 
 Testing hook: in mock mode, sending `/error` on the Ask page shows the error state.
 
-## Not implemented yet (by design)
+## Not implemented yet
 
-| Item                                          | Current state                             | Planned                                                                 |
-| --------------------------------------------- | ----------------------------------------- | ----------------------------------------------------------------------- |
-| Voice input (mic)                             | Button shows a "not connected yet" notice | Sprint 2: `useRecorder` hook, `/speech/transcribe`, editable transcript |
-| Listen (text to speech)                       | Disabled, labelled "coming soon"          | Sprint 2: `/speech/synthesize`                                          |
-| Grievance voice description                   | Hint text only                            | Sprint 3                                                                |
-| Answers, schemes, documents, lessons, metrics | Local mock data with sample labels        | Real endpoints                                                          |
-| Feedback                                      | Shown on screen only, not stored          | `POST /feedback`                                                        |
-| Staff auth for `/staff/quality`               | None                                      | Staff token (member A)                                                  |
-| Admin page                                    | Placeholder cards, no links               | Django admin at `/admin/`                                               |
-| Body content translation                      | English only                              | Language service                                                        |
+| Item                        | Current state                                   | Planned                                                                 |
+| --------------------------- | ----------------------------------------------- | ----------------------------------------------------------------------- |
+| Real answers and retrieval  | Stub answer service with sample citations       | Members B and C plug in retrieval and the agent (`USE_STUBS=false`)     |
+| Voice input (mic)           | Button shows a "not connected yet" notice       | Sprint 2: `useRecorder` hook, `/speech/transcribe`, editable transcript |
+| Listen (text to speech)     | Disabled, labelled "coming soon"                | Sprint 2: `/speech/synthesize` (endpoint and client already exist)      |
+| Grievance voice description | Hint text only                                  | Sprint 3                                                                |
+| Quality dashboard data      | Sample numbers from `/eval/latest` (staff only) | Sprint 2: EvalRun models filled by member B's eval runner               |
+| Library documents           | 9 sample entries loaded into an empty database  | Member B ingests the verified corpus (`data/sources.csv`)               |
+| Body content translation    | English only                                    | Language service                                                        |
 
 ## Team ownership
 

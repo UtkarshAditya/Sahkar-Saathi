@@ -8,6 +8,10 @@ services exist.
 
 ## Run it
 
+**With Docker (the whole stack):** from the repository root, `docker compose up --build`,
+then open http://localhost. See the root README for admin login, HTTPS deployment and the
+smoke test. The rest of this section is for running the backend directly while developing.
+
 Requires Python 3.11+ (developed on 3.13; avoid 3.15 for now, as some wheels are missing).
 
 ```bash
@@ -17,7 +21,7 @@ py -3.13 -m venv .venv            # macOS/Linux: python3 -m venv .venv
 pip install -r requirements-dev.txt
 cp .env.example .env              # local settings; never commit .env
 python manage.py migrate          # SQLite by default
-python manage.py loaddata sample_documents   # sample library entries (is_sample=true)
+python manage.py load_sample_documents   # sample library entries, only into an empty table
 uvicorn config.asgi:application --reload --port 8000
 ```
 
@@ -25,9 +29,29 @@ uvicorn config.asgi:application --reload --port 8000
 - Health: http://127.0.0.1:8000/api/v1/health
 - Admin: http://127.0.0.1:8000/admin/ (`python manage.py createsuperuser` first)
 
-**With the React app:** run the backend, then from the repository root run
-`VITE_USE_MOCKS=false npm run dev` (PowerShell: `$env:VITE_USE_MOCKS='false'; npm run dev`).
-Vite proxies `/api` to port 8000, so there is no CORS setup, just as with Caddy later.
+**With the React app:** run the backend, then `npm run dev` from the repository root. The
+app calls the real API by default; Vite proxies `/api`, `/admin` and `/static` to port
+8000, just as Caddy does in Docker, so there is no CORS setup.
+
+### Production mode
+
+`docker-compose.yml` runs the backend with `DJANGO_ENV=production`, which:
+
+- **Requires secrets:** `DJANGO_SECRET_KEY` (or `DJANGO_SECRET_KEY_FILE`), and refuses to
+  start without it. DEBUG is always off.
+- **Reads secrets from files:** any secret can come from a `*_FILE` path
+  (`POSTGRES_PASSWORD_FILE`, `DJANGO_SUPERUSER_PASSWORD_FILE`); Compose generates them.
+- **Enables HTTPS mode with `DJANGO_HTTPS=true`:** HSTS (one year), secure session and CSRF
+  cookies, and HTTPS redirects. `python manage.py check --deploy` then reports no issues;
+  `tests/test_deploy.py` checks this. HSTS preload is a separate opt-in
+  (`SECURE_HSTS_PRELOAD`).
+- **Shares rate-limit counters:** `CACHE_BACKEND=file` shares them across uvicorn workers.
+  Do not use Django's database cache: Ninja checks throttles synchronously inside async
+  views, and Django refuses synchronous queries there.
+
+On every start the container runs `migrate`, `collectstatic`, `ensure_superuser` (creates
+the team admin once, never resets a password) and, if `LOAD_SAMPLE_DOCUMENTS=true`,
+`load_sample_documents`. All are safe to repeat.
 
 ## The API contract (all under `/api/v1/`)
 
@@ -188,19 +212,20 @@ are the ones the team shares:
 ## Quality checks
 
 ```bash
-python -m pytest            # 87 tests: every endpoint, error path, storage, privacy, contract
+python -m pytest            # 95 tests: endpoints, errors, storage, privacy, contract, deploy checks
 python -m ruff check .
 python -m ruff format --check .
 python manage.py makemigrations --check --dry-run
 ```
 
 The same checks, plus the front-end ones, run on every pull request in
-`.github/workflows/ci.yml`.
+`.github/workflows/ci.yml`, which also builds the whole stack with `docker compose up --build`
+and runs `scripts/smoke_test.py` against it.
 
 ## Not done yet (Member A plan)
 
 - **Sprint 2 models:** GrievanceCase (only when `STORE_MESSAGES` is on), and TestQuestion,
   EvalRun and EvalResult so `/eval/latest` serves real runs instead of sample data.
 - **Resilience:** `DEMO_CACHE` (saved answers for the five scripted conversations).
-- **Platform:** Docker Compose with PostgreSQL, Qdrant and Caddy; HTTPS demo environment.
+- **Platform:** choose the demo host and test HTTPS from a phone (Compose and Caddy are done).
 - **Real services** from members B and C, plugged in through `config/services.py`.

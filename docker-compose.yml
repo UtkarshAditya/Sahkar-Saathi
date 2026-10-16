@@ -1,0 +1,161 @@
+# Sahkar Saathi: the whole stack with one command.
+#
+#   docker compose up --build        then open http://localhost
+#
+# Only Caddy publishes ports. PostgreSQL, Qdrant and Django live on the private network.
+# Secrets are generated on first start into the `secrets` volume (see `secrets` below);
+# override any setting in a `.env` file next to this one (copy .env.example).
+
+name: sahkar-saathi
+
+x-hardening: &hardening
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  # One-shot: create random secrets once (database password, Django key, admin password).
+  # Existing files are never overwritten, so data and logins survive rebuilds.
+  secrets:
+    image: alpine:3.20
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - secrets:/secrets
+    command:
+      - sh
+      - -c
+      - |
+        set -eu
+        umask 077
+        for name in db_password django_secret_key admin_password; do
+          if [ ! -s "/secrets/$$name" ]; then
+            head -c 48 /dev/urandom | base64 | tr -d '\n/+=' > "/secrets/$$name"
+            echo "generated $$name"
+          fi
+        done
+        # Readable by postgres (uid 70) and the web user (uid 1000); the volume is private.
+        chmod 0444 /secrets/*
+
+  db:
+    <<: *hardening
+    image: postgres:17-alpine
+    depends_on:
+      secrets:
+        condition: service_completed_successfully
+    environment:
+      POSTGRES_DB: sahkar
+      POSTGRES_USER: sahkar
+      POSTGRES_PASSWORD_FILE: /secrets/db_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - secrets:/secrets:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sahkar -d sahkar"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  qdrant:
+    <<: *hardening
+    image: qdrant/qdrant:v1.13.4
+    # The default Qdrant image has no authentication: never publish its port.
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/6333' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  web:
+    <<: *hardening
+    build:
+      context: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    environment:
+      DJANGO_ENV: production
+      DJANGO_SECRET_KEY_FILE: /secrets/django_secret_key
+      DJANGO_ALLOWED_HOSTS: ${SITE_HOST:-localhost}
+      DJANGO_HTTPS: ${DJANGO_HTTPS:-false}
+      TRUST_PROXY_HEADERS: "true"
+      NINJA_NUM_PROXIES: "1"
+      POSTGRES_HOST: db
+      POSTGRES_DB: sahkar
+      POSTGRES_USER: sahkar
+      POSTGRES_PASSWORD_FILE: /secrets/db_password
+      CACHE_BACKEND: file
+      STATIC_ROOT: /srv/django/static
+      QDRANT_URL: http://qdrant:6333
+      DJANGO_SUPERUSER_USERNAME: ${DJANGO_SUPERUSER_USERNAME:-admin}
+      DJANGO_SUPERUSER_EMAIL: ${DJANGO_SUPERUSER_EMAIL:-}
+      DJANGO_SUPERUSER_PASSWORD_FILE: /secrets/admin_password
+      LOAD_SAMPLE_DOCUMENTS: ${LOAD_SAMPLE_DOCUMENTS:-true}
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
+      # Team settings (see backend/.env.example for what each one does).
+      USE_STUBS: ${USE_STUBS:-true}
+      DEMO_CACHE: ${DEMO_CACHE:-false}
+      STORE_MESSAGES: ${STORE_MESSAGES:-true}
+      REGIONAL_LANGUAGE_CODE: ${REGIONAL_LANGUAGE_CODE:-ta}
+      COVERED_STATE_CODE: ${COVERED_STATE_CODE:-TN}
+      LLM_PROVIDER: ${LLM_PROVIDER:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      BHASHINI_API_KEY: ${BHASHINI_API_KEY:-}
+      BHASHINI_USER_ID: ${BHASHINI_USER_ID:-}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-intfloat/multilingual-e5-small}
+      TOP_K: ${TOP_K:-4}
+      SCORE_THRESHOLD: ${SCORE_THRESHOLD:-0.5}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - static_files:/srv/django
+      - secrets:/secrets:ro
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+
+  caddy:
+    <<: *hardening
+    build:
+      context: .
+      args:
+        VITE_REGIONAL_LANGUAGE_CODE: ${REGIONAL_LANGUAGE_CODE:-ta}
+    depends_on:
+      web:
+        condition: service_healthy
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-http://localhost}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+      - "${HTTPS_PORT:-443}:443/udp"
+    volumes:
+      - static_files:/srv/django:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+
+volumes:
+  secrets:
+  postgres_data:
+  qdrant_data:
+  static_files:
+  caddy_data:
+  caddy_config:

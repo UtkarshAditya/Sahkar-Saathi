@@ -24,6 +24,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                 <li key={item.to}>
                   <NavLink
                     to={item.to}
+                    reloadDocument={item.reloadDocument}
                     end={item.to === '/'}
                     onClick={onNavigate}
                     className={({ isActive }) =>

@@ -38,7 +38,8 @@ import type {
 } from '@/types';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
-export const USE_MOCKS = (import.meta.env.VITE_USE_MOCKS ?? 'true') !== 'false';
+/** Mock data is opt-in (VITE_USE_MOCKS=true); by default the app calls the real API. */
+export const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true';
 
 /** Typing this exact text in Ask triggers the error state, to test it in the UI. */
 export const MOCK_ERROR_TRIGGER = '/error';

@@ -1,0 +1,13 @@
+# Keep secrets, local state and tooling out of the image.
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.pyc
+db.sqlite3
+*.sqlite3
+staticfiles/
+.pytest_cache/
+.ruff_cache/
+tests/
