@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -24,12 +25,32 @@ def env_list(name: str, default: str) -> list[str]:
     return [item.strip() for item in os.environ.get(name, default).split(",") if item.strip()]
 
 
+def env_secret(name: str) -> str | None:
+    """A secret from ``NAME``, or from the file named by ``NAME_FILE`` (Docker secrets)."""
+    if value := os.environ.get(name):
+        return value
+    if (path := os.environ.get(f"{name}_FILE")) and Path(path).is_file():
+        return Path(path).read_text(encoding="utf-8").strip() or None
+    return None
+
+
 # --- Core -----------------------------------------------------------------------------
 
-DEBUG = env_bool("DJANGO_DEBUG", False)
-# The fallback key is only for local development; `manage.py check --deploy` flags it.
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY") or "django-insecure-local-dev-only-change-me"
-ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
+# "production" (set by docker-compose.yml) enforces real secrets and turns DEBUG off.
+ENVIRONMENT = os.environ.get("DJANGO_ENV", "development")
+PRODUCTION = ENVIRONMENT == "production"
+
+DEBUG = False if PRODUCTION else env_bool("DJANGO_DEBUG", False)
+
+SECRET_KEY = env_secret("DJANGO_SECRET_KEY") or ""
+if not SECRET_KEY:
+    if PRODUCTION:
+        raise ImproperlyConfigured("Set DJANGO_SECRET_KEY or DJANGO_SECRET_KEY_FILE in production.")
+    SECRET_KEY = "django-insecure-local-dev-only-change-me"  # `check --deploy` flags this
+
+# localhost/127.0.0.1 are always allowed so the container health check works; only Caddy
+# can reach the app, and Caddy only forwards requests for the configured site address.
+ALLOWED_HOSTS = [*env_list("DJANGO_ALLOWED_HOSTS", "localhost"), "localhost", "127.0.0.1"]
 CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS", "")
 
 INSTALLED_APPS = [
@@ -79,14 +100,40 @@ TEMPLATES = [
     },
 ]
 
-# PostgreSQL in Compose (DATABASE_URL=postgres://...); SQLite when unset, for quick local runs.
-# conn_max_age=0: persistent connections are not safe under ASGI.
-DATABASES = {
-    "default": dj_database_url.parse(
-        os.environ.get("DATABASE_URL") or f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
-        conn_max_age=0,
-    )
-}
+# PostgreSQL in Compose (POSTGRES_HOST + POSTGRES_PASSWORD_FILE, or DATABASE_URL); SQLite
+# when neither is set, for quick local runs. conn_max_age=0: persistent connections are not
+# safe under ASGI.
+if os.environ.get("DATABASE_URL"):
+    DATABASES = {"default": dj_database_url.parse(os.environ["DATABASE_URL"], conn_max_age=0)}
+elif os.environ.get("POSTGRES_HOST"):
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "HOST": os.environ["POSTGRES_HOST"],
+            "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+            "NAME": os.environ.get("POSTGRES_DB", "sahkar"),
+            "USER": os.environ.get("POSTGRES_USER", "sahkar"),
+            "PASSWORD": env_secret("POSTGRES_PASSWORD") or "",
+            "CONN_MAX_AGE": 0,
+            "CONN_HEALTH_CHECKS": True,
+        }
+    }
+else:
+    DATABASES = {
+        "default": dj_database_url.parse(f"sqlite:///{BASE_DIR / 'db.sqlite3'}", conn_max_age=0)
+    }
+
+# Rate-limit counters. "file" shares them across the uvicorn workers in one container
+# (Compose); the default per-process memory cache is fine for one local process and tests.
+# Not the database cache: Ninja checks throttles synchronously inside async views, and
+# Django forbids synchronous database queries there.
+if os.environ.get("CACHE_BACKEND") == "file":
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+            "LOCATION": os.environ.get("CACHE_LOCATION", "/tmp/django_cache"),
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -101,8 +148,40 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"  # filled by collectstatic, served by Caddy
+# Filled by collectstatic; in Compose a volume shared with Caddy, which serves /static/.
+STATIC_ROOT = Path(os.environ.get("STATIC_ROOT") or BASE_DIR / "staticfiles")
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# --- Security ---------------------------------------------------------------------------
+
+# Only Caddy can reach the app, and it sets X-Forwarded-Proto, so trust it behind the proxy.
+if env_bool("TRUST_PROXY_HEADERS", False):
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# DJANGO_HTTPS=true when the site is served over HTTPS (a real domain behind Caddy).
+HTTPS = env_bool("DJANGO_HTTPS", False)
+SESSION_COOKIE_SECURE = HTTPS
+CSRF_COOKIE_SECURE = HTTPS
+SECURE_SSL_REDIRECT = HTTPS
+SECURE_REDIRECT_EXEMPT = [r"^api/v1/health$"]  # the in-container health check uses HTTP
+SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", "31536000")) if HTTPS else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = HTTPS
+# Preload lists are hard to leave, so it is a deliberate opt-in (and the check is silenced
+# only while it is off).
+SECURE_HSTS_PRELOAD = HTTPS and env_bool("SECURE_HSTS_PRELOAD", False)
+SILENCED_SYSTEM_CHECKS = [] if SECURE_HSTS_PRELOAD else ["security.W021"]
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
+X_FRAME_OPTIONS = "DENY"
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_HTTPONLY = True
+SESSION_COOKIE_AGE = 60 * 60 * 8  # staff sessions last one working day
+
+# Uploads: audio is checked by size in the speech endpoint; keep request bodies bounded.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 2_621_440  # 2.5 MB of non-file form/JSON data
+FILE_UPLOAD_MAX_MEMORY_SIZE = 2_621_440
 
 # Behind Caddy, so rate limits see the real client address.
 NINJA_NUM_PROXIES = (
@@ -171,5 +250,9 @@ LOGGING = {
     "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "plain"}},
     "loggers": {
         "sahkar": {"handlers": ["console"], "level": os.environ.get("LOG_LEVEL", "INFO")},
+        # Unhandled errors and security events (bad Host headers, CSRF failures) must reach
+        # the container logs; Django only mails them by default when DEBUG is off.
+        "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False},
+        "django.security": {"handlers": ["console"], "level": "WARNING", "propagate": False},
     },
 }

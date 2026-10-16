@@ -10,6 +10,7 @@ import {
   Sprout,
   type LucideIcon,
 } from 'lucide-react';
+import { USE_MOCKS } from '@/services/api';
 
 export type NavGroup = 'core' | 'guides' | 'staff';
 
@@ -23,6 +24,8 @@ export interface NavItem {
   group: NavGroup;
   /** Shown in the phone bottom bar. */
   primaryOnMobile?: boolean;
+  /** Full page load instead of client-side routing (the page is served by Django). */
+  reloadDocument?: boolean;
 }
 
 /** One source of truth for the sidebar, mobile menu, breadcrumbs and bottom bar. */
@@ -62,7 +65,16 @@ export const NAV_ITEMS: NavItem[] = [
     icon: ChartColumn,
     group: 'staff',
   },
-  { to: '/admin', labelKey: 'nav.admin', pageKey: 'admin', icon: Settings, group: 'staff' },
+  {
+    // With the real backend, /admin/ is the Django admin site (Caddy or the Vite proxy
+    // routes it there); in mock mode it is the React overview page.
+    to: USE_MOCKS ? '/admin' : '/admin/',
+    labelKey: 'nav.admin',
+    pageKey: 'admin',
+    icon: Settings,
+    group: 'staff',
+    reloadDocument: !USE_MOCKS,
+  },
 ];
 
 export const NAV_GROUPS: NavGroup[] = ['core', 'guides', 'staff'];

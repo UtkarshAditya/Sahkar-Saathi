@@ -61,6 +61,7 @@ export function MobileNavigation({ open, onOpen, onClose }: MobileNavigationProp
             <li key={item.to}>
               <NavLink
                 to={item.to}
+                reloadDocument={item.reloadDocument}
                 end={item.to === '/'}
                 className={({ isActive }) =>
                   cn(

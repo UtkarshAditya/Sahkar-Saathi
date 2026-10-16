@@ -1,0 +1,11 @@
+# Build context for the Caddy + front-end image (root Dockerfile).
+node_modules/
+dist/
+backend/
+data/
+.git/
+.github/
+.env
+.env.*
+!.env.example
+*.log
