@@ -1,6 +1,8 @@
 import pytest
 from django.core.management import call_command
 
+from apps.knowledge.models import Document
+
 URL = "/api/v1/documents"
 
 
@@ -51,3 +53,10 @@ def test_unknown_document_is_404(client):
     res = client.get(f"{URL}/nope")
     assert res.status_code == 404
     assert res.json()["code"] == "document_not_found"
+
+
+def test_a_null_published_date_serialises(client):
+    Document.objects.filter(pk="doc-tn-act").update(published_date=None)
+    listed = {d["id"]: d for d in client.get(f"{URL}?state=TN").json()}
+    assert listed["doc-tn-act"]["published_date"] is None
+    assert client.get(f"{URL}/doc-tn-act").json()["published_date"] is None

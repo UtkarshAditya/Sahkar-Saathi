@@ -90,6 +90,27 @@ def test_an_edited_cell_updates_the_row(csv_path):
     assert (doc.version, doc.title) == ("2", "Test Act, 2002 (amended)")
 
 
+def test_empty_published_date_loads_as_null_and_reruns_are_idempotent(csv_path):
+    write_csv(csv_path, [row(published_date="")])
+    assert "created 1, updated 0, unchanged 0, skipped 0" in run(csv_path)
+    assert Document.objects.get(pk="CEN-TEST-ACT").published_date is None
+    assert "created 0, updated 0, unchanged 1, skipped 0" in run(csv_path)
+
+
+def test_published_date_column_is_optional(csv_path):
+    write_csv(csv_path, [row()], [c for c in HEADER if c != "published_date"])
+    assert "created 1, updated 0, unchanged 0, skipped 0" in run(csv_path)
+    assert Document.objects.get(pk="CEN-TEST-ACT").published_date is None
+
+
+def test_clearing_a_date_updates_the_row(csv_path):
+    write_csv(csv_path, [row()])
+    run(csv_path)
+    write_csv(csv_path, [row(published_date="")])
+    assert "created 0, updated 1, unchanged 0" in run(csv_path)
+    assert Document.objects.get(pk="CEN-TEST-ACT").published_date is None
+
+
 def test_extra_columns_are_ignored_and_never_printed(csv_path):
     header = [*HEADER, "licence", "verification"]
     write_csv(csv_path, [row(licence="CC-BY", verification="VERIFIED")], header)
@@ -114,7 +135,9 @@ def test_source_url_column_is_optional(csv_path):
         ({"status": "Active"}, "status 'Active' must be one of"),
         ({"state": "Tamil Nadu"}, "state 'Tamil Nadu' must be 'central' or a code like 'TN'"),
         ({"state": "TAMILNADU"}, "must be 'central' or a code like 'TN'"),
+        ({"published_date": "2018"}, "published_date '2018' is not a YYYY-MM-DD date"),
         ({"published_date": "2026-02"}, "published_date '2026-02' is not a YYYY-MM-DD date"),
+        ({"published_date": " "}, "published_date ' ' is not a YYYY-MM-DD date"),
         ({"published_date": "web page"}, "is not a YYYY-MM-DD date"),
         ({"published_date": "2025-02-30"}, "is not a YYYY-MM-DD date"),
         ({"published_date": "27/06/2025"}, "is not a YYYY-MM-DD date"),

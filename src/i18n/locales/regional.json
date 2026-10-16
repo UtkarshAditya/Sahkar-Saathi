@@ -1,4 +1,7 @@
 {
+  "_untranslated": {
+    "common.dateNotStated": "English placeholder. Needs a translation by a native speaker; do not ship as final."
+  },
   "app": {
     "name": "Sahkar Saathi",
     "tagline": "உங்கள் மொழியில் கூட்டுறவு வழிகாட்டுதல்",

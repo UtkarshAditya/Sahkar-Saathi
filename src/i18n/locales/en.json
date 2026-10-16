@@ -131,6 +131,7 @@
     "page": "Page",
     "sourcePending": "Source pending verification",
     "datePending": "Date pending",
+    "dateNotStated": "Date not stated",
     "linkPending": "Link pending",
     "askAboutThis": "Ask about this",
     "viewDetails": "View details",

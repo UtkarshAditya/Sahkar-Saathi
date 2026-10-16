@@ -76,6 +76,15 @@ function lawCitations(stateCode: string): Citation[] {
       section: 'Board of directors (sample section)',
       url: null,
     },
+    {
+      id: 'cit-law-3',
+      document_id: 'doc-circular-undated',
+      title: 'Sample circular with no stated date',
+      publisher: 'Sample metadata',
+      published_date: null,
+      page: null,
+      url: null,
+    },
   ];
 }
 

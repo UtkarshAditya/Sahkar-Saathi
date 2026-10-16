@@ -42,7 +42,8 @@ export interface Citation {
   document_id: string;
   title: string;
   publisher: string;
-  published_date: string;
+  /** Null when the source states no date. */
+  published_date: string | null;
   page: number | null;
   section?: string | null;
   /** Null until a verified source URL is recorded for the document. */
@@ -211,7 +212,8 @@ export interface LibraryDocument {
   /** 'central' for national documents, otherwise a state code. */
   state: string;
   language: LanguageCode;
-  published_date: string;
+  /** Null when the source states no date. */
+  published_date: string | null;
   version: string;
   status: DocumentStatus;
   source_url: string | null;

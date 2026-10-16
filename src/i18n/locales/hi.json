@@ -1,4 +1,7 @@
 {
+  "_untranslated": {
+    "common.dateNotStated": "English placeholder. Needs a translation by a native speaker; do not ship as final."
+  },
   "app": {
     "name": "सहकार साथी",
     "tagline": "आपकी भाषा में सहकारिता मार्गदर्शन",
@@ -131,6 +134,7 @@
     "page": "पेज",
     "sourcePending": "स्रोत का सत्यापन बाकी",
     "datePending": "तारीख बाकी",
+    "dateNotStated": "Date not stated",
     "linkPending": "लिंक बाकी",
     "askAboutThis": "इसके बारे में पूछें",
     "viewDetails": "विवरण देखें",

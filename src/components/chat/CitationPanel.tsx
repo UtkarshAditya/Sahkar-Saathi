@@ -17,7 +17,8 @@ export function CitationList({ citations }: { citations: Citation[] }) {
             {i + 1}
           </span>
           <span className="text-ink-soft">
-            <span className="font-medium text-ink">{c.title}</span> · {formatDate(c.published_date)}
+            <span className="font-medium text-ink">{c.title}</span> ·{' '}
+            {c.published_date ? formatDate(c.published_date) : t('common.dateNotStated')}
             {c.page != null && ` · ${t('common.page')} ${c.page}`}
           </span>
         </li>
@@ -60,7 +61,9 @@ export function CitationPanel({ citations }: CitationPanelProps) {
                 <dt className="text-ink-muted">Publisher</dt>
                 <dd>{c.publisher}</dd>
                 <dt className="text-ink-muted">Date</dt>
-                <dd>{formatDate(c.published_date)}</dd>
+                <dd>
+                  {c.published_date ? formatDate(c.published_date) : t('common.dateNotStated')}
+                </dd>
                 <dt className="text-ink-muted">{t('common.page')}</dt>
                 <dd>
                   {c.page ?? '—'}

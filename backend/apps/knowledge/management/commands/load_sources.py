@@ -34,11 +34,10 @@ REQUIRED = [
     "doc_type",
     "state",
     "language",
-    "published_date",
     "version",
     "status",
 ]
-OPTIONAL = ["source_url"]
+OPTIONAL = ["source_url", "published_date"]
 # CSV column -> the model field's max length
 MAX_LENGTHS = {
     "doc_id": 64,
@@ -142,9 +141,11 @@ def validate(cells: dict, has_url_column: bool) -> tuple[dict, list[Problem]]:
             )
         )
 
+    # Empty or absent means the source states no date: stored as NULL. Anything else must
+    # be a full YYYY-MM-DD date; partial dates such as "2018" are not completed.
     raw_date = get["published_date"]
     published = None
-    if raw_date.strip():
+    if raw_date:
         if DATE_RE.fullmatch(raw_date):
             try:
                 published = date.fromisoformat(raw_date)

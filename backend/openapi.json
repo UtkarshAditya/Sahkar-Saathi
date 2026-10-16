@@ -1046,9 +1046,16 @@
             "type": "string"
           },
           "published_date": {
-            "description": "ISO date.",
-            "title": "Published Date",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ISO date, or null when the source states no date.",
+            "title": "Published Date"
           },
           "page": {
             "anyOf": [
@@ -1890,9 +1897,17 @@
             "type": "string"
           },
           "published_date": {
-            "format": "date",
-            "title": "Published Date",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when the source states no date.",
+            "title": "Published Date"
           },
           "version": {
             "title": "Version",

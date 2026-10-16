@@ -2,8 +2,10 @@ import json
 
 import pytest
 
+from apps.chat import api as chat_api
 from apps.chat.models import Conversation, Message
 from config.throttles import CHAT_THROTTLE
+from services.types import Answer, Passage
 
 URL = "/api/v1/chat/ask"
 
@@ -150,3 +152,27 @@ def test_service_not_ready_without_stubs(client, settings):
     res = ask(client, text="PMFBY claim")
     assert res.status_code == 503
     assert res.json()["code"] == "service_not_ready"
+
+
+def test_citation_with_a_null_published_date_serialises(client, monkeypatch):
+    passage = Passage(
+        chunk_id="c-1",
+        text="A passage from an undated source.",
+        document_id="CEN-UNDATED",
+        document_title="Undated source",
+        publisher="Test",
+        source_url=None,
+        published_date=None,
+        page=None,
+        score=0.9,
+        state=None,
+    )
+
+    class UndatedService:
+        async def ask(self, text, *, language, state, document_id=None):
+            return Answer(text="Answer.", status="answered", language=language, citations=[passage])
+
+    monkeypatch.setattr(chat_api, "get_answer_service", lambda: UndatedService())
+    res = ask(client, text="A question about an undated source")
+    assert res.status_code == 200, res.content
+    assert res.json()["citations"][0]["published_date"] is None

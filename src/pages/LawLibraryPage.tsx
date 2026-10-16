@@ -229,7 +229,9 @@ export default function LawLibraryPage() {
                     <td className="px-4 py-3">{documentTypeLabel(doc.doc_type)}</td>
                     <td className="px-4 py-3">{stateName(doc.state)}</td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      {formatDate(doc.published_date)}
+                      {doc.published_date
+                        ? formatDate(doc.published_date)
+                        : t('common.dateNotStated')}
                     </td>
                     <td className="px-4 py-3">
                       <span className="whitespace-nowrap">{doc.version}</span>
@@ -271,7 +273,11 @@ export default function LawLibraryPage() {
                     <dt className="text-ink-muted">Publisher</dt>
                     <dd>{doc.publisher}</dd>
                     <dt className="text-ink-muted">Published</dt>
-                    <dd>{formatDate(doc.published_date)}</dd>
+                    <dd>
+                      {doc.published_date
+                        ? formatDate(doc.published_date)
+                        : t('common.dateNotStated')}
+                    </dd>
                     <dt className="text-ink-muted">Version</dt>
                     <dd>{doc.version}</dd>
                     <dt className="text-ink-muted">Language</dt>

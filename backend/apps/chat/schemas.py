@@ -56,7 +56,9 @@ class CitationOut(Schema):
     document_id: str
     title: str
     publisher: str
-    published_date: str = Field(..., description="ISO date.")
+    published_date: str | None = Field(
+        ..., description="ISO date, or null when the source states no date."
+    )
     page: int | None
     section: str | None
     url: str | None = Field(..., description="Null until a verified source URL is recorded.")

@@ -403,9 +403,9 @@ export interface components {
             publisher: string;
             /**
              * Published Date
-             * @description ISO date.
+             * @description ISO date, or null when the source states no date.
              */
-            published_date: string;
+            published_date: string | null;
             /** Page */
             page: number | null;
             /** Section */
@@ -749,9 +749,9 @@ export interface components {
             language: string;
             /**
              * Published Date
-             * Format: date
+             * @description Null when the source states no date.
              */
-            published_date: string;
+            published_date: string | null;
             /** Version */
             version: string;
             /**

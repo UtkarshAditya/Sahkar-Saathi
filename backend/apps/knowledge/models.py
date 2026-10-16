@@ -29,7 +29,9 @@ class Document(models.Model):
         max_length=8, default="central", help_text='A state code, or "central".'
     )
     language = models.CharField(max_length=8)
-    published_date = models.DateField()
+    published_date = models.DateField(
+        null=True, blank=True, help_text="Empty when the source states no date."
+    )
     version = models.CharField(max_length=50)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE)
     source_url = models.URLField(

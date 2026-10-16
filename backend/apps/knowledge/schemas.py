@@ -13,7 +13,7 @@ class DocumentOut(Schema):
     doc_type: DocType
     state: str = Field(..., description='A state code, or "central".')
     language: str
-    published_date: date
+    published_date: date | None = Field(..., description="Null when the source states no date.")
     version: str
     status: Literal["active", "retired"]
     source_url: str | None = Field(..., description="Null until a verified link is recorded.")

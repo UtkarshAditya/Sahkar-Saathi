@@ -31,7 +31,7 @@ class Passage:
     document_title: str
     publisher: str
     source_url: str | None  # None until a verified URL is recorded
-    published_date: str  # ISO date
+    published_date: str | None  # ISO date; None when the source states no date
     page: int | None
     score: float
     state: str | None  # None means a central document
