@@ -29,3 +29,8 @@ __pycache__/
 backend/staticfiles/
 .pytest_cache/
 .ruff_cache/
+
+# Raw source PDFs live in Drive, not in git
+data/raw/*
+!data/raw/.gitkeep
+data/qdrant_local/
