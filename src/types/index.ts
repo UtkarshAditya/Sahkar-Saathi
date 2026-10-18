@@ -85,6 +85,10 @@ export interface ChatMessage {
   id: string;
   role: ChatRole;
   text: string;
+  /** Language used for the answer's speech playback. */
+  speechLanguage?: LanguageCode;
+  /** True when the question that produced this answer came from voice input. */
+  autoPlaySpeech?: boolean;
   /** Present on assistant messages. */
   response?: AskResponse;
   /** For needs_state prompts: the question to re-ask once a state is chosen. */
@@ -109,7 +113,6 @@ export interface TranscribeResponse {
   language: LanguageCode;
   /** 0..1 */
   confidence: number;
-  is_demo: boolean;
 }
 
 export interface SynthesizeRequest {
