@@ -99,6 +99,7 @@
     "recording": "Recording",
     "stopRecording": "Stop",
     "cancelRecording": "Cancel",
+    "listening": "Listening...",
     "transcribing": "Writing down your question…",
     "reviewTranscript": "Check and edit your words before sending.",
     "discardTranscript": "Discard",
@@ -113,6 +114,18 @@
       "tooShort": "Please record for at least one second.",
       "recordingFailed": "The recording did not work. Please try again.",
       "transcriptionFailed": "We could not write down the recording. Please try again."
+    },
+    "recognitionUnsupportedHint": "Voice input works best in Chrome. You can type your question instead.",
+    "recognitionErrors": {
+      "noSpeech": "We did not hear anything. Please try again.",
+      "audioCapture": "We could not use the microphone. Check it and try again.",
+      "notAllowed": "Allow microphone access in your browser, then try again.",
+      "network": "Voice input could not connect. Please try again.",
+      "languageNotSupported": "Voice input is not available for this language in this browser.",
+      "stopped": "Listening stopped after a pause. Your words are saved. Tap the mic to continue.",
+      "failed": "Voice input stopped unexpectedly. Please try again.",
+      "unsupported": "Voice input is not supported in this browser.",
+      "insecureContext": "Voice input works only on a secure connection."
     },
     "listen": "Listen",
     "listenLoading": "Loading...",
