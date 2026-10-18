@@ -15,12 +15,14 @@ import { buildDemoConversation, makeId, SUGGESTED_QUESTIONS } from '@/data/mockC
 import { MOCK_DOCUMENTS } from '@/data/mockDocuments';
 import { stateName } from '@/data/options';
 import { useSettings } from '@/hooks/useSettings';
+import { useSpeechPlayback } from '@/hooks/useSpeechPlayback';
 import { api, MOCK_ERROR_TRIGGER } from '@/services/api';
 import type { ChatMessage } from '@/types';
 
 export default function AskPage() {
   const { t } = useTranslation();
   const { language, stateCode, setStateCode } = useSettings();
+  const speechPlayback = useSpeechPlayback();
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -28,6 +30,7 @@ export default function AskPage() {
   const [input, setInput] = useState(() => params.get('q') ?? '');
   const [loading, setLoading] = useState(false);
   const [failedText, setFailedText] = useState<string | null>(null);
+  const [failedFromVoice, setFailedFromVoice] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>('demo-a1');
   const endRef = useRef<HTMLDivElement>(null);
@@ -53,12 +56,13 @@ export default function AskPage() {
     [messages, selectedId],
   );
 
-  async function ask(text: string, overrideState?: string) {
+  async function ask(text: string, overrideState?: string, fromVoice = false) {
     const userMessage: ChatMessage = { id: makeId('u'), role: 'user', text };
     shouldScroll.current = true;
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setFailedText(null);
+    setFailedFromVoice(false);
     setLoading(true);
     try {
       const response = await api.ask({
@@ -74,6 +78,8 @@ export default function AskPage() {
         role: 'assistant',
         text: '',
         response,
+        speechLanguage: language,
+        autoPlaySpeech: fromVoice,
         pendingQuestion: response.needs_state ? text : undefined,
       };
       shouldScroll.current = true;
@@ -81,6 +87,7 @@ export default function AskPage() {
       if (response.citations.length > 0) setSelectedId(reply.id);
     } catch {
       setFailedText(text);
+      setFailedFromVoice(fromVoice);
     } finally {
       setLoading(false);
     }
@@ -105,10 +112,12 @@ export default function AskPage() {
   }
 
   function clearConversation() {
+    speechPlayback.clear();
     setMessages([]);
     setConversationId(null);
     setSelectedId(null);
     setFailedText(null);
+    setFailedFromVoice(false);
   }
 
   function clearDocLimit() {
@@ -194,6 +203,8 @@ export default function AskPage() {
                 onViewSources={setSelectedId}
                 onFollowup={handleFollowup}
                 onChooseState={handleChooseState}
+                speech={speechPlayback}
+                language={language}
               />
             ))}
 
@@ -216,6 +227,8 @@ export default function AskPage() {
                     setMessages((prev) => prev.slice(0, -1));
                     void ask(
                       failedText === MOCK_ERROR_TRIGGER ? SUGGESTED_QUESTIONS[2].text : failedText,
+                      undefined,
+                      failedFromVoice,
                     );
                   }}
                 >
@@ -246,8 +259,9 @@ export default function AskPage() {
             <ChatInput
               value={input}
               onChange={setInput}
-              onSubmit={(text) => void ask(text)}
+              onSubmit={(text, fromVoice) => void ask(text, undefined, fromVoice)}
               loading={loading}
+              language={language}
             />
           </div>
         </Card>

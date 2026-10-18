@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { BookOpen, CircleAlert, MapPin, Phone, Volume2 } from 'lucide-react';
+import { BookOpen, CircleAlert, MapPin, Phone } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge, type BadgeTone } from '@/components/common/Badge';
 import { Button } from '@/components/common/Button';
 import { StateSelector } from '@/components/common/StateSelector';
 import { FeedbackButtons } from '@/components/feedback/FeedbackButtons';
+import { ListenButton } from '@/components/chat/ListenButton';
+import type { SpeechPlaybackController } from '@/hooks/useSpeechPlayback';
 import { cn } from '@/lib/format';
-import type { AnswerStatus, ChatMessage } from '@/types';
+import type { AnswerStatus, ChatMessage, LanguageCode } from '@/types';
 import { CitationList } from './CitationPanel';
 import { SuggestedQuestions } from './SuggestedQuestions';
 
@@ -23,6 +25,8 @@ interface MessageBubbleProps {
   onViewSources?: (messageId: string) => void;
   onFollowup?: (text: string) => void;
   onChooseState?: (messageId: string, stateCode: string) => void;
+  speech: SpeechPlaybackController;
+  language: LanguageCode;
 }
 
 export function MessageBubble({
@@ -32,6 +36,8 @@ export function MessageBubble({
   onViewSources,
   onFollowup,
   onChooseState,
+  speech,
+  language,
 }: MessageBubbleProps) {
   const { t } = useTranslation();
   const [pickedState, setPickedState] = useState<string | null>(null);
@@ -132,15 +138,15 @@ export function MessageBubble({
       {!response.needs_state && (
         <footer className="mt-3 flex flex-col gap-3 border-t border-line pt-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex flex-wrap gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled
-              title="Text to speech will be connected in Sprint 2"
-              icon={<Volume2 className="size-4" aria-hidden />}
-            >
-              {t('chat.listenSoon')}
-            </Button>
+            {response.status !== 'declined' && response.answer_text.trim() && (
+              <ListenButton
+                messageId={message.id}
+                text={response.answer_text}
+                language={message.speechLanguage ?? language}
+                speech={speech}
+                autoPlay={message.autoPlaySpeech}
+              />
+            )}
             {response.citations.length > 0 && onViewSources && (
               // Desktop only: the side panel. Phones see the inline source list above.
               <span className="hidden lg:contents">

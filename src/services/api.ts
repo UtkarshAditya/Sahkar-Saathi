@@ -166,20 +166,29 @@ export const api = {
    * POST /speech/transcribe (multipart). Send the MediaRecorder blob; show the returned
    * text as an editable transcript before calling ask().
    */
-  async transcribe(audio: Blob, languageHint?: LanguageCode): Promise<TranscribeResponse> {
+  async transcribe(audio: Blob, languageHint: LanguageCode): Promise<TranscribeResponse> {
     if (!USE_MOCKS) {
       const form = new FormData();
-      form.append('audio', audio, 'question.webm');
-      if (languageHint) form.append('language_hint', languageHint);
+      const extension = audio.type.includes('mp4')
+        ? 'mp4'
+        : audio.type.includes('wav')
+          ? 'wav'
+          : 'webm';
+      form.append('audio', audio, `question.${extension}`);
+      form.append('language_hint', languageHint);
       const response = await send('/speech/transcribe', { method: 'POST', body: form });
       return (await response.json()) as TranscribeResponse;
     }
+    const mockTranscripts: Record<string, string> = {
+      en: 'What should I do if my insured crop is damaged under PMFBY?',
+      hi: 'प्रधानमंत्री फसल बीमा योजना में मेरी फसल खराब हो गई है। मुझे क्या करना चाहिए?',
+      ta: 'பயிர் காப்பீட்டுத் திட்டத்தில் என் பயிர் சேதமடைந்தால் நான் என்ன செய்ய வேண்டும்?',
+    };
     return delay(
       {
-        text: 'What should I do if my insured crop is damaged under PMFBY?',
-        language: 'en',
+        text: mockTranscripts[languageHint] ?? mockTranscripts.en,
+        language: languageHint,
         confidence: 0.9,
-        is_demo: true,
       },
       700,
     );
