@@ -31,7 +31,7 @@ const HOW_IT_WORKS = [
   {
     icon: MessageSquareText,
     title: 'You ask',
-    body: 'Type a question in your language. Voice input is coming soon.',
+    body: 'Type a question in your language.',
   },
   {
     icon: Search,
