@@ -28,8 +28,10 @@ SYSTEM_PROMPT = """You answer questions about cooperative societies and farmer s
 Rules:
 1. Use ONLY the numbered passages provided. Never use outside knowledge.
 2. Copy numbers, dates and deadlines exactly as written in the passages.
-3. Every claim must be supported by a passage. List the numbers of the passages you used in "cited_ids".
-4. If the passages do not contain the answer, set "status" to "declined", leave "cited_ids" empty and say you could not find it.
+3. Every claim must be supported by a passage. List the numbers of the passages you used
+   in "cited_ids".
+4. If the passages do not contain the answer, set "status" to "declined", leave "cited_ids"
+   empty and say you could not find it.
 5. Give legal information only. Never predict the outcome of a dispute or say what someone will win.
 6. Write the answer in the language requested, in short, simple sentences.
 Reply with JSON only, in exactly this shape:
@@ -132,18 +134,41 @@ class GroundedAnswerService:
 # ---- Self-test with FAKE data, so you can run this before B's retriever exists.
 # The scheme and numbers are invented; never put real facts here from memory.
 # Once stubs.py has a retriever, use that instead of FakeRetriever.
+def _fake_passage(chunk_id, text, doc_id, title, page, score, date="2026-01-01"):
+    return Passage(
+        chunk_id=chunk_id,
+        text=text,
+        document_id=doc_id,
+        document_title=title,
+        publisher="Test",
+        source_url=None,
+        published_date=date,
+        page=page,
+        score=score,
+        state=None,
+    )
+
+
 class FakeRetriever:
     async def search(self, query, *, state, language, top_k=4, document_id=None):
+        scheme = "Example Scheme Guidelines (test)"
         return [
-            Passage(chunk_id="c1", text="TEST DATA: Under the Example Crop Scheme, a farmer must report crop loss within 72 hours of the event.",
-                    document_id="d1", document_title="Example Scheme Guidelines (test)", publisher="Test",
-                    source_url=None, published_date="2026-01-01", page=4, score=0.82, state=None),
-            Passage(chunk_id="c2", text="TEST DATA: Losses are reported to the nearest bank branch or the scheme helpline.",
-                    document_id="d1", document_title="Example Scheme Guidelines (test)", publisher="Test",
-                    source_url=None, published_date="2026-01-01", page=5, score=0.74, state=None),
-            Passage(chunk_id="c3", text="TEST DATA: A cooperative society must hold its general body meeting once a year.",
-                    document_id="d2", document_title="Example Model By-laws (test)", publisher="Test",
-                    source_url=None, published_date="2025-06-01", page=9, score=0.41, state=None),
+            _fake_passage(
+                "c1",
+                "TEST DATA: Under the Example Crop Scheme, a farmer must report crop loss "
+                "within 72 hours of the event.",
+                "d1", scheme, page=4, score=0.82,
+            ),
+            _fake_passage(
+                "c2",
+                "TEST DATA: Losses are reported to the nearest bank branch or the scheme helpline.",
+                "d1", scheme, page=5, score=0.74,
+            ),
+            _fake_passage(
+                "c3",
+                "TEST DATA: A cooperative society must hold its general body meeting once a year.",
+                "d2", "Example Model By-laws (test)", page=9, score=0.41, date="2025-06-01",
+            ),
         ]
 
 
