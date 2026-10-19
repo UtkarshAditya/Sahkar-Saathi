@@ -8,6 +8,7 @@ Everything that can change is a setting (environment variable):
     LLM_API_KEY   default "ollama" (Ollama ignores it; hosted providers need a real key)
     LLM_TIMEOUT   seconds, default 60
 """
+
 import os
 
 from openai import AsyncOpenAI, OpenAIError

@@ -10,6 +10,7 @@ Python will pick up services/types.py instead of the standard library's):
 
     python -m services.answer
 """
+
 import logging
 import re
 from typing import Literal
@@ -55,7 +56,8 @@ def build_user_prompt(question: str, passages: list[Passage], language: str) -> 
         for n, p in enumerate(passages, start=1)
     ]
     return (
-        "Passages:\n\n" + "\n\n".join(blocks)
+        "Passages:\n\n"
+        + "\n\n".join(blocks)
         + f"\n\nQuestion: {question}\nAnswer language: {language}"
     )
 
@@ -157,17 +159,27 @@ class FakeRetriever:
                 "c1",
                 "TEST DATA: Under the Example Crop Scheme, a farmer must report crop loss "
                 "within 72 hours of the event.",
-                "d1", scheme, page=4, score=0.82,
+                "d1",
+                scheme,
+                page=4,
+                score=0.82,
             ),
             _fake_passage(
                 "c2",
                 "TEST DATA: Losses are reported to the nearest bank branch or the scheme helpline.",
-                "d1", scheme, page=5, score=0.74,
+                "d1",
+                scheme,
+                page=5,
+                score=0.74,
             ),
             _fake_passage(
                 "c3",
                 "TEST DATA: A cooperative society must hold its general body meeting once a year.",
-                "d2", "Example Model By-laws (test)", page=9, score=0.41, date="2025-06-01",
+                "d2",
+                "Example Model By-laws (test)",
+                page=9,
+                score=0.41,
+                date="2025-06-01",
             ),
         ]
 
@@ -178,8 +190,8 @@ if __name__ == "__main__":
     async def _main() -> None:
         service = GroundedAnswerService(FakeRetriever())
         questions = [
-            "By when must I report crop loss?",           # should answer, citing passages 1 and 2
-            "Who won the cricket match yesterday?",       # not in the passages: should decline
+            "By when must I report crop loss?",  # should answer, citing passages 1 and 2
+            "Who won the cricket match yesterday?",  # not in the passages: should decline
             "Will I win my case against the committee?",  # outcome prediction: should decline
         ]
         for q in questions:
