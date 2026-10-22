@@ -15,7 +15,7 @@ export const SCHEME_CATEGORIES: { id: SchemeCategory; label: string }[] = [
   { id: 'digital-services', label: 'Digital services' },
 ];
 
-const SOURCE_PENDING = 'Official scheme page (link to be verified)';
+const SOURCE_PENDING = 'Source: being added';
 
 export const MOCK_SCHEMES: Scheme[] = [
   {
@@ -24,12 +24,12 @@ export const MOCK_SCHEMES: Scheme[] = [
     category: 'digital-services',
     summary:
       'Support for primary agricultural credit societies to move accounts and services onto a common software system.',
-    eligibility: 'Placeholder: which PACS qualify will be quoted from the verified scheme note.',
+    eligibility: 'Eligibility details are being added from the official scheme guidance.',
     how_to_access:
-      'Placeholder: steps will be added from the official source. Ask your PACS secretary or district cooperative office in the meantime.',
+      'Access steps are being added from the official source. Ask your PACS secretary or district cooperative office for current guidance.',
     source_label: SOURCE_PENDING,
     source_url: null,
-    as_of: '2026-10-01',
+    as_of: '',
     is_sample: true,
   },
   {
@@ -38,11 +38,11 @@ export const MOCK_SCHEMES: Scheme[] = [
     category: 'digital-services',
     summary:
       'Lets PACS offer common digital services to villagers, such as applications and payments, from the society office.',
-    eligibility: 'Placeholder: eligibility will be confirmed from the official source.',
-    how_to_access: 'Placeholder: access steps will be added after verification.',
+    eligibility: 'Eligibility details are being added from the official source.',
+    how_to_access: 'Access steps are being added from the official source.',
     source_label: SOURCE_PENDING,
     source_url: null,
-    as_of: '2026-10-01',
+    as_of: '',
     is_sample: true,
   },
   {
@@ -51,11 +51,11 @@ export const MOCK_SCHEMES: Scheme[] = [
     category: 'storage-marketing',
     summary:
       'Builds storage and allied agri-infrastructure at the PACS level so members can store produce closer to home.',
-    eligibility: 'Placeholder: which societies can take part will be quoted from the scheme note.',
-    how_to_access: 'Placeholder: process to be added from the official source.',
+    eligibility: 'Eligibility details are being added from the scheme guidance.',
+    how_to_access: 'The application process is being added from the official source.',
     source_label: SOURCE_PENDING,
     source_url: null,
-    as_of: '2026-10-01',
+    as_of: '',
     is_sample: true,
   },
   {
@@ -64,11 +64,12 @@ export const MOCK_SCHEMES: Scheme[] = [
     category: 'credit',
     summary:
       'A credit facility that helps farmers meet crop and allied expenses, available through banks and cooperative credit institutions.',
-    eligibility: 'Placeholder: eligibility and limits will be quoted from the verified source.',
-    how_to_access: 'Placeholder: ask at your bank branch or PACS; exact steps to be verified.',
+    eligibility: 'Eligibility and credit limits are being added from the official source.',
+    how_to_access:
+      'Ask at your bank branch or PACS while the current access steps are being added.',
     source_label: SOURCE_PENDING,
     source_url: null,
-    as_of: '2026-10-01',
+    as_of: '',
     is_sample: true,
   },
   {
@@ -77,12 +78,11 @@ export const MOCK_SCHEMES: Scheme[] = [
     category: 'insurance',
     summary:
       'Crop insurance that protects farmers against crop loss from natural risks. See the Crop insurance guide for step-by-step help.',
-    eligibility:
-      'Placeholder: see the Crop insurance guide; figures will be added after verification.',
-    how_to_access: 'Placeholder: enrolment routes will be quoted from the verified guidelines.',
+    eligibility: 'See the Crop insurance guide. Current eligibility details are being added.',
+    how_to_access: 'Enrolment routes are being added from the official guidelines.',
     source_label: SOURCE_PENDING,
     source_url: null,
-    as_of: '2026-10-01',
+    as_of: '',
     is_sample: true,
   },
   {
@@ -91,12 +91,11 @@ export const MOCK_SCHEMES: Scheme[] = [
     category: 'cooperative-development',
     summary:
       'Model by-laws that states can adopt so PACS can take up more business activities beyond credit.',
-    eligibility: 'Placeholder: adoption depends on each state; to be confirmed.',
-    how_to_access:
-      'Placeholder: open the Law library to see the document, or ask a question about it.',
+    eligibility: 'Adoption depends on each state. Further details are being added.',
+    how_to_access: 'Open the Law library to see related documents, or ask a question about them.',
     source_label: SOURCE_PENDING,
     source_url: null,
-    as_of: '2026-10-01',
+    as_of: '',
     is_sample: true,
   },
 ];

@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
-import { Badge } from '@/components/common/Badge';
 import { Button, ButtonLink } from '@/components/common/Button';
 import { Card, CardTitle } from '@/components/common/Card';
 import { Notice } from '@/components/common/Notice';
@@ -197,7 +196,6 @@ export default function AboutPage() {
           <CardTitle
             icon={<Eye className="size-5" aria-hidden />}
             title={<span id="sources">Source transparency</span>}
-            action={<Badge tone="saffron">{t('common.sample')}</Badge>}
           />
           <p className="text-ink-soft">
             The assistant searches a small set of public documents: the Multi-State Co-operative
@@ -206,8 +204,8 @@ export default function AboutPage() {
             replaced.
           </p>
           <p className="mt-2 text-sm text-ink-muted">
-            The library currently lists {activeDocs} active sample entries. Real metadata will
-            replace them after ingestion.
+            The library currently lists {activeDocs} entries. Source details and links are being
+            added.
           </p>
           <ButtonLink
             to="/library"

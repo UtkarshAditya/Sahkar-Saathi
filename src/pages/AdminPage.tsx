@@ -9,7 +9,6 @@ import {
   ThumbsDown,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Badge } from '@/components/common/Badge';
 import { Card } from '@/components/common/Card';
 import { Notice } from '@/components/common/Notice';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -74,7 +73,6 @@ export default function AdminPage() {
         description={t('pages.admin.description')}
         icon={<Settings className="size-6" aria-hidden />}
         breadcrumbs={[{ label: t('nav.groups.staff') }]}
-        badges={USE_MOCKS ? <Badge tone="neutral">Placeholder</Badge> : undefined}
       />
 
       <Notice tone="info" title="Provided by the backend" className="mb-6">

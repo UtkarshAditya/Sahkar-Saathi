@@ -33,7 +33,7 @@ export function Badge({ tone = 'neutral', icon, children, className }: BadgeProp
   );
 }
 
-/** The standard "Sample data" marker used on every mock item. */
-export function SampleBadge({ label = 'Sample data' }: { label?: string }) {
+/** A small marker for example content where a status label is useful. */
+export function SampleBadge({ label = 'Example' }: { label?: string }) {
   return <Badge tone="saffron">{label}</Badge>;
 }

@@ -18,10 +18,15 @@ interface FeedbackButtonsProps {
   messageId: string;
   /** Example answers exist only in the browser, so their ratings are not sent. */
   localOnly?: boolean;
+  compact?: boolean;
 }
 
 /** Thumbs up/down with a reason on "down". Sent to POST /feedback. */
-export function FeedbackButtons({ messageId, localOnly = false }: FeedbackButtonsProps) {
+export function FeedbackButtons({
+  messageId,
+  localOnly = false,
+  compact = false,
+}: FeedbackButtonsProps) {
   const { t } = useTranslation();
   const [rating, setRating] = useState<FeedbackRating | null>(null);
   const [reason, setReason] = useState<string | null>(null);
@@ -57,14 +62,16 @@ export function FeedbackButtons({ messageId, localOnly = false }: FeedbackButton
 
   const toggle = (active: boolean) =>
     cn(
-      'flex size-10 items-center justify-center rounded-lg border transition-colors disabled:cursor-default',
+      'flex size-12 items-center justify-center rounded-lg border transition-colors disabled:cursor-default',
       active
         ? 'border-brand-700 bg-brand-800 text-white'
         : 'border-line bg-surface text-ink-soft hover:bg-brand-50 hover:text-brand-800',
     );
 
   return (
-    <div className="flex flex-col gap-2">
+    <div
+      className={compact ? 'flex flex-wrap items-center gap-x-2 gap-y-1' : 'flex flex-col gap-2'}
+    >
       <div className="flex items-center gap-2">
         <span className="text-sm text-ink-muted">{t('feedback.question')}</span>
         <button
@@ -100,7 +107,7 @@ export function FeedbackButtons({ messageId, localOnly = false }: FeedbackButton
                 aria-pressed={reason === r}
                 onClick={() => setReason(r)}
                 className={cn(
-                  'rounded-full border px-3 py-1 text-sm',
+                  'min-h-12 rounded-full border px-3 py-2 text-sm',
                   reason === r
                     ? 'border-brand-700 bg-brand-800 text-white'
                     : 'border-line bg-surface hover:bg-brand-50',

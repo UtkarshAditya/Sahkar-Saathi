@@ -11,10 +11,16 @@ interface MobileNavigationProps {
   open: boolean;
   onOpen: () => void;
   onClose: () => void;
+  hideBottomNav?: boolean;
 }
 
 /** Phone and tablet navigation: a bottom bar for the main pages and a full menu drawer. */
-export function MobileNavigation({ open, onOpen, onClose }: MobileNavigationProps) {
+export function MobileNavigation({
+  open,
+  onOpen,
+  onClose,
+  hideBottomNav = false,
+}: MobileNavigationProps) {
   const { t } = useTranslation();
   const dialogRef = useRef<HTMLDialogElement>(null);
 
@@ -52,54 +58,56 @@ export function MobileNavigation({ open, onOpen, onClose }: MobileNavigationProp
         </div>
       </dialog>
 
-      <nav
-        aria-label={t('nav.primary')}
-        className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden"
-      >
-        <ul className="mx-auto grid max-w-lg grid-cols-4">
-          {NAV_ITEMS.filter((item) => item.primaryOnMobile).map((item) => (
-            <li key={item.to}>
-              <NavLink
-                to={item.to}
-                reloadDocument={item.reloadDocument}
-                end={item.to === '/'}
-                className={({ isActive }) =>
-                  cn(
-                    'flex min-h-16 flex-col items-center justify-center gap-0.5 px-1 text-xs font-semibold',
-                    isActive ? 'text-brand-800' : 'text-ink-muted hover:text-brand-800',
-                  )
-                }
+      {!hideBottomNav && (
+        <nav
+          aria-label={t('nav.primary')}
+          className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden"
+        >
+          <ul className="mx-auto grid max-w-lg grid-cols-4">
+            {NAV_ITEMS.filter((item) => item.primaryOnMobile).map((item) => (
+              <li key={item.to}>
+                <NavLink
+                  to={item.to}
+                  reloadDocument={item.reloadDocument}
+                  end={item.to === '/'}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex min-h-16 flex-col items-center justify-center gap-0.5 px-1 text-xs font-semibold',
+                      isActive ? 'text-brand-800' : 'text-ink-muted hover:text-brand-800',
+                    )
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      <span
+                        className={cn(
+                          'flex h-7 w-12 items-center justify-center rounded-full',
+                          isActive && 'bg-brand-100',
+                        )}
+                      >
+                        <item.icon className="size-5" aria-hidden />
+                      </span>
+                      <span className="truncate">{t(item.labelKey)}</span>
+                    </>
+                  )}
+                </NavLink>
+              </li>
+            ))}
+            <li>
+              <button
+                type="button"
+                onClick={onOpen}
+                className="flex min-h-16 w-full flex-col items-center justify-center gap-0.5 px-1 text-xs font-semibold text-ink-muted hover:text-brand-800"
               >
-                {({ isActive }) => (
-                  <>
-                    <span
-                      className={cn(
-                        'flex h-7 w-12 items-center justify-center rounded-full',
-                        isActive && 'bg-brand-100',
-                      )}
-                    >
-                      <item.icon className="size-5" aria-hidden />
-                    </span>
-                    <span className="truncate">{t(item.labelKey)}</span>
-                  </>
-                )}
-              </NavLink>
+                <span className="flex h-7 w-12 items-center justify-center rounded-full">
+                  <Ellipsis className="size-5" aria-hidden />
+                </span>
+                {t('nav.more')}
+              </button>
             </li>
-          ))}
-          <li>
-            <button
-              type="button"
-              onClick={onOpen}
-              className="flex min-h-16 w-full flex-col items-center justify-center gap-0.5 px-1 text-xs font-semibold text-ink-muted hover:text-brand-800"
-            >
-              <span className="flex h-7 w-12 items-center justify-center rounded-full">
-                <Ellipsis className="size-5" aria-hidden />
-              </span>
-              {t('nav.more')}
-            </button>
-          </li>
-        </ul>
-      </nav>
+          </ul>
+        </nav>
+      )}
     </>
   );
 }

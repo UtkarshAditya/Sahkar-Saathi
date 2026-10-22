@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
-import { FileText, LoaderCircle, MessageSquareText, RotateCcw, Trash, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router';
+import { FileText, LoaderCircle, Menu, MoreHorizontal, Trash, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { CitationPanel } from '@/components/chat/CitationPanel';
@@ -8,14 +8,15 @@ import { MessageBubble } from '@/components/chat/MessageBubble';
 import { SuggestedQuestions } from '@/components/chat/SuggestedQuestions';
 import { Badge } from '@/components/common/Badge';
 import { Button } from '@/components/common/Button';
-import { Card } from '@/components/common/Card';
-import { LegalNotice, Notice } from '@/components/common/Notice';
-import { PageHeader } from '@/components/common/PageHeader';
+import { Modal } from '@/components/common/Modal';
+import { Notice } from '@/components/common/Notice';
 import { buildDemoConversation, makeId, SUGGESTED_QUESTIONS } from '@/data/mockChat';
 import { MOCK_DOCUMENTS } from '@/data/mockDocuments';
 import { stateName } from '@/data/options';
 import { useSettings } from '@/hooks/useSettings';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { useSpeechPlayback } from '@/hooks/useSpeechPlayback';
+import { LANGUAGES } from '@/i18n';
 import { api, MOCK_ERROR_TRIGGER, USE_MOCKS } from '@/services/api';
 import type { ChatMessage } from '@/types';
 
@@ -26,43 +27,61 @@ export default function AskPage() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // The example conversation is shown up front only in mock mode; with the real API it
-  // stays one click away ("Show example conversation").
-  const [messages, setMessages] = useState<ChatMessage[]>(() =>
-    USE_MOCKS ? buildDemoConversation() : [],
-  );
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState(() => params.get('q') ?? '');
   const [loading, setLoading] = useState(false);
   const [failedText, setFailedText] = useState<string | null>(null);
   const [failedFromVoice, setFailedFromVoice] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(USE_MOCKS ? 'demo-a1' : null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [examplesOpen, setExamplesOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [sourcesOpen, setSourcesOpen] = useState(false);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  const [transcriptReviewVersion, setTranscriptReviewVersion] = useState(0);
+  const [showExampleConversation, setShowExampleConversation] = useState(false);
+  const conversationRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
-  const shouldScroll = useRef(false);
+  const wasNearBottom = useRef(true);
+  const forceScroll = useRef(false);
 
+  useDocumentTitle(t('pages.ask.title'));
   // "Ask about this" links arrive as /?q=…&doc=…. Prefill (never auto-send).
   const docId = params.get('doc');
-  const limitedDoc = useMemo(() => MOCK_DOCUMENTS.find((d) => d.id === docId) ?? null, [docId]);
+  const limitedDoc = MOCK_DOCUMENTS.find((d) => d.id === docId) ?? null;
+  const selectedCitations = useMemo(
+    () => messages.find((message) => message.id === selectedId)?.response?.citations ?? null,
+    [messages, selectedId],
+  );
   useEffect(() => {
     const q = params.get('q');
     if (q) setInput(q);
   }, [params]);
 
   useEffect(() => {
-    if (shouldScroll.current) {
-      endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-      shouldScroll.current = false;
-    }
-  }, [messages, loading]);
+    if (!forceScroll.current && !wasNearBottom.current) return;
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    endRef.current?.scrollIntoView({
+      behavior: reducedMotion ? 'auto' : 'smooth',
+      block: 'end',
+    });
+    wasNearBottom.current = true;
+    forceScroll.current = false;
+  }, [failedText, loading, messages, transcriptReviewVersion]);
 
-  const selectedCitations = useMemo(
-    () => messages.find((m) => m.id === selectedId)?.response?.citations ?? null,
-    [messages, selectedId],
-  );
+  const handleTranscriptReview = useCallback(() => {
+    setTranscriptReviewVersion((version) => version + 1);
+  }, []);
+
+  function handleConversationScroll() {
+    const element = conversationRef.current;
+    if (!element) return;
+    wasNearBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 120;
+  }
 
   async function ask(text: string, overrideState?: string, fromVoice = false) {
     const userMessage: ChatMessage = { id: makeId('u'), role: 'user', text };
-    shouldScroll.current = true;
+    forceScroll.current = true;
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setFailedText(null);
@@ -86,7 +105,7 @@ export default function AskPage() {
         autoPlaySpeech: fromVoice,
         pendingQuestion: response.needs_state ? text : undefined,
       };
-      shouldScroll.current = true;
+      forceScroll.current = false;
       setMessages((prev) => [...prev, reply]);
       if (response.citations.length > 0) setSelectedId(reply.id);
     } catch {
@@ -117,11 +136,14 @@ export default function AskPage() {
 
   function clearConversation() {
     speechPlayback.clear();
+    forceScroll.current = true;
     setMessages([]);
     setConversationId(null);
     setSelectedId(null);
     setFailedText(null);
     setFailedFromVoice(false);
+    setShowExampleConversation(false);
+    setClearConfirmOpen(false);
   }
 
   function clearDocLimit() {
@@ -132,57 +154,57 @@ export default function AskPage() {
   }
 
   const isEmpty = messages.length === 0;
+  const activeLanguage = LANGUAGES.find((item) => item.code === language);
 
   return (
-    <>
-      <PageHeader
-        title={t('pages.ask.title')}
-        description={t('pages.ask.description')}
-        icon={<MessageSquareText className="size-6" aria-hidden />}
-        badges={
-          <>
-            <Badge tone="saffron">{t('common.demo')}: answers come from local mock data</Badge>
-            {stateCode && <Badge tone="brand">{stateName(stateCode)}</Badge>}
-          </>
-        }
-      />
-
-      <LegalNotice className="mb-6" />
-
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <Card padding="none" className="flex flex-col">
-          <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3 sm:px-5">
-            <h2 className="font-semibold">{t('chat.conversation')}</h2>
-            {isEmpty ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={<RotateCcw className="size-4" aria-hidden />}
-                onClick={() => {
-                  setMessages(buildDemoConversation());
-                  setSelectedId('demo-a1');
-                }}
-              >
-                Show example conversation
-              </Button>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={<Trash className="size-4" aria-hidden />}
-                onClick={clearConversation}
-                disabled={loading}
-              >
-                {t('chat.clear')}
-              </Button>
-            )}
+    <section className="flex h-full min-h-0 flex-col overflow-hidden">
+      <header className="shrink-0 border-b border-line px-3 py-2 sm:px-6 max-[20rem]:px-2 max-[20rem]:py-1">
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+          <h1 className="min-w-0 text-lg font-bold leading-tight sm:text-xl max-[20rem]:text-base">
+            {t('pages.ask.title')}
+          </h1>
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <Badge tone="brand">{activeLanguage?.label ?? language}</Badge>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="min-h-12"
+              icon={<MoreHorizontal className="size-4" aria-hidden />}
+              onClick={() => setMoreOpen(true)}
+            >
+              {t('chat.more')}
+            </Button>
           </div>
+        </div>
+        <p className="mt-1 text-xs leading-snug text-ink-muted sm:text-sm max-[20rem]:mt-0.5 max-[20rem]:text-[10px]">
+          {t(USE_MOCKS ? 'chat.demoLegalLine' : 'chat.legalLine')}{' '}
+          <Link to="/about" className="font-semibold text-brand-800 underline underline-offset-2">
+            {t('chat.learnMore')}
+          </Link>
+        </p>
+        <details className="group mt-1 text-sm max-[20rem]:hidden">
+          <summary className="flex min-h-12 w-fit cursor-pointer list-none items-center font-semibold text-brand-800 underline underline-offset-2 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-saffron-700 [&::-webkit-details-marker]:hidden">
+            {t('chat.howAnswersWork')}
+          </summary>
+          <p className="max-w-3xl pb-2 text-ink-soft">{t('chat.howAnswersWorkBody')}</p>
+        </details>
+      </header>
 
-          <div className="flex flex-1 flex-col gap-4 px-4 py-5 sm:px-5" aria-live="polite">
-            <section className="rounded-2xl bg-brand-50 p-4 ring-1 ring-brand-100">
-              <h2 className="text-lg font-semibold text-brand-900">{t('chat.welcomeTitle')}</h2>
-              <p className="mt-1 text-ink-soft">{t('chat.welcomeBody')}</p>
-              <div className="mt-4">
+      <div
+        ref={conversationRef}
+        role="log"
+        aria-label={t('chat.conversation')}
+        aria-live="polite"
+        aria-relevant="additions text"
+        onScroll={handleConversationScroll}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 sm:px-6"
+      >
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
+          {isEmpty ? (
+            <section className="mx-auto w-full max-w-3xl py-4 sm:py-8">
+              <h2 className="text-xl font-bold text-brand-900">{t('chat.welcomeTitle')}</h2>
+              <p className="mt-2 text-ink-soft">{t('chat.welcomeBody')}</p>
+              <div className="mt-5">
                 <SuggestedQuestions
                   title={t('chat.suggested')}
                   questions={SUGGESTED_QUESTIONS.slice(0, 4)}
@@ -191,95 +213,193 @@ export default function AskPage() {
                 />
               </div>
             </section>
-
-            {!isEmpty && messages[0]?.id.startsWith('demo-') && (
-              <p className="text-center text-xs font-semibold tracking-wide text-ink-muted uppercase">
-                Example conversation · demonstration only
-              </p>
-            )}
-
-            {messages.map((message) => (
-              <MessageBubble
-                key={message.id}
-                message={message}
-                selected={message.id === selectedId}
-                disabled={loading}
-                onViewSources={setSelectedId}
-                onFollowup={handleFollowup}
-                onChooseState={handleChooseState}
-                speech={speechPlayback}
-                language={language}
-              />
-            ))}
-
-            {loading && (
-              <div role="status" className="flex items-center gap-2 text-ink-muted">
-                <LoaderCircle className="size-5 animate-spin text-brand-700" aria-hidden />
-                {t('chat.sending')}
-              </div>
-            )}
-
-            {failedText && (
-              <Notice tone="warning" role="alert" title={t('chat.errorTitle')}>
-                <p>{t('chat.errorBody')}</p>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="mt-2"
-                  onClick={() => {
-                    // Remove the failed user message before retrying.
-                    setMessages((prev) => prev.slice(0, -1));
-                    void ask(
-                      failedText === MOCK_ERROR_TRIGGER ? SUGGESTED_QUESTIONS[2].text : failedText,
-                      undefined,
-                      failedFromVoice,
-                    );
+          ) : (
+            <>
+              {showExampleConversation && messages[0]?.id.startsWith('demo-') && (
+                <p className="text-center text-xs font-semibold text-ink-muted">
+                  {t('chat.exampleConversation')}
+                </p>
+              )}
+              {messages.map((message) => (
+                <MessageBubble
+                  key={message.id}
+                  message={message}
+                  selected={message.id === selectedId}
+                  disabled={loading}
+                  onViewSources={(messageId) => {
+                    setSelectedId(messageId);
+                    setSourcesOpen(true);
                   }}
-                >
-                  {t('common.retry')}
-                </Button>
-              </Notice>
-            )}
-            <div ref={endRef} />
-          </div>
+                  onFollowup={handleFollowup}
+                  onChooseState={handleChooseState}
+                  speech={speechPlayback}
+                  language={language}
+                />
+              ))}
 
-          <div className="sticky bottom-16 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur sm:px-5 lg:bottom-0 lg:rounded-b-2xl">
-            {limitedDoc && (
-              <div className="mb-2 flex items-center gap-2 rounded-lg bg-brand-50 px-3 py-1.5 text-sm text-brand-900">
-                <FileText className="size-4 shrink-0" aria-hidden />
-                <span className="min-w-0 flex-1 truncate">
-                  {t('chat.limitedTo')}: <strong>{limitedDoc.title}</strong>
-                </span>
-                <button
-                  type="button"
-                  onClick={clearDocLimit}
-                  className="flex size-7 items-center justify-center rounded hover:bg-brand-100"
-                  aria-label={t('chat.removeLimit')}
-                >
-                  <X className="size-4" aria-hidden />
-                </button>
-              </div>
-            )}
-            <ChatInput
-              value={input}
-              onChange={setInput}
-              onSubmit={(text, fromVoice) => void ask(text, undefined, fromVoice)}
-              loading={loading}
-              language={language}
-            />
-          </div>
-        </Card>
+              {loading && (
+                <div role="status" className="flex items-center gap-2 text-ink-muted">
+                  <LoaderCircle className="size-5 animate-spin text-brand-700" aria-hidden />
+                  {t('chat.sending')}
+                </div>
+              )}
 
-        <div className="hidden lg:block">
-          <div className="sticky top-24 flex flex-col gap-4">
-            <CitationPanel citations={selectedCitations} />
-            <Notice tone="info" title="How answers work">
-              Each answer is checked against its sources. If the evidence is weak, Sahkar Saathi
-              says it could not find the answer and names who to contact, instead of guessing.
-            </Notice>
-          </div>
+              {failedText && (
+                <Notice tone="warning" role="alert" title={t('chat.errorTitle')}>
+                  <p>{t('chat.errorBody')}</p>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="mt-2 min-h-12"
+                    onClick={() => {
+                      setMessages((prev) => prev.slice(0, -1));
+                      void ask(
+                        failedText === MOCK_ERROR_TRIGGER
+                          ? SUGGESTED_QUESTIONS[2].text
+                          : failedText,
+                        undefined,
+                        failedFromVoice,
+                      );
+                    }}
+                  >
+                    {t('common.retry')}
+                  </Button>
+                </Notice>
+              )}
+            </>
+          )}
+          <div ref={endRef} />
         </div>
       </div>
-    </>
+
+      <div className="relative z-10 shrink-0 border-t border-line bg-surface px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:px-6 max-[20rem]:pt-1 max-[20rem]:pb-1">
+        {limitedDoc && (
+          <div className="mb-2 flex items-center gap-2 rounded-lg bg-brand-50 px-3 py-1.5 text-sm text-brand-900">
+            <FileText className="size-4 shrink-0" aria-hidden />
+            <span className="min-w-0 flex-1 truncate">
+              {t('chat.limitedTo')}: <strong>{limitedDoc.title}</strong>
+            </span>
+            <button
+              type="button"
+              onClick={clearDocLimit}
+              className="flex min-h-12 min-w-12 items-center justify-center rounded hover:bg-brand-100"
+              aria-label={t('chat.removeLimit')}
+            >
+              <X className="size-5" aria-hidden />
+            </button>
+          </div>
+        )}
+        {!isEmpty && (
+          <div className="mb-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="min-h-12"
+              onClick={() => setExamplesOpen(true)}
+              icon={<Menu className="size-4" aria-hidden />}
+            >
+              {t('chat.exampleQuestions')}
+            </Button>
+          </div>
+        )}
+        <ChatInput
+          value={input}
+          onChange={setInput}
+          onSubmit={(text, fromVoice) => void ask(text, undefined, fromVoice)}
+          loading={loading}
+          language={language}
+          prominentMic
+          onTranscriptReview={handleTranscriptReview}
+        />
+      </div>
+
+      <Modal
+        open={examplesOpen}
+        onClose={() => setExamplesOpen(false)}
+        title={t('chat.exampleQuestions')}
+      >
+        <SuggestedQuestions
+          title={t('chat.suggested')}
+          questions={SUGGESTED_QUESTIONS.slice(0, 4)}
+          onSelect={(text) => {
+            setExamplesOpen(false);
+            void ask(text);
+          }}
+          disabled={loading}
+        />
+      </Modal>
+
+      <Modal open={moreOpen} onClose={() => setMoreOpen(false)} title={t('chat.more')}>
+        <div className="flex flex-col gap-3">
+          <details className="hidden rounded-xl bg-canvas p-3 max-[20rem]:block">
+            <summary className="min-h-12 cursor-pointer content-center font-semibold text-brand-800 underline underline-offset-2">
+              {t('chat.howAnswersWork')}
+            </summary>
+            <p className="pb-2 text-sm text-ink-soft">{t('chat.howAnswersWorkBody')}</p>
+          </details>
+          {USE_MOCKS && (
+            <Button
+              variant="secondary"
+              className="min-h-12 justify-start"
+              onClick={() => {
+                forceScroll.current = true;
+                setMessages(buildDemoConversation());
+                setSelectedId('demo-a1');
+                setShowExampleConversation(true);
+                setMoreOpen(false);
+              }}
+            >
+              {t('chat.showExampleConversation')}
+            </Button>
+          )}
+          <Button
+            variant="secondary"
+            className="min-h-12 justify-start"
+            disabled={isEmpty || loading}
+            icon={<Trash className="size-5" aria-hidden />}
+            onClick={() => {
+              setMoreOpen(false);
+              setClearConfirmOpen(true);
+            }}
+          >
+            {t('chat.clear')}
+          </Button>
+        </div>
+      </Modal>
+
+      <Modal
+        open={sourcesOpen}
+        onClose={() => setSourcesOpen(false)}
+        title={t('chat.sources')}
+        presentation="drawer"
+      >
+        <CitationPanel citations={selectedCitations} />
+      </Modal>
+
+      <Modal
+        open={clearConfirmOpen}
+        onClose={() => setClearConfirmOpen(false)}
+        title={t('chat.clearConfirmTitle')}
+      >
+        <p className="text-ink-soft">{t('chat.clearConfirmBody')}</p>
+        <div className="mt-5 flex flex-wrap justify-end gap-3">
+          <Button
+            variant="secondary"
+            className="min-h-12"
+            onClick={() => setClearConfirmOpen(false)}
+          >
+            {t('chat.keepConversation')}
+          </Button>
+          <Button
+            variant="danger"
+            className="min-h-12"
+            onClick={clearConversation}
+            icon={<Trash className="size-5" aria-hidden />}
+          >
+            {t('chat.confirmClear')}
+          </Button>
+        </div>
+      </Modal>
+    </section>
   );
 }

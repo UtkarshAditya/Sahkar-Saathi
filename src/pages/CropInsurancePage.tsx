@@ -55,7 +55,6 @@ export default function CropInsurancePage() {
         description={t('pages.cropInsurance.description')}
         icon={<Sprout className="size-6" aria-hidden />}
         breadcrumbs={[{ label: t('nav.groups.guides') }]}
-        badges={<Badge tone="saffron">{t('common.placeholder')}: figures not yet verified</Badge>}
         actions={
           <Button onClick={askFollowUp} icon={<MessageSquareText className="size-5" aria-hidden />}>
             Ask a follow-up
@@ -133,22 +132,26 @@ export default function CropInsurancePage() {
           </p>
           {loading && <LoadingState />}
           {error && <ErrorState message={error.message} onRetry={reload} />}
-          <ul className="grid gap-4 md:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {facts.map((fact) => {
               const Icon = FACT_ICONS[fact.kind];
               return (
                 <li key={fact.id}>
                   <Card as="article" className="flex h-full flex-col">
-                    <div className="mb-3 flex items-start justify-between gap-2">
-                      <span className="flex items-center gap-2">
-                        <span className="flex size-10 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
-                          <Icon className="size-5" aria-hidden />
-                        </span>
-                        <h3 className="font-semibold">{fact.title}</h3>
+                    <div className="mb-3 flex min-w-0 items-start gap-3">
+                      <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
+                        <Icon className="size-5" aria-hidden />
                       </span>
-                      {fact.is_placeholder && (
-                        <Badge tone="saffron">{t('common.placeholder')}</Badge>
-                      )}
+                      <div className="min-w-0">
+                        <h3 className="break-words font-semibold [overflow-wrap:anywhere]">
+                          {fact.title}
+                        </h3>
+                        {fact.is_placeholder && (
+                          <Badge tone="saffron" className="mt-2">
+                            {t('common.toBeConfirmed')}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     <p className="flex-1 text-ink-soft">{fact.body}</p>
                     <div className="mt-4 border-t border-line pt-3">

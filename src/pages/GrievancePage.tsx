@@ -13,10 +13,9 @@ import {
   Wand,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Badge } from '@/components/common/Badge';
 import { Button } from '@/components/common/Button';
 import { Card, CardTitle } from '@/components/common/Card';
-import { LegalNotice, Notice } from '@/components/common/Notice';
+import { Notice } from '@/components/common/Notice';
 import { PageHeader } from '@/components/common/PageHeader';
 import { StateSelector } from '@/components/common/StateSelector';
 import { GRIEVANCE_CATEGORIES } from '@/data/mockGrievance';
@@ -103,18 +102,12 @@ export default function GrievancePage() {
         description={t('pages.grievance.description')}
         icon={<Scale className="size-6" aria-hidden />}
         breadcrumbs={[]}
-        badges={
-          <Badge tone="saffron">{t('common.demo')}: guidance uses sample forums and steps</Badge>
-        }
       />
 
-      <div className="mb-6 flex flex-col gap-3">
-        <Notice tone="warning" title="Sahkar Saathi never files a complaint for you">
-          This page only helps you prepare. Nothing is sent to any office or stored with your name.
-          You decide whether and where to submit the draft.
-        </Notice>
-        <LegalNotice />
-      </div>
+      <Notice tone="warning" title="Sahkar Saathi never files a complaint for you" className="mb-6">
+        This page only helps you prepare. Nothing is sent to any office or stored with your name.
+        You decide whether and where to submit the draft.
+      </Notice>
 
       <ol className="mb-6 grid gap-3 sm:grid-cols-3">
         {PROCESS.map((step, i) => (
@@ -235,7 +228,6 @@ export default function GrievancePage() {
             <h2 id="result-heading" className="text-xl font-bold">
               Your guidance
             </h2>
-            <Badge tone="saffron">Sample guidance, not verified</Badge>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">

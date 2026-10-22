@@ -26,7 +26,7 @@ export function factsFor(facts: CropFact[], season: Season, crop: CropType): Cro
   );
 }
 
-const PENDING = 'Pending: schemes.yaml (PMFBY)';
+const PENDING = 'Source: being added';
 
 const placeholder = (
   id: string,

@@ -26,6 +26,8 @@ interface ChatInputProps {
   onSubmit: (text: string, fromVoice: boolean) => void;
   loading: boolean;
   language: LanguageCode;
+  prominentMic?: boolean;
+  onTranscriptReview?: () => void;
 }
 
 type SttProvider = 'auto' | 'backend' | 'browser';
@@ -64,7 +66,15 @@ function combineTranscript(draft: string, spokenText: string): string {
   return `${draft}${draft && !/\s$/.test(draft) ? ' ' : ''}${spokenText}`;
 }
 
-export function ChatInput({ value, onChange, onSubmit, loading, language }: ChatInputProps) {
+export function ChatInput({
+  value,
+  onChange,
+  onSubmit,
+  loading,
+  language,
+  prominentMic = false,
+  onTranscriptReview,
+}: ChatInputProps) {
   const { t } = useTranslation();
   const id = useId();
   const [transcribing, setTranscribing] = useState(false);
@@ -79,6 +89,10 @@ export function ChatInput({ value, onChange, onSubmit, loading, language }: Chat
   const transcriptionRequestId = useRef(0);
   const recognition = useSpeechRecognition();
   const cancelRecognition = recognition.cancel;
+
+  useEffect(() => {
+    if (reviewingTranscript) onTranscriptReview?.();
+  }, [onTranscriptReview, reviewingTranscript]);
 
   const transcribe = useCallback(
     async (audio: Blob) => {
@@ -262,7 +276,7 @@ export function ChatInput({ value, onChange, onSubmit, loading, language }: Chat
         : '';
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-2 max-[20rem]:gap-1">
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {announcement}
       </div>
@@ -278,6 +292,7 @@ export function ChatInput({ value, onChange, onSubmit, loading, language }: Chat
             type="button"
             variant="danger"
             size="md"
+            className="min-h-12"
             disabled={activeProvider === 'browser' && recognition.status === 'processing'}
             icon={<Square className="size-5" aria-hidden />}
             onClick={stopRecording}
@@ -288,6 +303,7 @@ export function ChatInput({ value, onChange, onSubmit, loading, language }: Chat
             type="button"
             variant="secondary"
             size="md"
+            className="min-h-12"
             icon={<X className="size-5" aria-hidden />}
             onClick={cancelRecording}
           >
@@ -340,7 +356,13 @@ export function ChatInput({ value, onChange, onSubmit, loading, language }: Chat
       {reviewingTranscript && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2">
           <p className="text-sm font-semibold text-brand-900">{t('chat.reviewTranscript')}</p>
-          <Button type="button" variant="secondary" size="md" onClick={discardTranscript}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="md"
+            className="min-h-12"
+            onClick={discardTranscript}
+          >
             {t('chat.discardTranscript')}
           </Button>
         </div>
@@ -354,26 +376,31 @@ export function ChatInput({ value, onChange, onSubmit, loading, language }: Chat
       <label htmlFor={id} className="sr-only">
         {t('chat.inputLabel')}
       </label>
-      <div className="flex items-end gap-2 rounded-2xl border border-line bg-surface p-2 focus-within:border-brand-600 focus-within:ring-2 focus-within:ring-brand-200">
+      <div className="flex items-end gap-2 rounded-2xl border border-line bg-surface p-2 focus-within:border-brand-600 focus-within:ring-2 focus-within:ring-brand-200 max-[20rem]:flex-wrap max-[20rem]:gap-1 max-[20rem]:p-1">
         <button
           type="button"
           onClick={startRecording}
           disabled={micDisabled}
           aria-pressed={isListening}
           aria-label={t('chat.mic')}
-          className="flex min-h-12 min-w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl bg-saffron-50 px-2 py-1 text-xs font-semibold text-saffron-800 ring-1 ring-saffron-200 hover:bg-saffron-100 disabled:cursor-not-allowed disabled:opacity-50"
+          className={
+            prominentMic
+              ? 'flex min-h-14 min-w-20 shrink-0 flex-col items-center justify-center gap-1 rounded-xl bg-saffron-700 px-2 py-1 text-base font-bold text-white ring-1 ring-saffron-700 hover:bg-saffron-800 disabled:cursor-not-allowed disabled:bg-saffron-700 disabled:text-white max-[20rem]:min-w-0 max-[20rem]:flex-1 max-[20rem]:shrink max-[20rem]:flex-row max-[20rem]:gap-1 max-[20rem]:text-sm'
+              : 'flex min-h-12 min-w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl bg-saffron-50 px-2 py-1 text-xs font-semibold text-saffron-800 ring-1 ring-saffron-200 hover:bg-saffron-100 disabled:cursor-not-allowed disabled:bg-saffron-100 disabled:text-saffron-800'
+          }
         >
-          <Mic className="size-5" aria-hidden />
-          <span>{t('chat.micButton')}</span>
+          <Mic className={prominentMic ? 'size-8 max-[20rem]:size-5' : 'size-5'} aria-hidden />
+          <span>{t(prominentMic ? 'chat.speak' : 'chat.micButton')}</span>
         </button>
         <textarea
           id={id}
+          aria-label={t('chat.inputLabel')}
           rows={1}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={t('chat.placeholder')}
-          className="max-h-40 min-h-12 min-w-0 flex-1 resize-none bg-transparent px-2 py-2.5 text-base outline-none placeholder:text-ink-muted"
+          className="max-h-32 min-h-14 min-w-0 flex-1 resize-none bg-transparent px-2 py-2.5 text-base outline-none placeholder:text-ink-muted max-[20rem]:order-last max-[20rem]:basis-full max-[20rem]:min-h-12 max-[20rem]:py-1"
           style={{ fieldSizing: 'content' } as CSSProperties}
         />
         <Button
@@ -381,13 +408,13 @@ export function ChatInput({ value, onChange, onSubmit, loading, language }: Chat
           disabled={!canSend}
           loading={loading}
           icon={<Send className="size-5" aria-hidden />}
-          className="min-h-12 shrink-0 rounded-xl px-3"
+          className="min-h-14 shrink-0 rounded-xl px-3 max-[20rem]:order-2 max-[20rem]:min-w-0 max-[20rem]:flex-1 max-[20rem]:shrink max-[20rem]:px-1"
           aria-label={t('chat.send')}
         >
           {t('chat.send')}
         </Button>
       </div>
-      <p className="px-1 text-xs text-ink-muted">{t('chat.keyboardHint')}</p>
+      <p className="px-1 text-xs text-ink-muted max-[20rem]:hidden">{t('chat.keyboardHint')}</p>
     </form>
   );
 }

@@ -48,7 +48,6 @@ export default function SchemesPage() {
         description={t('pages.schemes.description')}
         icon={<Landmark className="size-6" aria-hidden />}
         breadcrumbs={[{ label: t('nav.groups.guides') }]}
-        badges={<Badge tone="saffron">{t('common.sample')}: details not yet verified</Badge>}
       />
 
       <Card padding="sm" className="mb-6">
@@ -104,15 +103,16 @@ export default function SchemesPage() {
           <p className="mb-3 text-sm text-ink-muted" aria-live="polite">
             {filtered.length} of {data?.length ?? 0} schemes
           </p>
-          <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {filtered.map((scheme) => (
               <li key={scheme.slug}>
                 <Card as="article" className="flex h-full flex-col">
-                  <div className="mb-2 flex flex-wrap gap-2">
+                  <h2 className="break-words text-lg font-semibold [overflow-wrap:anywhere]">
+                    {scheme.title}
+                  </h2>
+                  <div className="mt-2 flex flex-wrap gap-2">
                     <Badge tone="brand">{categoryLabel(scheme.category)}</Badge>
-                    {scheme.is_sample && <Badge tone="saffron">{t('common.sample')}</Badge>}
                   </div>
-                  <h2 className="text-lg font-semibold">{scheme.title}</h2>
                   <p className="mt-1 text-ink-soft">{scheme.summary}</p>
                   <dl className="mt-3 flex-1 text-sm">
                     <dt className="font-semibold">Who can use it</dt>
@@ -122,7 +122,7 @@ export default function SchemesPage() {
                     <SourceMeta
                       sourceLabel={scheme.source_label}
                       sourceUrl={scheme.source_url}
-                      asOf={scheme.as_of}
+                      asOf={scheme.as_of || null}
                     />
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
@@ -167,10 +167,7 @@ export default function SchemesPage() {
       >
         {open && (
           <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap gap-2">
-              <Badge tone="brand">{categoryLabel(open.category)}</Badge>
-              {open.is_sample && <Badge tone="saffron">{t('common.sample')}</Badge>}
-            </div>
+            <Badge tone="brand">{categoryLabel(open.category)}</Badge>
             <dl className="flex flex-col gap-3">
               <div>
                 <dt className="font-semibold">What it is</dt>

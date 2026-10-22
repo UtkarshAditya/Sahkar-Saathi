@@ -1,7 +1,5 @@
-import { BookOpen, ExternalLink, Quote } from 'lucide-react';
+import { ExternalLink, Quote } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Badge } from '@/components/common/Badge';
-import { Card } from '@/components/common/Card';
 import { formatDate } from '@/lib/format';
 import type { Citation } from '@/types';
 
@@ -36,21 +34,13 @@ export function CitationPanel({ citations }: CitationPanelProps) {
   const { t } = useTranslation();
 
   return (
-    <Card as="aside" padding="sm" aria-labelledby="citations-heading">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 id="citations-heading" className="flex items-center gap-2 font-semibold">
-          <BookOpen className="size-5 text-brand-700" aria-hidden />
-          {t('chat.sources')}
-        </h2>
-        {citations && citations.length > 0 && <Badge tone="saffron">{t('common.demo')}</Badge>}
-      </div>
-
+    <div aria-label={t('chat.sources')}>
       {!citations || citations.length === 0 ? (
         <p className="text-sm text-ink-muted">{t('chat.noSources')}</p>
       ) : (
         <ol className="flex flex-col gap-3">
           {citations.map((c, i) => (
-            <li key={c.id} className="rounded-xl border border-line bg-canvas p-3">
+            <li key={c.id} className="rounded-xl bg-canvas p-4">
               <p className="flex gap-2 font-semibold">
                 <span className="flex size-6 shrink-0 items-center justify-center rounded bg-brand-800 text-xs text-white">
                   {i + 1}
@@ -64,11 +54,18 @@ export function CitationPanel({ citations }: CitationPanelProps) {
                 <dd>
                   {c.published_date ? formatDate(c.published_date) : t('common.dateNotStated')}
                 </dd>
-                <dt className="text-ink-muted">{t('common.page')}</dt>
-                <dd>
-                  {c.page ?? '—'}
-                  {c.section ? ` · ${c.section}` : ''}
-                </dd>
+                {c.page != null && (
+                  <>
+                    <dt className="text-ink-muted">{t('common.page')}</dt>
+                    <dd>{c.page}</dd>
+                  </>
+                )}
+                {c.section && (
+                  <>
+                    <dt className="text-ink-muted">Section</dt>
+                    <dd>{c.section}</dd>
+                  </>
+                )}
               </dl>
               {c.excerpt && (
                 <blockquote className="mt-2 flex gap-2 border-l-2 border-saffron-300 pl-2 text-sm text-ink-soft italic">
@@ -98,6 +95,6 @@ export function CitationPanel({ citations }: CitationPanelProps) {
           ))}
         </ol>
       )}
-    </Card>
+    </div>
   );
 }

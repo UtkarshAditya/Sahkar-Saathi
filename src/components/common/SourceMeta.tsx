@@ -28,17 +28,17 @@ export function SourceMeta({ sourceLabel, sourceUrl, asOf }: SourceMetaProps) {
               <ExternalLink className="size-3.5" aria-hidden />
             </a>
           ) : (
-            <span>
-              {t('common.source')}: {sourceLabel}
-            </span>
+            <span>{t('common.sourceBeingAdded')}</span>
           )}
         </dd>
       </div>
-      <div className="flex items-center gap-1.5">
-        <CalendarDays className="size-4 shrink-0" aria-hidden />
-        <dt className="sr-only">{t('common.asOf')}</dt>
-        <dd>{asOf ? `${t('common.asOf')} ${formatDate(asOf)}` : t('common.datePending')}</dd>
-      </div>
+      {asOf && (
+        <div className="flex items-center gap-1.5">
+          <CalendarDays className="size-4 shrink-0" aria-hidden />
+          <dt className="sr-only">{t('common.asOf')}</dt>
+          <dd>{`${t('common.asOf')} ${formatDate(asOf)}`}</dd>
+        </div>
+      )}
     </dl>
   );
 }

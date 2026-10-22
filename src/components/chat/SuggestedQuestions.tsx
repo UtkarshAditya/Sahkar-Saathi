@@ -45,9 +45,9 @@ export function SuggestedQuestions({
                 disabled={disabled}
                 onClick={() => onSelect(q.text)}
                 className={cn(
-                  'flex w-full items-start gap-2 text-left text-sm font-medium transition-colors disabled:opacity-50',
+                  'flex w-full items-start gap-2 text-left text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:border-line disabled:bg-canvas disabled:text-ink-soft',
                   variant === 'chips'
-                    ? 'rounded-full border border-brand-200 bg-surface px-3 py-1.5 text-brand-800 hover:bg-brand-50'
+                    ? 'min-h-12 rounded-full border border-brand-200 bg-surface px-4 py-2 text-brand-800 hover:bg-brand-50'
                     : 'h-full rounded-xl border border-line bg-surface px-3 py-2.5 text-ink hover:border-brand-300 hover:bg-brand-50',
                 )}
               >

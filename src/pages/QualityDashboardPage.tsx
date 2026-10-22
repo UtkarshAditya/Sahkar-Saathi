@@ -30,19 +30,15 @@ export default function QualityDashboardPage() {
         icon={<ChartColumn className="size-6" aria-hidden />}
         breadcrumbs={[{ label: t('nav.groups.staff') }]}
         badges={
-          <>
-            <Badge tone="saffron">Sample metrics, not real test results</Badge>
-            <Badge tone="neutral" icon={<Lock className="size-3" aria-hidden />}>
-              Staff only
-            </Badge>
-          </>
+          <Badge tone="neutral" icon={<Lock className="size-3" aria-hidden />}>
+            Staff only
+          </Badge>
         }
       />
 
-      <Notice tone="warning" title="Demonstration only" className="mb-6">
-        Every number on this page is invented to lay out the dashboard. Staff authentication and
-        real data from <code className="rounded bg-saffron-100 px-1">GET /api/v1/eval/latest</code>{' '}
-        will be added later.
+      <Notice tone="warning" title="About these results" className="mb-6">
+        These figures are examples, not measured system performance. Evaluation results will appear
+        here when they are available.
       </Notice>
 
       {loading ? (

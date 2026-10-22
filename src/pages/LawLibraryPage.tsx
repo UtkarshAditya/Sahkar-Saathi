@@ -6,7 +6,6 @@ import { Badge } from '@/components/common/Badge';
 import { Button } from '@/components/common/Button';
 import { Card } from '@/components/common/Card';
 import { EmptyState, ErrorState, LoadingState } from '@/components/common/EmptyState';
-import { Notice } from '@/components/common/Notice';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SearchInput } from '@/components/common/SearchInput';
 import { DOCUMENT_TYPES, documentTypeLabel } from '@/data/mockDocuments';
@@ -71,16 +70,7 @@ export default function LawLibraryPage() {
         description={t('pages.library.description')}
         icon={<BookOpen className="size-6" aria-hidden />}
         breadcrumbs={[{ label: t('nav.groups.guides') }]}
-        badges={
-          <Badge tone="saffron">{t('common.sample')}: metadata and links to be verified</Badge>
-        }
       />
-
-      <Notice tone="info" className="mb-6">
-        These entries are sample metadata only. Real titles, dates, versions and links will be
-        filled in by the ingestion pipeline. “Ask about this document” limits your next question to
-        that document.
-      </Notice>
 
       <Card padding="sm" className="mb-6">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -192,7 +182,7 @@ export default function LawLibraryPage() {
 
           {/* Table from tablet width up */}
           <div className="hidden overflow-x-auto rounded-2xl border border-line bg-surface md:block">
-            <table className="w-full text-left text-sm">
+            <table className="w-full min-w-[52rem] text-left text-sm">
               <caption className="sr-only">Library documents</caption>
               <thead className="border-b border-line bg-canvas text-xs tracking-wide text-ink-muted uppercase">
                 <tr>
@@ -263,12 +253,14 @@ export default function LawLibraryPage() {
             {filtered.map((doc) => (
               <li key={doc.id}>
                 <Card as="article" padding="sm">
-                  <div className="mb-2 flex flex-wrap gap-2">
+                  <h2 className="break-words font-semibold [overflow-wrap:anywhere]">
+                    {doc.title}
+                  </h2>
+                  <div className="mt-2 flex flex-wrap gap-2">
                     <Badge tone="brand">{documentTypeLabel(doc.doc_type)}</Badge>
                     <Badge>{stateName(doc.state)}</Badge>
                     {doc.status === 'retired' && <Badge>Retired</Badge>}
                   </div>
-                  <h2 className="font-semibold">{doc.title}</h2>
                   <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-sm">
                     <dt className="text-ink-muted">Publisher</dt>
                     <dd>{doc.publisher}</dd>
@@ -323,7 +315,7 @@ function SourceLink({ doc }: { doc: LibraryDocument }) {
   return (
     <span className="mt-1 inline-flex items-center gap-1 text-sm text-ink-muted">
       <ExternalLink className="size-3.5" aria-hidden />
-      {t('common.linkPending')}
+      {t('common.sourceBeingAdded')}
     </span>
   );
 }

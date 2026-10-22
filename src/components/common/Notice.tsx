@@ -45,12 +45,18 @@ export function Notice({ tone = 'info', title, children, className, role = 'note
   );
 }
 
-/** Fixed "information, not legal advice" banner for Ask and Grievance helper. */
-export function LegalNotice({ className }: { className?: string }) {
+/** Short "information, not legal advice" banner shared across pages. */
+export function LegalNotice({
+  className,
+  compact = false,
+}: {
+  className?: string;
+  compact?: boolean;
+}) {
   const { t } = useTranslation();
   return (
     <Notice tone="legal" title={t('notice.legalTitle')} className={className}>
-      {t('notice.legalBody')}
+      {!compact && t('notice.legalBody')}
     </Notice>
   );
 }

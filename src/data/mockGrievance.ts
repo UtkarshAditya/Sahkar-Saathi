@@ -65,12 +65,12 @@ export function detectCategory(description: string, hint?: string | null): MockG
 
 const FORUM_BY_CATEGORY: Record<string, { forum: string; note: string }> = {
   'crop-insurance': {
-    forum: 'Insurance company grievance cell, then the district grievance committee (sample forum)',
-    note: 'Sample forum. The verified PMFBY grievance route and helpline will be added from forums.yaml.',
+    forum: 'Insurance company grievance cell, then the district grievance committee',
+    note: 'The verified PMFBY grievance route and helpline are being added.',
   },
   default: {
-    forum: 'Registrar of Co-operative Societies, district office (sample forum)',
-    note: 'Sample forum. The exact authority depends on your state Act and will be confirmed from forums.yaml.',
+    forum: 'Registrar of Co-operative Societies, district office',
+    note: 'The exact authority depends on your state law; further details are being added.',
   },
 };
 

@@ -9,7 +9,6 @@ import { ListenButton } from '@/components/chat/ListenButton';
 import type { SpeechPlaybackController } from '@/hooks/useSpeechPlayback';
 import { cn } from '@/lib/format';
 import type { AnswerStatus, ChatMessage, LanguageCode } from '@/types';
-import { CitationList } from './CitationPanel';
 import { SuggestedQuestions } from './SuggestedQuestions';
 
 const STATUS: Record<AnswerStatus, { label: string; tone: BadgeTone }> = {
@@ -62,18 +61,29 @@ export function MessageBubble({
     <article
       aria-label={t('chat.assistant')}
       className={cn(
-        'max-w-[95%] rounded-2xl rounded-bl-md border bg-surface px-4 py-3 sm:max-w-[85%]',
-        selected ? 'border-brand-400 ring-2 ring-brand-100' : 'border-line',
+        'max-w-[95%] rounded-2xl rounded-bl-md bg-surface px-4 py-3 shadow-sm sm:max-w-[85%]',
+        selected && 'ring-2 ring-brand-200',
       )}
     >
-      <header className="mb-2 flex flex-wrap items-center gap-2">
-        <span className="font-semibold text-brand-900">{t('chat.assistant')}</span>
-        {response.needs_state ? (
-          <Badge tone="saffron" icon={<MapPin className="size-3" aria-hidden />}>
-            {t('chat.stateNeeded')}
-          </Badge>
-        ) : (
-          <Badge tone={status.tone}>{status.label}</Badge>
+      <header className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className="font-semibold text-brand-900">{t('chat.assistant')}</span>
+          {response.needs_state ? (
+            <Badge tone="saffron" icon={<MapPin className="size-3" aria-hidden />}>
+              {t('chat.stateNeeded')}
+            </Badge>
+          ) : (
+            <Badge tone={status.tone}>{status.label}</Badge>
+          )}
+        </div>
+        {!response.needs_state && response.status !== 'declined' && response.answer_text.trim() && (
+          <ListenButton
+            messageId={message.id}
+            text={response.answer_text}
+            language={message.speechLanguage ?? language}
+            speech={speech}
+            autoPlay={message.autoPlaySpeech}
+          />
         )}
       </header>
 
@@ -86,8 +96,24 @@ export function MessageBubble({
 
       <p className="whitespace-pre-wrap">{response.answer_text}</p>
 
-      {response.is_demo && !response.needs_state && (
-        <p className="mt-2 text-xs font-semibold text-saffron-700">{t('chat.demoAnswer')}</p>
+      {response.citations.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-line pt-2 text-sm">
+          <BookOpen className="size-4 shrink-0 text-brand-700" aria-hidden />
+          <p className="min-w-0 flex-1 text-ink-soft">
+            {t('common.source')}:{' '}
+            <span className="font-medium text-ink">{response.citations[0].title}</span>
+          </p>
+          {onViewSources && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="min-h-12"
+              onClick={() => onViewSources(message.id)}
+            >
+              {t('chat.showSource')}
+            </Button>
+          )}
+        </div>
       )}
 
       {asksForState && onChooseState && (
@@ -121,8 +147,6 @@ export function MessageBubble({
         </div>
       )}
 
-      <CitationList citations={response.citations} />
-
       {response.followups.length > 0 && onFollowup && (
         <div className="mt-3">
           <SuggestedQuestions
@@ -136,33 +160,8 @@ export function MessageBubble({
       )}
 
       {!response.needs_state && (
-        <footer className="mt-3 flex flex-col gap-3 border-t border-line pt-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex flex-wrap gap-2">
-            {response.status !== 'declined' && response.answer_text.trim() && (
-              <ListenButton
-                messageId={message.id}
-                text={response.answer_text}
-                language={message.speechLanguage ?? language}
-                speech={speech}
-                autoPlay={message.autoPlaySpeech}
-              />
-            )}
-            {response.citations.length > 0 && onViewSources && (
-              // Desktop only: the side panel. Phones see the inline source list above.
-              <span className="hidden lg:contents">
-                <Button
-                  variant={selected ? 'subtle' : 'secondary'}
-                  size="sm"
-                  aria-pressed={selected}
-                  onClick={() => onViewSources(message.id)}
-                  icon={<BookOpen className="size-4" aria-hidden />}
-                >
-                  {t('chat.viewSources')}
-                </Button>
-              </span>
-            )}
-          </div>
-          <FeedbackButtons messageId={response.message_id} localOnly={message.isExample} />
+        <footer className="mt-3 border-t border-line pt-2">
+          <FeedbackButtons messageId={response.message_id} localOnly={message.isExample} compact />
         </footer>
       )}
     </article>

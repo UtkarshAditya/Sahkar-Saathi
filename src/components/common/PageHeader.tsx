@@ -3,6 +3,7 @@ import { ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+import { USE_MOCKS } from '@/services/api';
 
 export interface Crumb {
   label: string;
@@ -17,6 +18,7 @@ interface PageHeaderProps {
   breadcrumbs?: Crumb[];
   badges?: ReactNode;
   actions?: ReactNode;
+  showDemoNotice?: boolean;
 }
 
 export function PageHeader({
@@ -26,6 +28,7 @@ export function PageHeader({
   breadcrumbs,
   badges,
   actions,
+  showDemoNotice = true,
 }: PageHeaderProps) {
   const { t } = useTranslation();
   useDocumentTitle(title);
@@ -72,6 +75,11 @@ export function PageHeader({
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h1>
             {description && <p className="mt-1.5 max-w-2xl text-ink-soft">{description}</p>}
             {badges && <div className="mt-3 flex flex-wrap gap-2">{badges}</div>}
+            {USE_MOCKS && showDemoNotice && (
+              <p className="mt-3 w-fit rounded-lg bg-brand-50 px-3 py-1 text-sm font-medium text-brand-900 ring-1 ring-brand-200">
+                {t('app.demoNotice')}
+              </p>
+            )}
           </div>
         </div>
         {actions && <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>}

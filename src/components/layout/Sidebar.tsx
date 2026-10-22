@@ -1,5 +1,4 @@
 import { NavLink } from 'react-router';
-import { ShieldAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { NAV_GROUPS, NAV_ITEMS } from '@/app/navigation';
 import { LanguageSelector } from '@/components/common/LanguageSelector';
@@ -13,6 +12,17 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto px-4 py-5">
+      <section
+        aria-labelledby="settings-heading"
+        className="flex flex-col gap-4 border-b border-line pb-5"
+      >
+        <h2 id="settings-heading" className="sr-only">
+          {t('settings.title')}
+        </h2>
+        <LanguageSelector />
+        <StateSelector showHint />
+      </section>
+
       <nav aria-label={t('nav.primary')} className="flex flex-col gap-5">
         {NAV_GROUPS.map((group) => (
           <div key={group}>
@@ -55,22 +65,6 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           </div>
         ))}
       </nav>
-
-      <section
-        aria-labelledby="settings-heading"
-        className="flex flex-col gap-4 border-t border-line pt-5"
-      >
-        <h2 id="settings-heading" className="sr-only">
-          {t('settings.title')}
-        </h2>
-        <LanguageSelector />
-        <StateSelector showHint />
-      </section>
-
-      <p className="mt-auto flex gap-2 rounded-xl bg-saffron-50 px-3 py-2.5 text-xs leading-relaxed text-saffron-800 ring-1 ring-saffron-200">
-        <ShieldAlert className="size-4 shrink-0" aria-hidden />
-        {t('notice.sidebar')}
-      </p>
     </div>
   );
 }
