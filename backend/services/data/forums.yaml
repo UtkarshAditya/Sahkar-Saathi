@@ -1,0 +1,25 @@
+forums:
+  - id: krph_helpline
+    name: "Krishi Rakshak Portal & Helpline (KRPH)"
+    category: "Crop Insurance & PMFBY Grievances"
+    contact_number: "14447"
+    alternative_number: "1800-200-5142"
+    whatsapp_bot: "7065514447"
+    description: "Dedicated toll-free helpline and portal for registering crop insurance grievances, loss intimations, and status tracking under PMFBY."
+    source_url: "https://pmfby.gov.in/contact"
+    as_of: "2026-10-22"
+
+  - id: ncip_portal_grievance
+    name: "National Crop Insurance Portal (NCIP) Helpdesk"
+    category: "Online Portal Support"
+    website: "https://www.pmfby.gov.in"
+    description: "Official portal for online farmer registration, policy downloads, premium calculation, and direct grievance redressal tracking."
+    source_url: "https://pmfby.gov.in/"
+    as_of: "2026-10-22"
+
+  - id: state_agriculture_department
+    name: "State Directorate of Agriculture / District Agriculture Officer (DAO)"
+    category: "Local Administrative Redressal"
+    description: "District and state-level nodal authorities responsible for supervising crop cutting experiments (CCEs), localized calamity assessments, and grievance escalation."
+    source_url: "https://pmfby.gov.in/"
+    as_of: "2026-10-22"
