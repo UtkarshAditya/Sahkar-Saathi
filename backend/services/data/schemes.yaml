@@ -1,0 +1,31 @@
+schemes:
+  - id: pmfby
+    title: "Pradhan Mantri Fasal Bima Yojana (PMFBY)"
+    ministry: "Ministry of Agriculture & Farmers Welfare, Department of Agriculture & Farmers Welfare"
+    objective: "Provide financial support to farmers suffering crop loss/damage arising out of unforeseen events, stabilize their income, and encourage modern agricultural practices."
+    eligibility:
+      - "All farmers growing notified crops in a notified area, including loanee, non-loanee, sharecroppers, and tenant farmers."
+      - "Loanee farmers availing Seasonal Agricultural Operations (SAO) loans are covered compulsorily for notified crops."
+      - "Non-loanee farmers can enroll voluntarily via the National Crop Insurance Portal or banks/CSC."
+    premium_shares:
+      kharif_food_oilseeds:
+        rate: "2.0% of Sum Insured or actuarial rate, whichever is less"
+        season: "Kharif"
+        crops: "All food grains and oilseed crops (Cereals, Millets, Pulses, Oilseeds)"
+      rabi_food_oilseeds:
+        rate: "1.5% of Sum Insured or actuarial rate, whichever is less"
+        season: "Rabi"
+        crops: "All food grains and oilseed crops (Cereals, Millets, Pulses, Oilseeds)"
+      commercial_horticultural:
+        rate: "5.0% of Sum Insured or actuarial rate, whichever is less"
+        season: "Kharif & Rabi"
+        crops: "Annual Commercial / Horticultural crops"
+    loss_reporting_rule:
+      timeline: "Within 72 hours of the occurrence of localized calamity or damage"
+      modes:
+        - "National Crop Insurance Portal (NCIP)"
+        - "PMFBY Mobile App"
+        - "Direct intimation to insurance company / toll-free helpline / local agriculture office"
+    source_url: "https://pmfby.gov.in/"
+    document_source: "Revised Operational Guidelines of Pradhan Mantri Fasal Bima Yojana (PMFBY)"
+    as_of: "2026-10-22"
