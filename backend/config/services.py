@@ -1,11 +1,13 @@
 """Wiring: one function per service interface.
 
 Handlers call only these functions, so swapping a stub for the real implementation never
-touches an endpoint. With ``USE_STUBS`` on, each returns its stub from ``services.stubs``.
-With it off, each returns the real implementation, or raises ``ServiceNotReady`` (HTTP 503)
-until that implementation is plugged in below.
+touches an endpoint. Each service has its own flag (settings.USE_STUB_RETRIEVER,
+USE_STUB_ANSWER, USE_STUB_SPEECH, USE_STUB_GRIEVANCE; all default to USE_STUBS), so
+services can be switched on one at a time. A real service that is not plugged in yet
+raises ``ServiceNotReady`` (HTTP 503) naming the flag to set.
 """
 
+import logging
 from functools import cache
 
 from django.conf import settings
@@ -18,63 +20,79 @@ from services.stubs import (
 )
 from services.types import (
     AnswerService,
+    Contact,
     GrievanceGuide,
     Retriever,
     ServiceNotReady,
     SpeechProvider,
 )
 
+logger = logging.getLogger("sahkar.services")
+
 
 def get_retriever() -> Retriever:
-    return _retriever(settings.USE_STUBS)
+    return _retriever(settings.USE_STUB_RETRIEVER)
 
 
 def get_answer_service() -> AnswerService:
-    return _answer_service(settings.USE_STUBS)
+    # Keyed by the retriever flag too, because the real answer service wraps a retriever.
+    return _answer_service(settings.USE_STUB_ANSWER, settings.USE_STUB_RETRIEVER)
 
 
 def get_speech_provider() -> SpeechProvider:
-    return _speech_provider(settings.USE_STUBS)
+    return _speech_provider(settings.USE_STUB_SPEECH)
 
 
 def get_grievance_guide() -> GrievanceGuide:
-    return _grievance_guide(settings.USE_STUBS)
+    return _grievance_guide(settings.USE_STUB_GRIEVANCE)
 
 
-# Cached per USE_STUBS value, so real services (models, clients) are built once.
+# Cached per flag value, so real services (models, clients) are built once.
 
 
 @cache
-def _retriever(use_stubs: bool) -> Retriever:
-    if use_stubs:
+def _retriever(use_stub: bool) -> Retriever:
+    if use_stub:
         return StubRetriever()
-    # Member B: return the Qdrant-backed retriever from services/retrieval/ here.
-    raise ServiceNotReady("The retriever is not connected yet. Set USE_STUBS=true.")
+    from services.retrieval.qdrant_retriever import QdrantRetriever
+
+    return QdrantRetriever()
 
 
 @cache
-def _answer_service(use_stubs: bool) -> AnswerService:
-    if use_stubs:
+def _answer_service(use_stub: bool, use_stub_retriever: bool) -> AnswerService:
+    if use_stub:
         return StubAnswerService(
             StubRetriever(),
             score_threshold=settings.SCORE_THRESHOLD,
             covered_state=settings.COVERED_STATE_CODE,
         )
-    # Member C: return the agent / grounded answer service here, built with get_retriever().
-    raise ServiceNotReady("The answer service is not connected yet. Set USE_STUBS=true.")
+    from services.answer import GroundedAnswerService
+
+    return GroundedAnswerService(
+        _retriever(use_stub_retriever),
+        min_score=settings.SCORE_THRESHOLD,
+        top_k=settings.TOP_K,
+        contact=Contact(label=settings.HELPLINE_LABEL, detail=settings.HELPLINE_DETAIL),
+    )
 
 
 @cache
-def _speech_provider(use_stubs: bool) -> SpeechProvider:
-    if use_stubs:
+def _speech_provider(use_stub: bool) -> SpeechProvider:
+    if use_stub:
         return StubSpeechProvider()
-    # Member C: return the Bhashini provider (with Whisper fallback) from services/speech/ here.
-    raise ServiceNotReady("The speech service is not connected yet. Set USE_STUBS=true.")
+    # faster_whisper itself is imported lazily, on the first transcription.
+    from services.speech.whisper_provider import WhisperSpeechProvider
+
+    logger.warning(
+        "Speech: Whisper transcribes; synthesis (Listen) is still the stub's silent audio."
+    )
+    return WhisperSpeechProvider(synthesizer=StubSpeechProvider())
 
 
 @cache
-def _grievance_guide(use_stubs: bool) -> GrievanceGuide:
-    if use_stubs:
+def _grievance_guide(use_stub: bool) -> GrievanceGuide:
+    if use_stub:
         return StubGrievanceGuide()
     # Member C: return the forums.yaml-backed guide here.
-    raise ServiceNotReady("The grievance guide is not connected yet. Set USE_STUBS=true.")
+    raise ServiceNotReady("The grievance guide is not connected yet. Set USE_STUB_GRIEVANCE=true.")

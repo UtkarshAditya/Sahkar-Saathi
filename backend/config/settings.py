@@ -14,8 +14,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 
-def env_bool(name: str, default: bool) -> bool:
+def env_value(name: str) -> str | None:
+    """The variable's value, or None when it is unset or empty. Compose passes an empty
+    string for `${NAME:-}`, which must mean "not set", not "false"."""
     value = os.environ.get(name)
+    return value if value is not None and value.strip() else None
+
+
+def env_bool(name: str, default: bool) -> bool:
+    value = env_value(name)
     if value is None:
         return default
     return value.strip().lower() in {"1", "true", "yes", "on"}
@@ -192,8 +199,14 @@ NINJA_NUM_PROXIES = (
 
 APP_VERSION = os.environ.get("APP_VERSION", "0.1.0")
 
-# Serve stub answers, retrieval and speech until the real services land.
+# Serve stub answers, retrieval and speech until the real services land. USE_STUBS is the
+# default for every service; each USE_STUB_<SERVICE> flag overrides it for one service, so
+# mixed mode works (for example a real answer service over the stub retriever).
 USE_STUBS = env_bool("USE_STUBS", True)
+USE_STUB_RETRIEVER = env_bool("USE_STUB_RETRIEVER", USE_STUBS)
+USE_STUB_ANSWER = env_bool("USE_STUB_ANSWER", USE_STUBS)
+USE_STUB_SPEECH = env_bool("USE_STUB_SPEECH", USE_STUBS)
+USE_STUB_GRIEVANCE = env_bool("USE_STUB_GRIEVANCE", USE_STUBS)
 # Serve saved answers for the five scripted conversations if a service is down (Sprint 3).
 DEMO_CACHE = env_bool("DEMO_CACHE", False)
 # Turn off to keep no message text at all (Sprint 2, when messages are stored).
@@ -208,9 +221,19 @@ COVERED_STATE_CODE = os.environ.get("COVERED_STATE_CODE", "TN")
 CONTENT_DIR = Path(os.environ.get("CONTENT_DIR") or BASE_DIR / "data")
 SUPPORTED_LANGUAGES = ["en", "hi", REGIONAL_LANGUAGE_CODE]
 
-# Agent and language model (member C).
+# Agent and language model (member C). services/llm.py reads LLM_BASE_URL, LLM_MODEL,
+# LLM_API_KEY, LLM_TIMEOUT and LLM_JSON_MODE itself, at call time. LLM_PROVIDER is a label
+# only; nothing reads it yet.
 LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "")
 LLM_MODEL = os.environ.get("LLM_MODEL", "")
+# Who a declined answer tells the user to contact. Never put an unverified number here.
+HELPLINE_LABEL = (
+    env_value("HELPLINE_LABEL")
+    or "Your district cooperative office (Registrar of Co-operative Societies)"
+)
+HELPLINE_DETAIL = (
+    env_value("HELPLINE_DETAIL") or "Verified helpline numbers will be added from forums.yaml."
+)
 BHASHINI_API_KEY = os.environ.get("BHASHINI_API_KEY", "")
 BHASHINI_USER_ID = os.environ.get("BHASHINI_USER_ID", "")
 

@@ -82,7 +82,10 @@ services:
       db:
         condition: service_healthy
       qdrant:
-        condition: service_started
+        condition: service_healthy
+    # Lets the API reach an LLM server running on the host (for example Ollama on :11434).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       DJANGO_ENV: production
       DJANGO_SECRET_KEY_FILE: /secrets/django_secret_key
@@ -104,12 +107,29 @@ services:
       WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
       # Team settings (see backend/.env.example for what each one does).
       USE_STUBS: ${USE_STUBS:-true}
+      # Per-service overrides; empty means "follow USE_STUBS".
+      USE_STUB_RETRIEVER: ${USE_STUB_RETRIEVER:-}
+      USE_STUB_ANSWER: ${USE_STUB_ANSWER:-}
+      USE_STUB_SPEECH: ${USE_STUB_SPEECH:-}
+      USE_STUB_GRIEVANCE: ${USE_STUB_GRIEVANCE:-}
       DEMO_CACHE: ${DEMO_CACHE:-false}
       STORE_MESSAGES: ${STORE_MESSAGES:-true}
       REGIONAL_LANGUAGE_CODE: ${REGIONAL_LANGUAGE_CODE:-ta}
       COVERED_STATE_CODE: ${COVERED_STATE_CODE:-TN}
-      LLM_PROVIDER: ${LLM_PROVIDER:-}
-      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://host.docker.internal:11434/v1}
+      LLM_MODEL: ${LLM_MODEL:-llama3.1:8b}
+      LLM_API_KEY: ${LLM_API_KEY:-ollama}
+      LLM_TIMEOUT: ${LLM_TIMEOUT:-}
+      LLM_JSON_MODE: ${LLM_JSON_MODE:-}
+      # Real defaults, not empty: whisper_provider.py treats an empty value as a model name.
+      WHISPER_MODEL: ${WHISPER_MODEL:-small}
+      WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
+      WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE:-int8}
+      WARM_TIMEOUT: ${WARM_TIMEOUT:-300}
+      HF_HOME: /models
+      HELPLINE_LABEL: ${HELPLINE_LABEL:-}
+      HELPLINE_DETAIL: ${HELPLINE_DETAIL:-}
+      SOURCES_CSV: /app/data/sources.csv
       BHASHINI_API_KEY: ${BHASHINI_API_KEY:-}
       BHASHINI_USER_ID: ${BHASHINI_USER_ID:-}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-intfloat/multilingual-e5-small}
@@ -119,6 +139,10 @@ services:
     volumes:
       - static_files:/srv/django
       - secrets:/secrets:ro
+      # Whisper model cache (HF_HOME); the only other writable path besides /tmp.
+      - models:/models
+      # The document list; edit it on the host, then run `manage.py load_sources`.
+      - ./data/sources.csv:/app/data/sources.csv:ro
     read_only: true
     tmpfs:
       - /tmp
@@ -131,6 +155,7 @@ services:
       context: .
       args:
         VITE_REGIONAL_LANGUAGE_CODE: ${REGIONAL_LANGUAGE_CODE:-ta}
+        VITE_STT_PROVIDER: ${VITE_STT_PROVIDER:-backend}
     depends_on:
       web:
         condition: service_healthy
@@ -159,3 +184,4 @@ volumes:
   static_files:
   caddy_data:
   caddy_config:
+  models:

@@ -17,13 +17,20 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from .llm import MODEL, generate
+from .llm import generate, model_name
+from .stubs import DEFAULT_CONTACT
 from .types import Answer, Contact, Passage, Retriever
 
 logger = logging.getLogger(__name__)
 
-# Replace with a verified number from forums.yaml before the demo.
-HELPLINE = Contact(label="Helpline", detail="[ADD VERIFIED HELPLINE HERE]")
+# Shown when the answer is declined. English is the fallback for any other language code.
+DECLINE_TEXT = {
+    "en": "I could not find this in the verified documents.",
+    # hi: machine-written, needs review by a fluent speaker.
+    "hi": "मुझे यह जानकारी सत्यापित दस्तावेज़ों में नहीं मिली।",
+    # ta: machine-written, needs review by a fluent speaker.
+    "ta": "சரிபார்க்கப்பட்ட ஆவணங்களில் இந்தத் தகவலை என்னால் கண்டுபிடிக்க முடியவில்லை.",
+}
 
 SYSTEM_PROMPT = """You answer questions about cooperative societies and farmer schemes in India.
 Rules:
@@ -71,12 +78,22 @@ def _parse(raw: str) -> ModelOutput:
 class GroundedAnswerService:
     """AnswerService implementation: retrieve, check, write, validate."""
 
-    def __init__(self, retriever: Retriever, min_score: float = 0.0, retries: int = 1) -> None:
+    def __init__(
+        self,
+        retriever: Retriever,
+        min_score: float = 0.0,
+        retries: int = 1,
+        top_k: int = 4,
+        contact: Contact | None = None,
+    ) -> None:
         # min_score depends on the embedding model's score scale, so re-tune it
         # whenever B changes the embedding model.
         self.retriever = retriever
         self.min_score = min_score
         self.retries = retries
+        self.top_k = top_k
+        # Who a declined answer points to; the API wiring passes HELPLINE_LABEL/DETAIL.
+        self.contact = contact or DEFAULT_CONTACT
 
     async def ask(
         self,
@@ -89,7 +106,7 @@ class GroundedAnswerService:
         # TODO Sprint 2: if the question needs a state and state is None, return
         # Answer(needs_state=True, ...) before searching.
         passages = await self.retriever.search(
-            text, state=state, language=language, top_k=4, document_id=document_id
+            text, state=state, language=language, top_k=self.top_k, document_id=document_id
         )
         top_score = max((p.score for p in passages), default=None)
 
@@ -116,20 +133,20 @@ class GroundedAnswerService:
                     language=language,
                     citations=cited,
                     top_score=top_score,
-                    model=MODEL,
+                    model=model_name(),
                 )
         return self._declined(language, top_score, "failed_validation")
 
     def _declined(self, language: str, top_score: float | None, reason: str) -> Answer:
         logger.info("declined: %s (top_score=%s)", reason, top_score)
         return Answer(
-            text="I could not find this in the verified documents.",
+            text=DECLINE_TEXT.get(language, DECLINE_TEXT["en"]),
             status="declined",
             language=language,
             citations=[],
-            contact=HELPLINE,
+            contact=self.contact,
             top_score=top_score,
-            model=MODEL,
+            model=model_name(),
         )
 
 

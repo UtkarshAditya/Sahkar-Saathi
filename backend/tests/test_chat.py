@@ -148,7 +148,9 @@ def test_validation_errors_use_error_shape(client, body):
 
 
 def test_service_not_ready_without_stubs(client, settings):
-    settings.USE_STUBS = False
+    # The real answer service over the retriever skeleton, which is not implemented yet.
+    settings.USE_STUB_ANSWER = False
+    settings.USE_STUB_RETRIEVER = False
     res = ask(client, text="PMFBY claim")
     assert res.status_code == 503
     assert res.json()["code"] == "service_not_ready"
