@@ -140,7 +140,8 @@ Common changes:
 | Setting                                | Why                                                               |
 | -------------------------------------- | ----------------------------------------------------------------- |
 | `HTTP_PORT=8080`                       | Port 80 is taken on your machine. Then open http://localhost:8080 |
-| `USE_STUBS=false`                      | Use the real services once members B and C have plugged them in   |
+| `USE_STUB_ANSWER=false`                | Real answers from an LLM (see section 9)                          |
+| `USE_STUB_SPEECH=false`                | Real speech-to-text with Whisper (see section 10)                 |
 | `BHASHINI_API_KEY`, `BHASHINI_USER_ID` | Speech keys (member C)                                            |
 | `LOAD_SAMPLE_DOCUMENTS=false`          | Start the library empty instead of with 9 sample entries          |
 
@@ -149,7 +150,108 @@ Apply changes with `docker compose up --build -d --wait`.
 For a public HTTPS deployment (a real domain), see "Deploying publicly" in the root
 `README.md`.
 
-## 9. Troubleshooting
+## 9. Turning on the real answer service
+
+By default every service is a stub. Each one has its own switch, so you can turn on the
+real answer service (an LLM writing answers from the retrieved passages) and leave the
+rest as stubs:
+
+| Flag                 | `true` (stub)                | `false` (real)                                       |
+| -------------------- | ---------------------------- | ---------------------------------------------------- |
+| `USE_STUB_ANSWER`    | Canned demonstration answers | The LLM writes a cited answer, or declines           |
+| `USE_STUB_RETRIEVER` | Three sample passages        | Not built yet: every question returns an error (503) |
+| `USE_STUB_SPEECH`    | A fixed transcript           | Whisper speech-to-text (section 10)                  |
+| `USE_STUB_GRIEVANCE` | Template grievance guide     | Not built yet: the grievance page returns an error   |
+
+An empty flag follows `USE_STUBS` (default `true`). The LLM can be any server with an
+OpenAI-compatible API.
+
+**Example 1: Ollama on your own machine.** Install [Ollama](https://ollama.com), then
+download a model:
+
+```bash
+ollama pull llama3.1:8b
+```
+
+Put this in `.env`:
+
+```bash
+USE_STUB_ANSWER=false
+LLM_BASE_URL=http://host.docker.internal:11434/v1
+LLM_MODEL=llama3.1:8b
+LLM_API_KEY=ollama
+```
+
+`host.docker.internal` is how the container reaches your machine. On Linux, also make
+Ollama listen on all interfaces: `OLLAMA_HOST=0.0.0.0 ollama serve`.
+
+**Example 2: a hosted OpenAI-compatible API.** Use the URL, key and model name from your
+provider. The values below are placeholders:
+
+```bash
+USE_STUB_ANSWER=false
+LLM_BASE_URL=https://api.example-provider.com/v1
+LLM_MODEL=example-model-name
+LLM_API_KEY=your-api-key-here
+# Only if the provider rejects JSON mode:
+# LLM_JSON_MODE=false
+```
+
+Never commit `.env`: it holds your key.
+
+Then apply it and ask a question:
+
+```bash
+docker compose up --build -d --wait
+docker compose logs -f web      # each question logs its status and latency
+```
+
+**Retrieval is still a stub**, so answers cite the three sample passages, not the real
+documents. When the real retriever is ready, `USE_STUB_RETRIEVER=false` is the only change.
+
+If the LLM cannot be reached, the app shows an error ("An upstream service failed") and
+the log shows `provider error: LLM call failed ...` with the model and URL it tried.
+
+## 10. Real speech-to-text
+
+```bash
+# .env
+USE_STUB_SPEECH=false
+WHISPER_MODEL=small        # tiny or base are faster and less accurate
+```
+
+Then `docker compose up --build -d --wait`.
+
+- The first start downloads the Whisper model (about 500 MB for `small`) into the `models`
+  volume, so it is slow; later starts reuse it. Start-up waits at most `WARM_TIMEOUT`
+  seconds (default 300) for the download, then serves anyway and loads the model on the
+  first recording.
+- Check progress with `docker compose logs web`. Look for
+  `warm_models: Whisper model 'small' loaded in ... s`, or a warning saying why it could
+  not load.
+- Listen (text-to-speech) still plays the stub's silent audio.
+- `docker compose down --volumes` deletes the downloaded model too.
+
+## 11. Updating the document list
+
+The library's document list comes from `data/sources.csv`, which is mounted read-only
+into the API container and loaded on every start. After editing it, check it first:
+
+```bash
+docker compose exec web python manage.py load_sources --dry-run
+```
+
+This prints how many rows would be created, updated or skipped, and why each skipped row
+was rejected. Nothing is written. Then load it:
+
+```bash
+docker compose exec web python manage.py load_sources
+```
+
+Rows that are invalid are skipped, never guessed or fixed. Documents not in the CSV
+(samples, or ones added in the admin site) are left alone.
+
+## 12. Troubleshooting
 
 | Problem                                                                      | Fix                                                                                                                   |
 | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |

@@ -8,9 +8,13 @@ COPY . .
 ARG VITE_USE_MOCKS=false
 ARG VITE_REGIONAL_LANGUAGE_CODE=ta
 ARG VITE_REGIONAL_LANGUAGE_LABEL=தமிழ்
+# "backend" keeps recorded audio on our server; "auto" and "browser" send it to the
+# browser vendor's speech service.
+ARG VITE_STT_PROVIDER=backend
 ENV VITE_USE_MOCKS=$VITE_USE_MOCKS \
     VITE_REGIONAL_LANGUAGE_CODE=$VITE_REGIONAL_LANGUAGE_CODE \
-    VITE_REGIONAL_LANGUAGE_LABEL=$VITE_REGIONAL_LANGUAGE_LABEL
+    VITE_REGIONAL_LANGUAGE_LABEL=$VITE_REGIONAL_LANGUAGE_LABEL \
+    VITE_STT_PROVIDER=$VITE_STT_PROVIDER
 # Type-checks the app against the frozen contract (contract-check.ts), then builds.
 RUN npm run build
 

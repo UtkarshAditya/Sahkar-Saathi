@@ -19,7 +19,7 @@ def test_health_reports_vector_store_not_used_with_stubs(client):
 
 
 def test_health_is_degraded_when_vector_store_is_down(client, settings):
-    settings.USE_STUBS = False
+    settings.USE_STUB_RETRIEVER = False
     settings.QDRANT_URL = "http://127.0.0.1:9"  # nothing listens here
     settings.HEALTH_CHECK_TIMEOUT_SECONDS = 0.2
     body = client.get("/api/v1/health").json()

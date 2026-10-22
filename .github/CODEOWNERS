@@ -1,0 +1,9 @@
+# Changes to these paths need a review from the platform owner.
+# The API contract, Django configuration, containers, deployment and CI.
+/backend/openapi.json   @UtkarshAditya
+/backend/config/        @UtkarshAditya
+/Dockerfile             @UtkarshAditya
+/backend/Dockerfile     @UtkarshAditya
+/docker-compose.yml     @UtkarshAditya
+/deploy/                @UtkarshAditya
+/.github/               @UtkarshAditya

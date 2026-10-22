@@ -19,9 +19,11 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 COPY --chown=app:app . .
+# /models: Whisper downloads land here (HF_HOME). Created owned by the app user so the
+# named `models` volume mounted over it inherits that ownership.
 RUN chmod 0755 docker-entrypoint.sh \
-    && mkdir -p /srv/django/static \
-    && chown -R app:app /srv/django
+    && mkdir -p /srv/django/static /models \
+    && chown -R app:app /srv/django /models
 
 USER app
 EXPOSE 8000

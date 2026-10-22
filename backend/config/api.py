@@ -73,7 +73,8 @@ def _vector_store_ok() -> bool:
 async def health(request):
     """Warm this up before a demo. ``degraded`` means a dependency is down."""
     db_ok = await sync_to_async(_database_ok)()
-    if settings.USE_STUBS:
+    # Only the real retriever uses Qdrant.
+    if settings.USE_STUB_RETRIEVER:
         vector_store = "not_used"
     else:
         vector_store = "ok" if await sync_to_async(_vector_store_ok)() else "unreachable"
@@ -81,7 +82,15 @@ async def health(request):
     return {
         "status": "ok" if healthy else "degraded",
         "version": settings.APP_VERSION,
-        "stubs": settings.USE_STUBS,
+        # True while any service is still a stub (each has its own USE_STUB_* flag).
+        "stubs": any(
+            (
+                settings.USE_STUB_RETRIEVER,
+                settings.USE_STUB_ANSWER,
+                settings.USE_STUB_SPEECH,
+                settings.USE_STUB_GRIEVANCE,
+            )
+        ),
         "database": "ok" if db_ok else "unreachable",
         "vector_store": vector_store,
     }

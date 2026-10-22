@@ -223,6 +223,8 @@ class StubAnswerService:
 _STUB_TRANSCRIPTS = {
     "en": "What should I do if my insured crop is damaged under PMFBY?",
     "hi": "अगर पीएमएफबीवाई के तहत मेरी बीमित फसल खराब हो जाए तो मुझे क्या करना चाहिए?",
+    # ta: machine-written, needs review by a fluent speaker.
+    "ta": "பிஎம்எஃப்பிஒய் திட்டத்தின் கீழ் காப்பீடு செய்யப்பட்ட என் பயிர் சேதமடைந்தால் நான் என்ன செய்ய வேண்டும்?",
 }
 
 
