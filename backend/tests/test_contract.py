@@ -27,6 +27,21 @@ EXPECTED_OPERATIONS = {
 }
 
 
+def _normalize_status_descriptions(schema):
+    """Normalize HTTP reason phrases that vary across Python versions."""
+    replacements = {
+        "Unprocessable Content": "Unprocessable Entity",
+        "Content Too Large": "Request Entity Too Large",
+    }
+    if isinstance(schema, dict):
+        return {key: _normalize_status_descriptions(value) for key, value in schema.items()}
+    if isinstance(schema, list):
+        return [_normalize_status_descriptions(item) for item in schema]
+    if isinstance(schema, str):
+        return replacements.get(schema, schema)
+    return schema
+
+
 def _export(tmp_path) -> dict:
     out = tmp_path / "openapi.json"
     call_command("export_openapi_schema", api="config.api.api", output=str(out), indent=2)
@@ -34,8 +49,8 @@ def _export(tmp_path) -> dict:
 
 
 def test_committed_openapi_json_is_up_to_date(tmp_path):
-    exported = _export(tmp_path)
-    committed = json.loads(COMMITTED.read_text(encoding="utf-8"))
+    exported = _normalize_status_descriptions(_export(tmp_path))
+    committed = _normalize_status_descriptions(json.loads(COMMITTED.read_text(encoding="utf-8")))
     assert exported == committed, (
         "openapi.json is out of date. Run: python manage.py export_openapi_schema "
         "--api config.api.api --output openapi.json --indent 2"
