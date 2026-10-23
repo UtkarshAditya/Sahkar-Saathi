@@ -102,7 +102,7 @@ def main() -> int:
     ok = status == 200 and answer["status"] == "answered" and answer["citations"]
     check("POST /chat/ask answers with citations", bool(ok), f"status {status}")
     if ok:
-        status, fb = post_json("/feedback", {"message_id": answer["message_id"], "rating": "up"})
+        status, _fb = post_json("/feedback", {"message_id": answer["message_id"], "rating": "up"})
         check("POST /feedback stores a rating", status == 201, f"status {status}")
 
     status, declined = post_json("/chat/ask", {"text": "asdf"})
