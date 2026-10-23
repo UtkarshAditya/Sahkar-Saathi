@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -153,9 +154,62 @@ def test_not_ready_messages_name_the_flag(all_stubs):
 
 
 @pytest.mark.asyncio
-async def test_qdrant_retriever_search():
-    """Verify that the implemented QdrantRetriever executes successfully."""
+@patch("services.retrieval.qdrant_retriever.QdrantClient")
+@patch("services.retrieval.qdrant_retriever.SentenceTransformer")
+async def test_qdrant_retriever_search_mocked(mock_sentence_transformer, mock_qdrant_client):
+    """Verify QdrantRetriever executes successfully with mocked dependencies."""
+    mock_model_instance = MagicMock()
+    mock_model_instance.encode.return_value = MagicMock(tolist=lambda: [0.1, 0.2, 0.3])
+    mock_sentence_transformer.return_value = mock_model_instance
+
+    mock_client_instance = MagicMock()
+    mock_point = MagicMock()
+    mock_point.id = "mock-uuid-1"
+    mock_point.score = 0.92
+    mock_point.payload = {
+        "text": "passage: mock text content",
+        "doc_id": "CEN-MSCS-ACT-2002",
+        "document_title": "MSCS Act 2002",
+        "publisher": "Govt of India",
+        "source_url": "https://example.com/act.pdf",
+        "published_date": "2025-06-27",
+        "page": 1,
+        "state": "central",
+    }
+    mock_client_instance.query_points.return_value = MagicMock(points=[mock_point])
+    mock_qdrant_client.return_value = mock_client_instance
+
     retriever = QdrantRetriever()
-    # Test a sample query against your seeded Qdrant collection
-    results = await retriever.search("cooperative societies", state=None, language="en", top_k=2)
+    results = await retriever.search("cooperative societies", state="TN", language="en", top_k=2)
+
     assert isinstance(results, list)
+    assert len(results) == 1
+    passage = results[0]
+    assert passage.chunk_id == "mock-uuid-1"
+    assert passage.document_id == "CEN-MSCS-ACT-2002"
+    assert passage.document_title == "MSCS Act 2002"
+    assert passage.publisher == "Govt of India"
+    assert passage.source_url == "https://example.com/act.pdf"
+    assert passage.published_date == "2025-06-27"
+    assert passage.page == 1
+    assert passage.state == "central"
+    assert passage.score == 0.92
+    assert passage.text == "passage: mock text content"
+
+    # Verify query prefix "query: "
+    mock_model_instance.encode.assert_called_once_with("query: cooperative societies")
+
+    # Verify query_points call
+    mock_client_instance.query_points.assert_called_once()
+    call_kwargs = mock_client_instance.query_points.call_args.kwargs
+    assert call_kwargs["collection_name"] == "sahkar_saathi_chunks"
+    assert call_kwargs["query"] == [0.1, 0.2, 0.3]
+    assert call_kwargs["limit"] == 2
+
+    # Also test state=None fallback to central
+    mock_model_instance.encode.reset_mock()
+    mock_client_instance.query_points.reset_mock()
+    results_central = await retriever.search("rules", state=None, top_k=1)
+    assert len(results_central) == 1
+    mock_model_instance.encode.assert_called_once_with("query: rules")
+    mock_client_instance.query_points.assert_called_once()

@@ -34,5 +34,4 @@ backend/staticfiles/
 data/raw/*
 !data/raw/.gitkeep
 data/qdrant_local/
-powershell.bat
 
