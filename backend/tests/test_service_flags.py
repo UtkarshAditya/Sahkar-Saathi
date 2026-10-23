@@ -152,8 +152,10 @@ def test_not_ready_messages_name_the_flag(all_stubs):
         services.get_grievance_guide()
 
 
-def test_the_retriever_skeleton_is_not_ready():
-    import asyncio
-
-    with pytest.raises(ServiceNotReady, match=r"not implemented yet \(owner: Zainab\)"):
-        asyncio.run(QdrantRetriever().search("q", state=None, language="en"))
+@pytest.mark.asyncio
+async def test_qdrant_retriever_search():
+    """Verify that the implemented QdrantRetriever executes successfully."""
+    retriever = QdrantRetriever()
+    # Test a sample query against your seeded Qdrant collection
+    results = await retriever.search("cooperative societies", state=None, language="en", top_k=2)
+    assert isinstance(results, list)
