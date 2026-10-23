@@ -1,6 +1,7 @@
 """Per-service stub flags (USE_STUB_RETRIEVER, _ANSWER, _SPEECH, _GRIEVANCE) and the
 wiring in config/services.py. No network, no model, no LLM."""
 
+import asyncio
 import os
 import subprocess
 import sys
@@ -153,10 +154,9 @@ def test_not_ready_messages_name_the_flag(all_stubs):
         services.get_grievance_guide()
 
 
-@pytest.mark.asyncio
 @patch("services.retrieval.qdrant_retriever.QdrantClient")
 @patch("services.retrieval.qdrant_retriever.SentenceTransformer")
-async def test_qdrant_retriever_search_mocked(mock_sentence_transformer, mock_qdrant_client):
+def test_qdrant_retriever_search_mocked(mock_sentence_transformer, mock_qdrant_client):
     """Verify QdrantRetriever executes successfully with mocked dependencies."""
     mock_model_instance = MagicMock()
     mock_model_instance.encode.return_value = MagicMock(tolist=lambda: [0.1, 0.2, 0.3])
@@ -180,7 +180,9 @@ async def test_qdrant_retriever_search_mocked(mock_sentence_transformer, mock_qd
     mock_qdrant_client.return_value = mock_client_instance
 
     retriever = QdrantRetriever()
-    results = await retriever.search("cooperative societies", state="TN", language="en", top_k=2)
+    results = asyncio.run(
+        retriever.search("cooperative societies", state="TN", language="en", top_k=2)
+    )
 
     assert isinstance(results, list)
     assert len(results) == 1
@@ -209,7 +211,7 @@ async def test_qdrant_retriever_search_mocked(mock_sentence_transformer, mock_qd
     # Also test state=None fallback to central
     mock_model_instance.encode.reset_mock()
     mock_client_instance.query_points.reset_mock()
-    results_central = await retriever.search("rules", state=None, top_k=1)
+    results_central = asyncio.run(retriever.search("rules", state=None, top_k=1))
     assert len(results_central) == 1
     mock_model_instance.encode.assert_called_once_with("query: rules")
     mock_client_instance.query_points.assert_called_once()

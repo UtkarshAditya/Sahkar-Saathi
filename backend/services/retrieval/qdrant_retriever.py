@@ -3,11 +3,52 @@
 import asyncio
 import os
 
-from qdrant_client import QdrantClient
-from qdrant_client.http import models as qdrant_models
-from sentence_transformers import SentenceTransformer
+try:
+    from qdrant_client import QdrantClient
+    from qdrant_client.http import models as qdrant_models
+except ModuleNotFoundError as exc:
+    _QDRANT_IMPORT_ERROR = exc
 
-from ..types import Passage
+    class QdrantClient:  # type: ignore[no-redef]
+        _missing_dependency = True
+
+        def __init__(self, *args, **kwargs):
+            raise ModuleNotFoundError(
+                "qdrant-client is required to use QdrantRetriever."
+            ) from _QDRANT_IMPORT_ERROR
+
+    class _QdrantModelsFallback:
+        class MatchValue:
+            def __init__(self, *, value):
+                self.value = value
+
+        class FieldCondition:
+            def __init__(self, *, key, match):
+                self.key = key
+                self.match = match
+
+        class Filter:
+            def __init__(self, *, must=None, should=None):
+                self.must = must
+                self.should = should
+
+    qdrant_models = _QdrantModelsFallback()
+
+try:
+    from sentence_transformers import SentenceTransformer
+except ModuleNotFoundError as exc:
+    _SENTENCE_TRANSFORMERS_IMPORT_ERROR = exc
+
+    class SentenceTransformer:  # type: ignore[no-redef]
+        _missing_dependency = True
+
+        def __init__(self, *args, **kwargs):
+            raise ModuleNotFoundError(
+                "sentence-transformers is required to use QdrantRetriever."
+            ) from _SENTENCE_TRANSFORMERS_IMPORT_ERROR
+
+
+from ..types import Passage, ServiceNotReady
 
 
 class QdrantRetriever:
@@ -26,6 +67,10 @@ class QdrantRetriever:
     @property
     def model(self) -> SentenceTransformer:
         if self._model is None:
+            if getattr(SentenceTransformer, "_missing_dependency", False) is True:
+                raise ServiceNotReady(
+                    "The retriever is unavailable. Set USE_STUB_RETRIEVER=true to use the stub."
+                )
             model_name = os.environ.get("EMBEDDING_MODEL", "intfloat/multilingual-e5-small")
             self._model = SentenceTransformer(model_name)
         return self._model
@@ -37,6 +82,10 @@ class QdrantRetriever:
     @property
     def client(self) -> QdrantClient:
         if self._client is None:
+            if getattr(QdrantClient, "_missing_dependency", False) is True:
+                raise ServiceNotReady(
+                    "The retriever is unavailable. Set USE_STUB_RETRIEVER=true to use the stub."
+                )
             qdrant_url = os.environ.get("QDRANT_URL", "http://localhost:6333")
             self._client = QdrantClient(url=qdrant_url)
         return self._client
