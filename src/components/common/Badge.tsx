@@ -32,8 +32,3 @@ export function Badge({ tone = 'neutral', icon, children, className }: BadgeProp
     </span>
   );
 }
-
-/** The standard "Sample data" marker used on every mock item. */
-export function SampleBadge({ label = 'Sample data' }: { label?: string }) {
-  return <Badge tone="saffron">{label}</Badge>;
-}

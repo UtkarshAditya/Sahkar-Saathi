@@ -10,7 +10,6 @@ import {
   Languages,
   Lock,
   MessageSquareText,
-  Phone,
   Scale,
   Search,
   ShieldCheck,
@@ -18,14 +17,12 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
-import { Badge } from '@/components/common/Badge';
 import { Button, ButtonLink } from '@/components/common/Button';
 import { Card, CardTitle } from '@/components/common/Card';
 import { Notice } from '@/components/common/Notice';
 import { PageHeader } from '@/components/common/PageHeader';
-import { MOCK_DOCUMENTS } from '@/data/mockDocuments';
 import { LANGUAGES } from '@/i18n';
-import { api, ApiError, USE_MOCKS } from '@/services/api';
+import { api, ApiError } from '@/services/api';
 
 const HOW_IT_WORKS = [
   {
@@ -77,7 +74,6 @@ const FEEDBACK_TYPES = [
 
 export default function AboutPage() {
   const { t } = useTranslation();
-  const activeDocs = MOCK_DOCUMENTS.filter((d) => d.status === 'active').length;
 
   return (
     <>
@@ -94,10 +90,9 @@ export default function AboutPage() {
             What is Sahkar Saathi?
           </h2>
           <p className="mt-2 text-ink-soft">
-            Sahkar Saathi is a prototype assistant for cooperative members, farmers and PACS
-            secretaries. You can ask about cooperative laws and by-laws, crop insurance, schemes and
-            member services, or get help preparing a grievance, in your own language. It is being
-            built for Smart India Hackathon 2026 (problem statement 26088).
+            Sahkar Saathi is an assistant for cooperative members, farmers and PACS secretaries. You
+            can ask about cooperative laws and by-laws, crop insurance, schemes and member services,
+            or get help preparing a grievance, in your own language.
           </p>
           <p className="mt-2 text-ink-soft">
             The aim is simple: short answers that always show where they come from, and an honest “I
@@ -197,17 +192,12 @@ export default function AboutPage() {
           <CardTitle
             icon={<Eye className="size-5" aria-hidden />}
             title={<span id="sources">Source transparency</span>}
-            action={<Badge tone="saffron">{t('common.sample')}</Badge>}
           />
           <p className="text-ink-soft">
             The assistant searches a small set of public documents: the Multi-State Co-operative
             Societies Act, model by-laws, one state’s Act and rules, and scheme guidelines. Each has
             a recorded publisher, date and version, and outdated versions are retired, not silently
             replaced.
-          </p>
-          <p className="mt-2 text-sm text-ink-muted">
-            The library currently lists {activeDocs} active sample entries. Real metadata will
-            replace them after ingestion.
           </p>
           <ButtonLink
             to="/library"
@@ -217,18 +207,6 @@ export default function AboutPage() {
           >
             Open the law library
           </ButtonLink>
-        </Card>
-
-        <Card as="section" aria-labelledby="helplines">
-          <CardTitle
-            icon={<Phone className="size-5" aria-hidden />}
-            title={<span id="helplines">Helplines</span>}
-          />
-          <Notice tone="warning" title="Not yet verified">
-            Helpline numbers will be listed here only after the team verifies each one against an
-            official source, with the date it was checked. Until then, contact your PACS, bank
-            branch or district cooperative office.
-          </Notice>
         </Card>
       </div>
 
@@ -243,6 +221,7 @@ interface FeedbackErrors {
 }
 
 function FeedbackForm() {
+  const { t } = useTranslation();
   const id = useId();
   const [type, setType] = useState('');
   const [message, setMessage] = useState('');
@@ -298,9 +277,7 @@ function FeedbackForm() {
       {submitted ? (
         <div className="flex flex-col items-start gap-3">
           <Notice tone="success" role="status" title="Thank you for your feedback">
-            {USE_MOCKS
-              ? 'In this demo it is not sent anywhere. With the backend connected it reaches the review queue.'
-              : 'It has reached the team’s review queue.'}
+            {t('feedback.thanks')}
           </Notice>
           <Button
             variant="secondary"

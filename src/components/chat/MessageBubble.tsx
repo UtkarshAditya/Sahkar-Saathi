@@ -86,10 +86,6 @@ export function MessageBubble({
 
       <p className="whitespace-pre-wrap">{response.answer_text}</p>
 
-      {response.is_demo && !response.needs_state && (
-        <p className="mt-2 text-xs font-semibold text-saffron-700">{t('chat.demoAnswer')}</p>
-      )}
-
       {asksForState && onChooseState && (
         <div className="mt-3 rounded-xl border border-saffron-200 bg-saffron-50 p-3">
           <p className="mb-2 text-sm text-ink-soft">{t('chat.stateNeededBody')}</p>
@@ -162,7 +158,7 @@ export function MessageBubble({
               </span>
             )}
           </div>
-          <FeedbackButtons messageId={response.message_id} localOnly={message.isExample} />
+          <FeedbackButtons messageId={response.message_id} />
         </footer>
       )}
     </article>

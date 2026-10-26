@@ -10,10 +10,8 @@ import {
   Wallet,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Badge } from '@/components/common/Badge';
 import { Button } from '@/components/common/Button';
 import { Card } from '@/components/common/Card';
-import { Notice } from '@/components/common/Notice';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SourceMeta } from '@/components/common/SourceMeta';
 import { ErrorState, LoadingState } from '@/components/common/EmptyState';
@@ -55,7 +53,6 @@ export default function CropInsurancePage() {
         description={t('pages.cropInsurance.description')}
         icon={<Sprout className="size-6" aria-hidden />}
         breadcrumbs={[{ label: t('nav.groups.guides') }]}
-        badges={<Badge tone="saffron">{t('common.placeholder')}: figures not yet verified</Badge>}
         actions={
           <Button onClick={askFollowUp} icon={<MessageSquareText className="size-5" aria-hidden />}>
             Ask a follow-up
@@ -117,11 +114,6 @@ export default function CropInsurancePage() {
               </div>
             </div>
           </Card>
-
-          <Notice tone="warning" title="No numbers until verified">
-            Premium shares, deadlines and helpline numbers are left blank on purpose. They will be
-            added from the official guidelines, each with its source and date.
-          </Notice>
         </div>
 
         <section aria-labelledby="facts-heading">
@@ -146,9 +138,6 @@ export default function CropInsurancePage() {
                         </span>
                         <h3 className="font-semibold">{fact.title}</h3>
                       </span>
-                      {fact.is_placeholder && (
-                        <Badge tone="saffron">{t('common.placeholder')}</Badge>
-                      )}
                     </div>
                     <p className="flex-1 text-ink-soft">{fact.body}</p>
                     <div className="mt-4 border-t border-line pt-3">

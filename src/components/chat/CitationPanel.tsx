@@ -1,6 +1,5 @@
 import { BookOpen, ExternalLink, Quote } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Badge } from '@/components/common/Badge';
 import { Card } from '@/components/common/Card';
 import { formatDate } from '@/lib/format';
 import type { Citation } from '@/types';
@@ -17,8 +16,8 @@ export function CitationList({ citations }: { citations: Citation[] }) {
             {i + 1}
           </span>
           <span className="text-ink-soft">
-            <span className="font-medium text-ink">{c.title}</span> ·{' '}
-            {c.published_date ? formatDate(c.published_date) : t('common.dateNotStated')}
+            <span className="font-medium text-ink">{c.title}</span>
+            {c.published_date && <> · {formatDate(c.published_date)}</>}
             {c.page != null && ` · ${t('common.page')} ${c.page}`}
           </span>
         </li>
@@ -42,7 +41,6 @@ export function CitationPanel({ citations }: CitationPanelProps) {
           <BookOpen className="size-5 text-brand-700" aria-hidden />
           {t('chat.sources')}
         </h2>
-        {citations && citations.length > 0 && <Badge tone="saffron">{t('common.demo')}</Badge>}
       </div>
 
       {!citations || citations.length === 0 ? (
@@ -60,15 +58,21 @@ export function CitationPanel({ citations }: CitationPanelProps) {
               <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-sm">
                 <dt className="text-ink-muted">Publisher</dt>
                 <dd>{c.publisher}</dd>
-                <dt className="text-ink-muted">Date</dt>
-                <dd>
-                  {c.published_date ? formatDate(c.published_date) : t('common.dateNotStated')}
-                </dd>
-                <dt className="text-ink-muted">{t('common.page')}</dt>
-                <dd>
-                  {c.page ?? '—'}
-                  {c.section ? ` · ${c.section}` : ''}
-                </dd>
+                {c.published_date && (
+                  <>
+                    <dt className="text-ink-muted">Date</dt>
+                    <dd>{formatDate(c.published_date)}</dd>
+                  </>
+                )}
+                {c.page != null && (
+                  <>
+                    <dt className="text-ink-muted">{t('common.page')}</dt>
+                    <dd>
+                      {c.page}
+                      {c.section ? ` · ${c.section}` : ''}
+                    </dd>
+                  </>
+                )}
               </dl>
               {c.excerpt && (
                 <blockquote className="mt-2 flex gap-2 border-l-2 border-saffron-300 pl-2 text-sm text-ink-soft italic">
@@ -76,8 +80,8 @@ export function CitationPanel({ citations }: CitationPanelProps) {
                   {c.excerpt}
                 </blockquote>
               )}
-              <div className="mt-2">
-                {c.url ? (
+              {c.url && (
+                <div className="mt-2">
                   <a
                     href={c.url}
                     target="_blank"
@@ -87,13 +91,8 @@ export function CitationPanel({ citations }: CitationPanelProps) {
                     Open original
                     <ExternalLink className="size-3.5" aria-hidden />
                   </a>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-sm text-ink-muted">
-                    <ExternalLink className="size-3.5" aria-hidden />
-                    {t('common.linkPending')}
-                  </span>
-                )}
-              </div>
+                </div>
+              )}
             </li>
           ))}
         </ol>

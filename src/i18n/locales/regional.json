@@ -1,11 +1,7 @@
 {
-  "_untranslated": {
-    "common.dateNotStated": "English placeholder. Needs a translation by a native speaker; do not ship as final."
-  },
   "app": {
     "name": "Sahkar Saathi",
-    "tagline": "உங்கள் மொழியில் கூட்டுறவு வழிகாட்டுதல்",
-    "demoBadge": "டெமோ பதிப்பு · மாதிரி தரவு"
+    "tagline": "உங்கள் மொழியில் கூட்டுறவு வழிகாட்டுதல்"
   },
   "nav": {
     "primary": "முதன்மை வழிசெலுத்தல்",
@@ -146,7 +142,6 @@
     },
     "sources": "மூலங்கள்",
     "viewSources": "மூலங்களைப் பார்க்க",
-    "demoAnswer": "மாதிரிப் பதில், சரிபார்க்கப்பட்ட சட்ட வழிகாட்டுதல் அல்ல",
     "declinedTitle": "இதை என் மூலங்களில் கண்டுபிடிக்க முடியவில்லை",
     "stateNeeded": "எந்த மாநிலத்தின் விதிகள் பொருந்தும்?",
     "chooseState": "மாநிலத்தைத் தேர்ந்தெடுக்கவும்",
@@ -163,8 +158,6 @@
     "thanks": "உங்கள் மதிப்பீட்டிற்கு நன்றி. இது பதில்களை மேம்படுத்த உதவுகிறது."
   },
   "common": {
-    "sample": "மாதிரி தரவு",
-    "demo": "டெமோ",
     "source": "மூலம்",
     "asOf": "தேதி",
     "page": "பக்கம்",

@@ -6,7 +6,6 @@ import { Badge } from '@/components/common/Badge';
 import { Button } from '@/components/common/Button';
 import { Card } from '@/components/common/Card';
 import { EmptyState, ErrorState, LoadingState } from '@/components/common/EmptyState';
-import { Notice } from '@/components/common/Notice';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SearchInput } from '@/components/common/SearchInput';
 import { DOCUMENT_TYPES, documentTypeLabel } from '@/data/mockDocuments';
@@ -71,16 +70,7 @@ export default function LawLibraryPage() {
         description={t('pages.library.description')}
         icon={<BookOpen className="size-6" aria-hidden />}
         breadcrumbs={[{ label: t('nav.groups.guides') }]}
-        badges={
-          <Badge tone="saffron">{t('common.sample')}: metadata and links to be verified</Badge>
-        }
       />
-
-      <Notice tone="info" className="mb-6">
-        These entries are sample metadata only. Real titles, dates, versions and links will be
-        filled in by the ingestion pipeline. “Ask about this document” limits your next question to
-        that document.
-      </Notice>
 
       <Card padding="sm" className="mb-6">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -229,9 +219,7 @@ export default function LawLibraryPage() {
                     <td className="px-4 py-3">{documentTypeLabel(doc.doc_type)}</td>
                     <td className="px-4 py-3">{stateName(doc.state)}</td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      {doc.published_date
-                        ? formatDate(doc.published_date)
-                        : t('common.dateNotStated')}
+                      {doc.published_date ? formatDate(doc.published_date) : null}
                     </td>
                     <td className="px-4 py-3">
                       <span className="whitespace-nowrap">{doc.version}</span>
@@ -272,12 +260,12 @@ export default function LawLibraryPage() {
                   <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-sm">
                     <dt className="text-ink-muted">Publisher</dt>
                     <dd>{doc.publisher}</dd>
-                    <dt className="text-ink-muted">Published</dt>
-                    <dd>
-                      {doc.published_date
-                        ? formatDate(doc.published_date)
-                        : t('common.dateNotStated')}
-                    </dd>
+                    {doc.published_date && (
+                      <>
+                        <dt className="text-ink-muted">Published</dt>
+                        <dd>{formatDate(doc.published_date)}</dd>
+                      </>
+                    )}
                     <dt className="text-ink-muted">Version</dt>
                     <dd>{doc.version}</dd>
                     <dt className="text-ink-muted">Language</dt>
@@ -306,7 +294,6 @@ export default function LawLibraryPage() {
 }
 
 function SourceLink({ doc }: { doc: LibraryDocument }) {
-  const { t } = useTranslation();
   if (doc.source_url) {
     return (
       <a
@@ -320,10 +307,5 @@ function SourceLink({ doc }: { doc: LibraryDocument }) {
       </a>
     );
   }
-  return (
-    <span className="mt-1 inline-flex items-center gap-1 text-sm text-ink-muted">
-      <ExternalLink className="size-3.5" aria-hidden />
-      {t('common.linkPending')}
-    </span>
-  );
+  return null;
 }

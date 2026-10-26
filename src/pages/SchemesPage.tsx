@@ -48,7 +48,6 @@ export default function SchemesPage() {
         description={t('pages.schemes.description')}
         icon={<Landmark className="size-6" aria-hidden />}
         breadcrumbs={[{ label: t('nav.groups.guides') }]}
-        badges={<Badge tone="saffron">{t('common.sample')}: details not yet verified</Badge>}
       />
 
       <Card padding="sm" className="mb-6">
@@ -110,7 +109,6 @@ export default function SchemesPage() {
                 <Card as="article" className="flex h-full flex-col">
                   <div className="mb-2 flex flex-wrap gap-2">
                     <Badge tone="brand">{categoryLabel(scheme.category)}</Badge>
-                    {scheme.is_sample && <Badge tone="saffron">{t('common.sample')}</Badge>}
                   </div>
                   <h2 className="text-lg font-semibold">{scheme.title}</h2>
                   <p className="mt-1 text-ink-soft">{scheme.summary}</p>
@@ -169,7 +167,6 @@ export default function SchemesPage() {
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap gap-2">
               <Badge tone="brand">{categoryLabel(open.category)}</Badge>
-              {open.is_sample && <Badge tone="saffron">{t('common.sample')}</Badge>}
             </div>
             <dl className="flex flex-col gap-3">
               <div>

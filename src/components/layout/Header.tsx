@@ -2,11 +2,9 @@ import { Link, useLocation } from 'react-router';
 import { CircleQuestionMark, MapPin, Menu } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { findNavItem } from '@/app/navigation';
-import { Badge } from '@/components/common/Badge';
 import { LanguageSelector } from '@/components/common/LanguageSelector';
 import { stateName } from '@/data/options';
 import { useSettings } from '@/hooks/useSettings';
-import { USE_MOCKS } from '@/services/api';
 import { Brand } from './Brand';
 
 export function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
@@ -35,11 +33,6 @@ export function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
         </div>
 
         <div className="flex items-center gap-2">
-          {USE_MOCKS && (
-            <span className="hidden md:contents">
-              <Badge tone="saffron">{t('app.demoBadge')}</Badge>
-            </span>
-          )}
           {stateCode && (
             <span className="hidden items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-800 ring-1 ring-brand-200 md:inline-flex">
               <MapPin className="size-3.5" aria-hidden />

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { FileText, LoaderCircle, MessageSquareText, RotateCcw, Trash, X } from 'lucide-react';
+import { FileText, LoaderCircle, MessageSquareText, Trash, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { CitationPanel } from '@/components/chat/CitationPanel';
@@ -11,12 +11,12 @@ import { Button } from '@/components/common/Button';
 import { Card } from '@/components/common/Card';
 import { LegalNotice, Notice } from '@/components/common/Notice';
 import { PageHeader } from '@/components/common/PageHeader';
-import { buildDemoConversation, makeId, SUGGESTED_QUESTIONS } from '@/data/mockChat';
+import { makeId, SUGGESTED_QUESTIONS } from '@/data/mockChat';
 import { MOCK_DOCUMENTS } from '@/data/mockDocuments';
 import { stateName } from '@/data/options';
 import { useSettings } from '@/hooks/useSettings';
 import { useSpeechPlayback } from '@/hooks/useSpeechPlayback';
-import { api, MOCK_ERROR_TRIGGER, USE_MOCKS } from '@/services/api';
+import { api, MOCK_ERROR_TRIGGER } from '@/services/api';
 import type { ChatMessage } from '@/types';
 
 export default function AskPage() {
@@ -26,17 +26,13 @@ export default function AskPage() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // The example conversation is shown up front only in mock mode; with the real API it
-  // stays one click away ("Show example conversation").
-  const [messages, setMessages] = useState<ChatMessage[]>(() =>
-    USE_MOCKS ? buildDemoConversation() : [],
-  );
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState(() => params.get('q') ?? '');
   const [loading, setLoading] = useState(false);
   const [failedText, setFailedText] = useState<string | null>(null);
   const [failedFromVoice, setFailedFromVoice] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(USE_MOCKS ? 'demo-a1' : null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const shouldScroll = useRef(false);
 
@@ -139,12 +135,7 @@ export default function AskPage() {
         title={t('pages.ask.title')}
         description={t('pages.ask.description')}
         icon={<MessageSquareText className="size-6" aria-hidden />}
-        badges={
-          <>
-            <Badge tone="saffron">{t('common.demo')}: answers come from local mock data</Badge>
-            {stateCode && <Badge tone="brand">{stateName(stateCode)}</Badge>}
-          </>
-        }
+        badges={stateCode && <Badge tone="brand">{stateName(stateCode)}</Badge>}
       />
 
       <LegalNotice className="mb-6" />
@@ -153,19 +144,7 @@ export default function AskPage() {
         <Card padding="none" className="flex flex-col">
           <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3 sm:px-5">
             <h2 className="font-semibold">{t('chat.conversation')}</h2>
-            {isEmpty ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={<RotateCcw className="size-4" aria-hidden />}
-                onClick={() => {
-                  setMessages(buildDemoConversation());
-                  setSelectedId('demo-a1');
-                }}
-              >
-                Show example conversation
-              </Button>
-            ) : (
+            {!isEmpty && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -191,12 +170,6 @@ export default function AskPage() {
                 />
               </div>
             </section>
-
-            {!isEmpty && messages[0]?.id.startsWith('demo-') && (
-              <p className="text-center text-xs font-semibold tracking-wide text-ink-muted uppercase">
-                Example conversation · demonstration only
-              </p>
-            )}
 
             {messages.map((message) => (
               <MessageBubble

@@ -93,8 +93,6 @@ export interface ChatMessage {
   response?: AskResponse;
   /** For needs_state prompts: the question to re-ask once a state is chosen. */
   pendingQuestion?: string;
-  /** Part of the built-in example conversation: never sent to or stored by the API. */
-  isExample?: boolean;
 }
 
 export type QuestionTopic = 'law' | 'pmfby' | 'schemes' | 'grievance';

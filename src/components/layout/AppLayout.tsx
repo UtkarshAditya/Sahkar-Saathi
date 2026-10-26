@@ -35,12 +35,6 @@ export default function AppLayout() {
             <Outlet />
           </div>
         </main>
-        <footer className="hidden border-t border-line px-10 py-4 text-sm text-ink-muted lg:block">
-          <div className="mx-auto max-w-6xl">
-            Sahkar Saathi · SIH 2026 problem statement 26088 · Prototype. Information, not legal
-            advice.
-          </div>
-        </footer>
       </div>
 
       <MobileNavigation

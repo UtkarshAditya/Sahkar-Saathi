@@ -16,12 +16,10 @@ const REASONS = [
 
 interface FeedbackButtonsProps {
   messageId: string;
-  /** Example answers exist only in the browser, so their ratings are not sent. */
-  localOnly?: boolean;
 }
 
 /** Thumbs up/down with a reason on "down". Sent to POST /feedback. */
-export function FeedbackButtons({ messageId, localOnly = false }: FeedbackButtonsProps) {
+export function FeedbackButtons({ messageId }: FeedbackButtonsProps) {
   const { t } = useTranslation();
   const [rating, setRating] = useState<FeedbackRating | null>(null);
   const [reason, setReason] = useState<string | null>(null);
@@ -33,14 +31,12 @@ export function FeedbackButtons({ messageId, localOnly = false }: FeedbackButton
     setSending(true);
     setError(false);
     try {
-      if (!localOnly) {
-        await api.sendFeedback({
-          message_id: messageId,
-          rating: r,
-          comment: '',
-          reason: why ?? undefined,
-        });
-      }
+      await api.sendFeedback({
+        message_id: messageId,
+        rating: r,
+        comment: '',
+        reason: why ?? undefined,
+      });
       setSent(true);
     } catch {
       setError(true);

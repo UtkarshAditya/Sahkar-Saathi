@@ -1,8 +1,7 @@
 {
   "app": {
     "name": "Sahkar Saathi",
-    "tagline": "Cooperative guidance in your language",
-    "demoBadge": "Demo build · sample data"
+    "tagline": "Cooperative guidance in your language"
   },
   "nav": {
     "primary": "Main navigation",
@@ -144,7 +143,6 @@
     "sources": "Sources",
     "viewSources": "View sources",
     "noSources": "Select an answer to see the documents it is based on.",
-    "demoAnswer": "Demonstration answer, not verified legal guidance",
     "declinedTitle": "I could not find this in my sources",
     "contactInstead": "Who to contact instead",
     "stateNeeded": "Which state's rules apply?",
@@ -168,16 +166,9 @@
     "thanks": "Thank you for your rating. It helps improve the answers."
   },
   "common": {
-    "sample": "Sample data",
-    "demo": "Demo",
-    "placeholder": "Placeholder",
     "source": "Source",
     "asOf": "As of",
     "page": "Page",
-    "sourcePending": "Source pending verification",
-    "datePending": "Date pending",
-    "dateNotStated": "Date not stated",
-    "linkPending": "Link pending",
     "askAboutThis": "Ask about this",
     "viewDetails": "View details",
     "close": "Close",
