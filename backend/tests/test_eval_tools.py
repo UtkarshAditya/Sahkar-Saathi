@@ -72,6 +72,9 @@ def write_questions(tmp_path: Path, questions: list[dict]) -> Path:
 def run_eval(monkeypatch, tmp_path, questions, script, *args) -> tuple[str, FakeRetriever]:
     fake = FakeRetriever(script, questions)
     monkeypatch.setattr(eval_module, "get_retriever", lambda: fake)
+    # The fake scores in these tests sit between 0.2 and 0.8, so pin the threshold they were
+    # written for. The production default (0.82) is tuned on real embedding scores.
+    monkeypatch.setattr(settings, "SCORE_THRESHOLD", 0.5)
     out = io.StringIO()
     call_command(
         "eval_retrieval", "--questions", str(write_questions(tmp_path, questions)), *args,
