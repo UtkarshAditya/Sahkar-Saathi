@@ -169,6 +169,9 @@ services:
       - static_files:/srv/django:ro
       - caddy_data:/data
       - caddy_config:/config
+      - ./data:/app/data:ro 
+
+     
     read_only: true
     tmpfs:
       - /tmp
