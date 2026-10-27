@@ -120,7 +120,8 @@ class WhisperSpeechProvider:
                 "Direct audio decoding failed (%s). Retrying via ffmpeg fallback...", direct_exc
             )
             try:
-                # Fallback attempt: convert via ffmpeg to 16kHz mono WAV locally to avoid circular import
+                # Fallback attempt: convert via ffmpeg to 16kHz
+                # mono WAV locally to avoid circular import
                 from .audio import to_wav_16k_mono
 
                 wav_audio = await to_wav_16k_mono(audio, content_type)
