@@ -207,8 +207,6 @@ USE_STUB_RETRIEVER = env_bool("USE_STUB_RETRIEVER", USE_STUBS)
 USE_STUB_ANSWER = env_bool("USE_STUB_ANSWER", USE_STUBS)
 USE_STUB_SPEECH = env_bool("USE_STUB_SPEECH", USE_STUBS)
 USE_STUB_GRIEVANCE = env_bool("USE_STUB_GRIEVANCE", USE_STUBS)
-# Serve saved answers for the five scripted conversations if a service is down (Sprint 3).
-DEMO_CACHE = env_bool("DEMO_CACHE", False)
 # Turn off to keep no message text at all (Sprint 2, when messages are stored).
 STORE_MESSAGES = env_bool("STORE_MESSAGES", True)
 

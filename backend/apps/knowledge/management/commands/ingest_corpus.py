@@ -3,14 +3,17 @@ import os
 import uuid
 from pathlib import Path
 
-import pdfplumber
 from django.conf import settings
-from django.core.management.base import BaseCommand
-from qdrant_client import QdrantClient
-from qdrant_client.http import models as qdrant_models
-from sentence_transformers import SentenceTransformer
+from django.core.management.base import BaseCommand, CommandError
 
 from apps.knowledge.models import Chunk, Document
+
+# The ML packages (pdfplumber, qdrant-client, sentence-transformers) are imported inside
+# handle(), so this module, and its helpers below, import without them (CI has none).
+
+# multilingual-e5 expects this prefix on passages. It belongs on the string that is
+# embedded only; the stored text (Chunk rows and Qdrant payloads) stays clean.
+PASSAGE_PREFIX = "passage: "
 
 
 def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> list[str]:
@@ -36,14 +39,21 @@ def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> list[str]
     return chunks
 
 
+def embedding_input(text: str) -> str:
+    """The string to embed for a stored chunk text (adds the e5 "passage: " prefix)."""
+    return f"{PASSAGE_PREFIX}{text}"
+
+
 def build_chunk_payload(
     document: Document,
     page: int | None,
     text: str,
 ) -> dict:
-    """Build standardized chunk payload dictionary for Qdrant storage."""
-    if not text.startswith("passage: "):
-        text = f"passage: {text}"
+    """Build standardized chunk payload dictionary for Qdrant storage.
+
+    ``text`` is the clean chunk text. It is stored without the "passage: " prefix, so a
+    retrieved Passage.text never starts with it and matches the Chunk row exactly.
+    """
     return {
         "doc_id": document.id,
         "document_title": document.title,
@@ -53,7 +63,7 @@ def build_chunk_payload(
         "state": document.state,
         "language": document.language,
         "page": page,
-        "text": text,
+        "text": text.removeprefix(PASSAGE_PREFIX),
     }
 
 
@@ -71,6 +81,17 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        try:
+            import pdfplumber
+            from qdrant_client import QdrantClient
+            from qdrant_client.http import models as qdrant_models
+            from sentence_transformers import SentenceTransformer
+        except ImportError as exc:
+            raise CommandError(
+                f"ingest_corpus needs the ML packages ({exc}). Install requirements-ml.txt, "
+                "or in Docker build with INSTALL_ML=true."
+            ) from exc
+
         collection_name = options["collection"]
         self.stdout.write("Initializing embedding model...")
         model = SentenceTransformer(settings.EMBEDDING_MODEL)
@@ -106,12 +127,17 @@ class Command(BaseCommand):
                 csv_path = parent_csv
 
         if not csv_path.exists():
-            self.stdout.write(self.style.ERROR(f"sources.csv not found at {csv_path}!"))
-            return
+            raise CommandError(f"sources.csv not found at {csv_path}!")
 
         self.stdout.write(f"Reading {csv_path} and processing corpus...")
 
-        with open(csv_path, encoding="utf-8") as f:
+        documents_processed = 0
+        chunks_written = 0
+        vectors_upserted = 0
+        # use_in_corpus=Y documents that produced nothing: (doc_id, why)
+        problems: list[tuple[str, str]] = []
+
+        with open(csv_path, encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)
             for row in reader:
                 if row.get("use_in_corpus", "").strip().upper() != "Y":
@@ -128,17 +154,44 @@ class Command(BaseCommand):
                             f"Document {doc_id} not found in PostgreSQL. Run load_sources first."
                         )
                     )
+                    problems.append((doc_id, "no Document row (run load_sources; row skipped?)"))
                     continue
 
-                project_root = Path(settings.BASE_DIR).parent
-                pdf_file = project_root / local_path
-                if not pdf_file.exists():
-                    pdf_file = settings.BASE_DIR / local_path
-                if not pdf_file.exists():
-                    self.stdout.write(self.style.WARNING(f"PDF file not found at {pdf_file}"))
+                # local_path is relative to backend/ (/app in the container); on a dev
+                # machine it is usually relative to the repository root.
+                pdf_file = settings.BASE_DIR / local_path if local_path else None
+                if pdf_file is None or not pdf_file.is_file():
+                    pdf_file = Path(settings.BASE_DIR).parent / local_path if local_path else None
+                if pdf_file is None or not pdf_file.is_file():
+                    self.stdout.write(
+                        self.style.WARNING(f"PDF file not found for {doc_id}: {local_path!r}")
+                    )
+                    problems.append((doc_id, f"PDF not found ({local_path or 'no local_path'})"))
                     continue
 
                 self.stdout.write(f"Processing PDF for document: {doc_id}...")
+
+                # Read the whole PDF first, so an unreadable file changes nothing.
+                pages_and_chunks: list[tuple[int, str]] = []
+                try:
+                    with pdfplumber.open(pdf_file) as pdf:
+                        for page_num, page in enumerate(pdf.pages, start=1):
+                            raw_text = page.extract_text()
+                            if not raw_text:
+                                continue
+                            # Chunking text into ~500 character blocks with ~50 chars overlap
+                            for chunk_str in chunk_text(raw_text, chunk_size=500, overlap=50):
+                                pages_and_chunks.append((page_num, chunk_str))
+                except Exception as exc:  # corrupt or encrypted PDF
+                    self.stdout.write(
+                        self.style.WARNING(f"Could not read the PDF for {doc_id}: {exc}")
+                    )
+                    problems.append((doc_id, f"PDF could not be read ({exc.__class__.__name__})"))
+                    continue
+
+                documents_processed += 1
+                if not pages_and_chunks:
+                    problems.append((doc_id, "PDF yielded zero chunks (scanned, no text?)"))
 
                 # Clear existing chunks for this doc to prevent duplication on re-runs
                 Chunk.objects.filter(document=document).delete()
@@ -146,41 +199,31 @@ class Command(BaseCommand):
                 chunk_records = []
                 qdrant_points = []
 
-                with pdfplumber.open(pdf_file) as pdf:
-                    for page_num, page in enumerate(pdf.pages, start=1):
-                        raw_text = page.extract_text()
-                        if not raw_text:
-                            continue
+                for page_num, chunk_str in pages_and_chunks:
+                    vector_id = str(uuid.uuid4())
+                    embedding = model.encode(embedding_input(chunk_str)).tolist()
 
-                        # Chunking text into ~500 character blocks with ~50 chars overlap
-                        chunks = chunk_text(raw_text, chunk_size=500, overlap=50)
-
-                        for chunk_str in chunks:
-                            passage_text = f"passage: {chunk_str}"
-                            vector_id = str(uuid.uuid4())
-                            embedding = model.encode(passage_text).tolist()
-
-                            chunk_records.append(
-                                Chunk(
-                                    document=document,
-                                    text=chunk_str,
-                                    page=page_num,
-                                    state=document.state,
-                                    language=document.language,
-                                    vector_id=vector_id,
-                                )
-                            )
-                            qdrant_points.append(
-                                qdrant_models.PointStruct(
-                                    id=vector_id,
-                                    vector=embedding,
-                                    payload=build_chunk_payload(
-                                        document=document,
-                                        page=page_num,
-                                        text=passage_text,
-                                    ),
-                                )
-                            )
+                    chunk_records.append(
+                        Chunk(
+                            document=document,
+                            text=chunk_str,
+                            page=page_num,
+                            state=document.state,
+                            language=document.language,
+                            vector_id=vector_id,
+                        )
+                    )
+                    qdrant_points.append(
+                        qdrant_models.PointStruct(
+                            id=vector_id,
+                            vector=embedding,
+                            payload=build_chunk_payload(
+                                document=document,
+                                page=page_num,
+                                text=chunk_str,
+                            ),
+                        )
+                    )
 
                 # Clear existing points for this document from Qdrant before upserting
                 client.delete(
@@ -200,6 +243,7 @@ class Command(BaseCommand):
                 # Bulk insert records into PostgreSQL
                 if chunk_records:
                     Chunk.objects.bulk_create(chunk_records)
+                    chunks_written += len(chunk_records)
                     self.stdout.write(
                         f"Saved {len(chunk_records)} chunks to PostgreSQL for {doc_id}."
                     )
@@ -210,6 +254,7 @@ class Command(BaseCommand):
                         collection_name=collection_name,
                         points=qdrant_points,
                     )
+                    vectors_upserted += len(qdrant_points)
                     self.stdout.write(
                         self.style.SUCCESS(
                             f"Upserted {len(qdrant_points)} vectors to Qdrant for {doc_id}."
@@ -217,5 +262,22 @@ class Command(BaseCommand):
                     )
 
         self.stdout.write(
-            self.style.SUCCESS("Corpus ingestion and vector seeding completed successfully!")
+            f"\nIngest summary: documents processed {documents_processed}, "
+            f"chunks written {chunks_written}, vectors upserted {vectors_upserted}."
+        )
+        if problems:
+            self.stdout.write(
+                self.style.WARNING(f"{len(problems)} use_in_corpus=Y document(s) need attention:")
+            )
+            for doc_id, why in problems:
+                self.stdout.write(self.style.WARNING(f"  {doc_id}: {why}"))
+        if chunks_written == 0:
+            raise CommandError(
+                "No chunks were written. Check that the PDFs are in data/raw/ and that "
+                "load_sources has loaded their Document rows."
+            )
+        self.stdout.write(
+            self.style.SUCCESS("Corpus ingestion and vector seeding completed.")
+            if not problems
+            else self.style.WARNING("Corpus ingestion completed, with the problems listed above.")
         )

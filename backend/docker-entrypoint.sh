@@ -3,6 +3,11 @@
 # so restarting the container is always safe.
 set -eu
 
+# `docker compose run --rm web <command>` runs that command as is (no migrations, no server).
+if [ "$#" -gt 0 ]; then
+    exec "$@"
+fi
+
 python manage.py migrate --noinput
 python manage.py collectstatic --noinput --verbosity 0
 python manage.py ensure_superuser

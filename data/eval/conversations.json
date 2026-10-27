@@ -1,0 +1,90 @@
+[
+  {
+    "id": "pmfby-loss-en",
+    "title": "PMFBY loss reporting, English",
+    "note": "The 72 comes from the verified loss_reporting_rule in backend/services/data/schemes.yaml.",
+    "turns": [
+      {
+        "text": "What should I do if my insured crop is damaged under PMFBY?",
+        "language": "en",
+        "status": "answered",
+        "citations": true,
+        "contact_when_declined": true,
+        "must_contain": ["72"],
+        "answer_language_note": "English."
+      }
+    ]
+  },
+  {
+    "id": "pmfby-loss-hi-ta",
+    "title": "The same PMFBY question in Hindi, then Tamil",
+    "note": "Question wording: Hindi is the one in StubSpeechProvider; Tamil is machine-written and needs review by a fluent speaker. Whether the answers are really in Hindi and Tamil is checked by eye, not by the script.",
+    "turns": [
+      {
+        "text": "अगर पीएमएफबीवाई के तहत मेरी बीमित फसल खराब हो जाए तो मुझे क्या करना चाहिए?",
+        "language": "hi",
+        "status": "answered",
+        "citations": true,
+        "contact_when_declined": true,
+        "answer_language_note": "Should be Hindi."
+      },
+      {
+        "text": "பிஎம்எஃப்பிஒய் திட்டத்தின் கீழ் காப்பீடு செய்யப்பட்ட என் பயிர் சேதமடைந்தால் நான் என்ன செய்ய வேண்டும்?",
+        "language": "ta",
+        "status": "answered",
+        "citations": true,
+        "contact_when_declined": true,
+        "answer_language_note": "Should be Tamil."
+      }
+    ]
+  },
+  {
+    "id": "coop-member-tn",
+    "title": "Cooperative society member question, Tamil Nadu",
+    "turns": [
+      {
+        "text": "As a member of a cooperative society, can I attend the general body meeting?",
+        "language": "en",
+        "state": "TN",
+        "status": "answered",
+        "citations": true,
+        "contact_when_declined": true,
+        "expect_doc_ids": [],
+        "TODO_owner": "Zainab",
+        "TODO": "Add expect_doc_ids (the Tamil Nadu Act or model by-laws) once the corpus is ingested.",
+        "answer_language_note": "English."
+      }
+    ]
+  },
+  {
+    "id": "grievance-deposit",
+    "title": "Grievance: a society refuses to return a deposit",
+    "turns": [
+      {
+        "text": "My cooperative society is refusing to return my deposit. What can I do?",
+        "language": "en",
+        "state": "TN",
+        "status": null,
+        "citations": null,
+        "contact_when_declined": true,
+        "TODO_owner": "Varsha",
+        "TODO": "Decide the exact expectation (answered with the grievance route, or a clean decline) and set status and citations.",
+        "answer_language_note": "English."
+      }
+    ]
+  },
+  {
+    "id": "out-of-scope-election",
+    "title": "Out of scope: an election prediction",
+    "turns": [
+      {
+        "text": "Who will win the next election?",
+        "language": "en",
+        "status": "declined",
+        "citations": false,
+        "contact_when_declined": true,
+        "answer_language_note": "English."
+      }
+    ]
+  }
+]

@@ -141,7 +141,10 @@ Common changes:
 | -------------------------------------- | ----------------------------------------------------------------- |
 | `HTTP_PORT=8080`                       | Port 80 is taken on your machine. Then open http://localhost:8080 |
 | `USE_STUB_ANSWER=false`                | Real answers from an LLM (see section 9)                          |
+| `USE_STUB_RETRIEVER=false`             | Real retrieval over the ingested documents (see section 12)       |
 | `USE_STUB_SPEECH=false`                | Real speech-to-text with Whisper (see section 10)                 |
+| `INSTALL_ML=false`                     | A smaller, stub-only image: no PyTorch, so no real retrieval      |
+| `SCORE_THRESHOLD`                      | Set from `eval_retrieval`, not by guessing (see section 12)       |
 | `BHASHINI_API_KEY`, `BHASHINI_USER_ID` | Speech keys (member C)                                            |
 | `LOAD_SAMPLE_DOCUMENTS=false`          | Start the library empty instead of with 9 sample entries          |
 
@@ -156,12 +159,12 @@ By default every service is a stub. Each one has its own switch, so you can turn
 real answer service (an LLM writing answers from the retrieved passages) and leave the
 rest as stubs:
 
-| Flag                 | `true` (stub)                | `false` (real)                                       |
-| -------------------- | ---------------------------- | ---------------------------------------------------- |
-| `USE_STUB_ANSWER`    | Canned demonstration answers | The LLM writes a cited answer, or declines           |
-| `USE_STUB_RETRIEVER` | Three sample passages        | Not built yet: every question returns an error (503) |
-| `USE_STUB_SPEECH`    | A fixed transcript           | Whisper speech-to-text (section 10)                  |
-| `USE_STUB_GRIEVANCE` | Template grievance guide     | Not built yet: the grievance page returns an error   |
+| Flag                 | `true` (stub)                | `false` (real)                                      |
+| -------------------- | ---------------------------- | --------------------------------------------------- |
+| `USE_STUB_ANSWER`    | Canned demonstration answers | The LLM writes a cited answer, or declines          |
+| `USE_STUB_RETRIEVER` | Three sample passages        | Qdrant search over the ingested corpus (section 12) |
+| `USE_STUB_SPEECH`    | A fixed transcript           | Whisper speech-to-text (section 10)                 |
+| `USE_STUB_GRIEVANCE` | Template grievance guide     | Not built yet: the grievance page returns an error  |
 
 An empty flag follows `USE_STUBS` (default `true`). The LLM can be any server with an
 OpenAI-compatible API.
@@ -206,8 +209,9 @@ docker compose up --build -d --wait
 docker compose logs -f web      # each question logs its status and latency
 ```
 
-**Retrieval is still a stub**, so answers cite the three sample passages, not the real
-documents. When the real retriever is ready, `USE_STUB_RETRIEVER=false` is the only change.
+**Until you turn on the real retriever, retrieval is still a stub**, so answers cite the
+three sample passages, not the real documents. To search the real documents, ingest them
+and set `USE_STUB_RETRIEVER=false`: section 12.
 
 If the LLM cannot be reached, the app shows an error ("An upstream service failed") and
 the log shows `provider error: LLM call failed ...` with the model and URL it tried.
@@ -251,7 +255,88 @@ docker compose exec web python manage.py load_sources
 Rows that are invalid are skipped, never guessed or fixed. Documents not in the CSV
 (samples, or ones added in the admin site) are left alone.
 
-## 12. Troubleshooting
+## 12. Loading the real corpus
+
+The real pipeline answers from documents that have been read into PostgreSQL (the text
+chunks) and Qdrant (their vectors). Do these steps in order:
+
+1. **Put the PDFs in `data/raw/`**, taken from the team Drive. The folder is git-ignored and
+   is mounted read-only into the API container. The file names must match the `local_path`
+   column of `data/sources.csv`. Optionally fetch the ones with direct links first:
+
+   ```bash
+   python scripts/download_pdfs.py     # certificates are verified; --insecure is a last resort
+   ```
+
+2. **Start the stack.** The first build installs PyTorch and the other ML packages, which
+   takes several minutes and makes the image much larger (`INSTALL_ML=false` in `.env`
+   skips them). On start, `load_sources` loads the document list into the database.
+
+   ```bash
+   docker compose up --build -d --wait
+   ```
+
+3. **Ingest the documents.** This reads every `use_in_corpus=Y` row of the CSV, cuts the
+   PDF into chunks, embeds them and writes them to PostgreSQL and Qdrant. The first run
+   also downloads the embedding model into the `models` volume. It is safe to run again:
+   each document's chunks are replaced. It ends with a summary and lists every document
+   that needs attention (PDF missing, no text, or no document row).
+
+   ```bash
+   docker compose exec web python manage.py ingest_corpus
+   ```
+
+4. **Check what was ingested.** Every document should have chunks, and PostgreSQL and
+   Qdrant should agree on the count:
+
+   ```bash
+   docker compose exec web python manage.py corpus_status
+   ```
+
+5. **Switch the pipeline on.** In `.env`, set the flags and the LLM (section 9), then
+   recreate the API container:
+
+   ```bash
+   USE_STUB_RETRIEVER=false
+   USE_STUB_ANSWER=false
+   LLM_BASE_URL=http://host.docker.internal:11434/v1
+   LLM_MODEL=llama3.1:8b
+   ```
+
+   ```bash
+   docker compose up -d
+   ```
+
+6. **Measure retrieval and set the threshold.** `eval_retrieval` runs the questions in
+   `data/eval/retrieval_questions.json`, prints the hit rate and suggests a
+   `SCORE_THRESHOLD`. Put the suggestion in `.env` (do not guess it), apply it, and run the
+   acceptance conversations in `data/eval/conversations.json`:
+
+   ```bash
+   docker compose exec web python manage.py eval_retrieval
+   # edit .env: SCORE_THRESHOLD=<the suggested value>
+   docker compose up -d
+   python scripts/acceptance.py
+   ```
+
+   Read `data/eval/README.md` for both file formats. The suggestion is only as good as the
+   question set: it warns when the in-scope and out-of-scope scores overlap or when a group
+   has fewer than 5 questions.
+
+**If something goes wrong:**
+
+| Problem                                            | Likely cause and fix                                                                                                                                                           |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/chat/ask` returns 503 `service_not_ready`        | The retriever is unavailable: the image was built with `INSTALL_ML=false` (rebuild with `INSTALL_ML=true`), or a package is missing. `docker compose logs web` names it.       |
+| `/chat/ask` returns 500 with the real retriever on | Usually Qdrant has no collection yet (run `ingest_corpus`) or is down (`docker compose ps`). The error is in `docker compose logs web`.                                        |
+| `/chat/ask` returns 502 `provider_error`           | The LLM cannot be reached. Check it is running, that `LLM_BASE_URL` is right (`host.docker.internal` for Ollama on your machine) and the key. The log names the URL and model. |
+| Every question is declined                         | `SCORE_THRESHOLD` is too high for the embedding scores, or nothing is ingested. Run `corpus_status`, then `eval_retrieval` and use its suggested value.                        |
+| The first question or the first start is slow      | The models download into the `models` volume the first time (`docker compose logs web`). Later starts reuse them.                                                              |
+| `ingest_corpus` lists "no Document row"            | `load_sources` skipped that row of the CSV as invalid. `load_sources --dry-run` shows why; the CSV owner fixes the row.                                                        |
+| `ingest_corpus` lists "PDF not found"              | The file in `data/raw/` is missing or named differently from `local_path` in `data/sources.csv`.                                                                               |
+| `ingest_corpus` says it needs the ML packages      | The image was built with `INSTALL_ML=false`. Rebuild with `INSTALL_ML=true`.                                                                                                   |
+
+## 13. Troubleshooting
 
 | Problem                                                                      | Fix                                                                                                                   |
 | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |

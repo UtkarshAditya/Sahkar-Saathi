@@ -15,12 +15,22 @@ RUN groupadd --system --gid 1000 app \
     && useradd --system --uid 1000 --gid app --home-dir /app --no-create-home app
 
 WORKDIR /app
-COPY requirements.txt .
+COPY requirements.txt requirements-ml.txt ./
 RUN pip install -r requirements.txt
 
+# The real retrieval pipeline (embeddings, Qdrant client, PDF reading). Large: build with
+# `--build-arg INSTALL_ML=false` (or INSTALL_ML=false in .env) for a stub-only image.
+# PyTorch comes from its CPU-only index first, so pip does not pull the multi-GB CUDA
+# build that PyPI serves on Linux. PIP_NO_CACHE_DIR keeps pip caches out of the image.
+ARG INSTALL_ML=true
+RUN if [ "$INSTALL_ML" = "true" ]; then \
+        pip install torch --index-url https://download.pytorch.org/whl/cpu \
+        && pip install -r requirements-ml.txt; \
+    fi
+
 COPY --chown=app:app . .
-# /models: Whisper downloads land here (HF_HOME). Created owned by the app user so the
-# named `models` volume mounted over it inherits that ownership.
+# /models: the Whisper and embedding model downloads land here (HF_HOME). Created owned by
+# the app user so the named `models` volume mounted over it inherits that ownership.
 RUN chmod 0755 docker-entrypoint.sh \
     && mkdir -p /srv/django/static /models \
     && chown -R app:app /srv/django /models

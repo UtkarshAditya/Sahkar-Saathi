@@ -78,6 +78,9 @@ services:
     <<: *hardening
     build:
       context: ./backend
+      args:
+        # false = a smaller, stub-only image (no PyTorch, no embeddings, no PDF reader).
+        INSTALL_ML: ${INSTALL_ML:-true}
     depends_on:
       db:
         condition: service_healthy
@@ -112,7 +115,6 @@ services:
       USE_STUB_ANSWER: ${USE_STUB_ANSWER:-}
       USE_STUB_SPEECH: ${USE_STUB_SPEECH:-}
       USE_STUB_GRIEVANCE: ${USE_STUB_GRIEVANCE:-}
-      DEMO_CACHE: ${DEMO_CACHE:-false}
       STORE_MESSAGES: ${STORE_MESSAGES:-true}
       REGIONAL_LANGUAGE_CODE: ${REGIONAL_LANGUAGE_CODE:-ta}
       COVERED_STATE_CODE: ${COVERED_STATE_CODE:-TN}
@@ -139,10 +141,14 @@ services:
     volumes:
       - static_files:/srv/django
       - secrets:/secrets:ro
-      # Whisper model cache (HF_HOME); the only other writable path besides /tmp.
+      # Whisper and embedding model cache (HF_HOME); the only other writable path besides /tmp.
       - models:/models
       # The document list; edit it on the host, then run `manage.py load_sources`.
       - ./data/sources.csv:/app/data/sources.csv:ro
+      # The source PDFs (gitignored; from the team Drive) read by `manage.py ingest_corpus`.
+      - ./data/raw:/app/data/raw:ro
+      # Retrieval questions for `manage.py eval_retrieval`.
+      - ./data/eval:/app/data/eval:ro
     read_only: true
     tmpfs:
       - /tmp
