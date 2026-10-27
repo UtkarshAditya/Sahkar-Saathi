@@ -20,7 +20,14 @@ def upload(client, hint="hi"):
 
 
 @pytest.fixture
-def real_speech(settings, monkeypatch):
+def default_whisper_models(monkeypatch):
+    """Whisper model names come only from the code's default, not from a local .env."""
+    for name in ("WHISPER_MODEL", "WHISPER_MODEL_EN", "WHISPER_MODEL_HI", "WHISPER_MODEL_TA"):
+        monkeypatch.delenv(name, raising=False)
+
+
+@pytest.fixture
+def real_speech(settings, monkeypatch, default_whisper_models):
     """USE_STUB_SPEECH=false with faster-whisper replaced by a fake model."""
 
     class FakeModel:
@@ -34,7 +41,7 @@ def real_speech(settings, monkeypatch):
     module = types.ModuleType("faster_whisper")
     module.WhisperModel = FakeModel
     monkeypatch.setitem(sys.modules, "faster_whisper", module)
-    monkeypatch.setattr(whisper_provider, "_model", None)
+    monkeypatch.setattr(whisper_provider, "_models", {})  # force fresh "loads"
     settings.USE_STUB_SPEECH = False
     services._speech_provider.cache_clear()
     yield settings
@@ -109,15 +116,15 @@ def test_warm_models_loads_the_embedding_model_for_the_real_retriever(settings, 
 
 
 def test_warm_models_warms_both_models_and_one_failure_does_not_stop_the_other(
-    settings, monkeypatch
+    settings, monkeypatch, default_whisper_models
 ):
     settings.USE_STUB_SPEECH = False
     settings.USE_STUB_RETRIEVER = False
     _fake_sentence_transformers(monkeypatch, error=OSError("no network"))
-    monkeypatch.setattr(whisper_provider, "_get_model", lambda: object())
+    monkeypatch.setattr(whisper_provider, "_get_model", lambda name: object())
     out = _warm()
     assert "could not load the embedding model" in out and "no network" in out
-    assert "Whisper model" in out and "loaded in" in out
+    assert "Whisper model 'small' loaded in" in out
 
 
 def test_warm_models_never_raises_when_the_ml_packages_are_missing(settings, monkeypatch):
@@ -130,14 +137,22 @@ def test_warm_models_never_raises_when_the_ml_packages_are_missing(settings, mon
 
 def test_warm_models_loads_the_model(real_speech):
     out = _warm()
-    assert "loaded in" in out
-    assert whisper_provider._model is not None
+    assert "Whisper model 'small' loaded in" in out
+    assert sorted(whisper_provider._models) == ["small"], "one model serves every language"
 
 
-def test_warm_models_never_raises(settings, monkeypatch):
+def test_warm_models_loads_each_distinct_whisper_model_once(real_speech, monkeypatch):
+    """A language with its own model (WHISPER_MODEL_HI) adds one model, never one per language."""
+    monkeypatch.setenv("WHISPER_MODEL_HI", "medium")
+    out = _warm()
+    assert "Whisper models 'medium', 'small' loaded in" in out
+    assert sorted(whisper_provider._models) == ["medium", "small"]
+
+
+def test_warm_models_never_raises(settings, monkeypatch, default_whisper_models):
     settings.USE_STUB_SPEECH = False
 
-    def no_network():
+    def no_network(name):
         raise OSError("no network")
 
     monkeypatch.setattr(whisper_provider, "_get_model", no_network)

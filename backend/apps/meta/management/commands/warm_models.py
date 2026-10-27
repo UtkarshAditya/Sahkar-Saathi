@@ -1,6 +1,7 @@
 """Load the models before the server starts, so the first request is fast.
 
-- USE_STUB_SPEECH=false: the Whisper model set by WHISPER_MODEL.
+- USE_STUB_SPEECH=false: the Whisper model(s) for the supported languages: WHISPER_MODEL,
+  or a WHISPER_MODEL_<LANG> override (for example WHISPER_MODEL_HI=medium).
 - USE_STUB_RETRIEVER=false: the embedding model set by EMBEDDING_MODEL.
 
 Both download into HF_HOME on first use. With every service on its stub there is nothing
@@ -18,10 +19,18 @@ from django.core.management.base import BaseCommand
 
 
 def _load_whisper() -> str:
+    import asyncio
+
     from services.speech import whisper_provider
 
-    whisper_provider._get_model()
-    return f"Whisper model '{whisper_provider.MODEL_SIZE}'"
+    languages = tuple(settings.SUPPORTED_LANGUAGES)
+    # warm_up loads each distinct model these languages need (WHISPER_MODEL, or a
+    # WHISPER_MODEL_<LANG> override) once.
+    asyncio.run(whisper_provider.warm_up(languages))
+    names = sorted({whisper_provider._model_name_for(language) for language in languages})
+    return f"Whisper {'model' if len(names) == 1 else 'models'} " + ", ".join(
+        repr(name) for name in names
+    )
 
 
 def _load_embedding_model() -> str:
