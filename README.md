@@ -184,14 +184,14 @@ Every service defaults to a stub, so the app, CI and `scripts/smoke_test.py` run
 network, no model download and no LLM. Each real service has its own switch
 (`USE_STUB_RETRIEVER`, `USE_STUB_ANSWER`, `USE_STUB_SPEECH`, `USE_STUB_GRIEVANCE`).
 
-| Part                         | Default                      | When switched on                                                               |
-| ---------------------------- | ---------------------------- | ------------------------------------------------------------------------------ |
-| Retrieval                    | Three canned sample passages | Qdrant search with multilingual-e5 embeddings, after `manage.py ingest_corpus` |
-| Answers                      | Canned demonstration answers | The LLM writes a cited answer from the retrieved passages, or declines         |
-| Speech to text               | A fixed transcript           | Whisper (faster-whisper)                                                       |
-| Text to speech (Listen)      | Silent WAV audio             | Still a stub, also with `USE_STUB_SPEECH=false`                                |
-| Grievance guide              | Keyword categories, template | Not built yet: the real flag returns `503`                                     |
-| Bhashini speech and language | Not used                     | Not built yet                                                                  |
+| Part                         | Default                      | When switched on                                                                                                           |
+| ---------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Retrieval                    | Three canned sample passages | Qdrant search with multilingual-e5 embeddings, after `manage.py ingest_corpus`                                             |
+| Answers                      | Canned demonstration answers | The LLM writes a cited answer from the retrieved passages, or declines                                                     |
+| Speech to text               | A fixed transcript           | Whisper (faster-whisper)                                                                                                   |
+| Text to speech (Listen)      | Silent WAV audio             | Still a stub, also with `USE_STUB_SPEECH=false`                                                                            |
+| Grievance guide              | Keyword categories, template | Forums and contacts from `forums.yaml` (crop insurance only so far); other categories state that the route is not recorded |
+| Bhashini speech and language | Not used                     | Not built yet                                                                                                              |
 
 The LLM is any OpenAI-compatible server (Ollama on your machine, or a hosted API). Whether
 the answers are good is measured, not assumed: `manage.py eval_retrieval` and

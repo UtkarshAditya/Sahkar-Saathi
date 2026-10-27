@@ -11,16 +11,17 @@ out-of-scope top scores. Read-only: it never writes to the database.
 """
 
 import asyncio
-import json
 from pathlib import Path
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
+from django.utils import timezone
 
+from apps.evaluation.questions import default_questions_path, load_questions
+from apps.evaluation.recording import Outcome, record_run
 from config.services import get_retriever
 
 MIN_GROUP_SIZE = 5
-QUESTIONS_FILE = Path("data") / "eval" / "retrieval_questions.json"
 
 
 def percentile(values: list[float], q: float) -> float:
@@ -32,41 +33,6 @@ def percentile(values: list[float], q: float) -> float:
     return ordered[low] + (ordered[high] - ordered[low]) * (position - low)
 
 
-def default_questions_path() -> Path:
-    base = Path(settings.BASE_DIR)
-    candidates = [base / QUESTIONS_FILE, base.parent / QUESTIONS_FILE]
-    return next((path for path in candidates if path.is_file()), candidates[0])
-
-
-def load_questions(path: Path) -> list[dict]:
-    if not path.is_file():
-        raise CommandError(f"Question file not found: {path}")
-    try:
-        data = json.loads(path.read_text(encoding="utf-8-sig"))
-    except json.JSONDecodeError as exc:
-        raise CommandError(f"{path.name} is not valid JSON: {exc}") from exc
-    if not isinstance(data, list) or not data:
-        raise CommandError(f"{path.name} must be a non-empty JSON list of questions.")
-
-    seen: set[str] = set()
-    for index, item in enumerate(data, start=1):
-        where = f"{path.name} item {index}"
-        if not isinstance(item, dict):
-            raise CommandError(f"{where} must be an object.")
-        for key, kind in (("id", str), ("question", str), ("in_scope", bool)):
-            if not isinstance(item.get(key), kind) or item.get(key) == "":
-                raise CommandError(f"{where} needs {key!r} ({kind.__name__}).")
-        if item["id"] in seen:
-            raise CommandError(f"{where}: id {item['id']!r} appears twice.")
-        seen.add(item["id"])
-        if item.get("state") is not None and not isinstance(item["state"], str):
-            raise CommandError(f"{where}: 'state' must be null or a state code.")
-        expected = item.get("expect_doc_ids", [])
-        if not isinstance(expected, list) or not all(isinstance(d, str) for d in expected):
-            raise CommandError(f"{where}: 'expect_doc_ids' must be a list of document ids.")
-    return data
-
-
 class Command(BaseCommand):
     help = "Run the retrieval question set and suggest a SCORE_THRESHOLD."
 
@@ -75,12 +41,35 @@ class Command(BaseCommand):
         parser.add_argument(
             "--top-k", type=int, help="Passages to retrieve per question (default: TOP_K)."
         )
+        record = parser.add_argument_group("recording (feeds the Quality dashboard)")
+        record.add_argument(
+            "--record",
+            action="store_true",
+            help="Save the run (EvalRun and EvalResult rows) and sync the TestQuestion rows.",
+        )
+        record.add_argument("--label", help="Name of the run (default: 'Retrieval run <date>').")
+        record.add_argument("--llm", help="LLM name, if answers were also produced.")
+        record.add_argument("--prompt-version", help="Prompt version, if answers were produced.")
+        record.add_argument(
+            "--faithfulness",
+            type=float,
+            help="0 to 1, from checking answers against their passages by hand. Without it the "
+            "run waits in the admin site and the dashboard keeps the previous run.",
+        )
+        record.add_argument(
+            "--allow-stub",
+            action="store_true",
+            help="Record a run measured on the stub retriever. It is marked as a sample and "
+            "never shown as a real result.",
+        )
 
     def handle(self, *args, **options):
         path = Path(options["questions"]) if options["questions"] else default_questions_path()
         top_k = options["top_k"] or settings.TOP_K
         questions = load_questions(path)
-
+        record = options["record"]
+        if record:
+            self._check_record_options(options)
         if settings.USE_STUB_RETRIEVER:
             self.stdout.write(
                 self.style.WARNING(
@@ -96,6 +85,7 @@ class Command(BaseCommand):
         in_scores: list[float] = []
         out_scores: list[float] = []
         hits = evaluated = 0
+        outcomes: list[Outcome] = []
         for question, passages in results:
             top = max((p.score for p in passages), default=None)
             score = top if top is not None else 0.0
@@ -103,12 +93,14 @@ class Command(BaseCommand):
 
             expected = question.get("expect_doc_ids") or []
             verdict = "-"
+            found = None
             if question["in_scope"] and expected:
                 evaluated += 1
                 found = any(p.document_id in expected for p in passages)
                 hits += found
                 verdict = "hit" if found else "MISS"
             top_doc = max(passages, key=lambda p: p.score).document_id if passages else "-"
+            outcomes.append(Outcome(question, top, top_doc if passages else "", found))
             self.stdout.write(
                 f"{question['id']:<34} {'in' if question['in_scope'] else 'out':<5} "
                 f"{'-' if top is None else f'{top:.3f}':>9}  {top_doc[:34]:<34} {verdict}"
@@ -116,6 +108,55 @@ class Command(BaseCommand):
 
         self.stdout.write("")
         self._summary(in_scores, out_scores, hits, evaluated, top_k)
+        if record:
+            self._record(outcomes, options, top_k)
+
+    def _check_record_options(self, options) -> None:
+        if settings.USE_STUB_RETRIEVER and not options["allow_stub"]:
+            raise CommandError(
+                "Refusing to record: USE_STUB_RETRIEVER is on, so the scores are the stub's. "
+                "Switch the real retriever on, or pass --allow-stub to record a sample run."
+            )
+        faithfulness = options["faithfulness"]
+        if faithfulness is not None and not 0 <= faithfulness <= 1:
+            raise CommandError("--faithfulness must be between 0 and 1.")
+
+    def _record(self, outcomes: list[Outcome], options, top_k: int) -> None:
+        is_sample = bool(settings.USE_STUB_RETRIEVER)
+        run = record_run(
+            outcomes,
+            label=options["label"] or f"Retrieval run {timezone.now():%Y-%m-%d %H:%M}",
+            embedding_model=settings.EMBEDDING_MODEL,
+            top_k=top_k,
+            threshold=settings.SCORE_THRESHOLD,
+            llm=options["llm"],
+            prompt_version=options["prompt_version"],
+            faithfulness=options["faithfulness"],
+            is_sample=is_sample,
+            notes="Measured on the stub retriever." if is_sample else "",
+        )
+        measured = {
+            "hit rate": run.hit_rate,
+            "correct refusal": run.correct_refusal,
+            "faithfulness": run.faithfulness,
+        }
+        text = ", ".join(
+            f"{name} {'not measured' if value is None else f'{value:.2f}'}"
+            for name, value in measured.items()
+        )
+        self.stdout.write(self.style.SUCCESS(f"\nRecorded run-{run.pk}: {text}."))
+        if is_sample:
+            self.stdout.write(self.style.WARNING("It is marked as a sample (stub retriever)."))
+        elif not run.is_complete:
+            self.stdout.write(
+                self.style.WARNING(
+                    "The Quality dashboard shows a run only when all three metrics are set. "
+                    "Enter the missing ones in the admin site (Eval runs), or re-run with "
+                    "--faithfulness once answers have been checked by hand."
+                )
+            )
+        else:
+            self.stdout.write("It is now the latest run on the Quality dashboard.")
 
     def _search_all(self, questions: list[dict], top_k: int) -> list[tuple[dict, list]]:
         retriever = get_retriever()

@@ -5,7 +5,8 @@ the Member A plan. Every endpoint in the API contract exists and is frozen in
 [`openapi.json`](openapi.json). Every service defaults to a **stub**, so the team can
 build against the real API with no network and no model. Retrieval (Qdrant), answers (an
 OpenAI-compatible LLM) and speech-to-text (Whisper) can each be switched to the real thing
-with their own flag; speech synthesis, the grievance guide and Bhashini are still stubs.
+with their own flag, as can the grievance guide (forums from `services/data/forums.yaml`);
+speech synthesis and Bhashini are still stubs.
 
 ## Run it
 
@@ -65,8 +66,8 @@ the team admin once, never resets a password) and, if `LOAD_SAMPLE_DOCUMENTS=tru
 | `POST /speech/transcribe`     | Speech to text (multipart upload)           | Ask, Grievance            | stub, or Whisper (`USE_STUB_SPEECH=false`) |
 | `POST /speech/synthesize`     | Text to speech (`audio/wav`)                | Ask                       | stub (silent audio) in both modes |
 | `POST /feedback`              | Rate an answer, or send a general comment   | Ask, About                | real, stored                     |
-| `GET /grievance/categories`   | Categories for the problem-type chips       | Grievance                 | stub grievance guide             |
-| `POST /grievance/guide`       | Category, forum, steps, checklist, draft    | Grievance                 | stub grievance guide             |
+| `GET /grievance/categories`   | Categories for the problem-type chips       | Grievance                 | stub, or `forums.yaml` guide (`USE_STUB_GRIEVANCE=false`) |
+| `POST /grievance/guide`       | Category, forum, steps, checklist, draft    | Grievance                 | stub, or `forums.yaml` guide (`USE_STUB_GRIEVANCE=false`) |
 | `GET /schemes`                | Scheme cards (`?category=`)                 | Schemes                   | `data/schemes.yaml`              |
 | `GET /schemes/{slug}`         | One scheme; `pmfby` has the guide facts     | Schemes, Crop insurance   | `data/schemes.yaml`              |
 | `GET /lessons`                | Lessons and the quiz (`?language=`)         | Learn                     | `data/lessons.yaml`              |
@@ -207,6 +208,7 @@ are the ones the team shares:
 | ------------------------------------------------------------- | -------- | ----------------------------------------------------------------------- |
 | `USE_STUBS`                                                   | everyone | Default for every service: serve stubs (default `true`)                 |
 | `USE_STUB_RETRIEVER`, `_ANSWER`, `_SPEECH`, `_GRIEVANCE`      | everyone | Override `USE_STUBS` for one service; empty follows `USE_STUBS`         |
+| `DEMO_CACHE`                                                  | A, D     | Saved answers for the scripted demo questions (`data/demo_answers.yaml`); also a fallback when a live service fails on one (default `false`) |
 | `STORE_MESSAGES`                                              | A        | Turn off to store no question or answer text (metrics are still stored) |
 | `REGIONAL_LANGUAGE_*`, `COVERED_STATE_CODE`                   | team     | The third language (default Tamil) and the covered state (default TN)  |
 | `CHAT_RATE_LIMIT`, `SPEECH_RATE_LIMIT`, `FEEDBACK_RATE_LIMIT`, `GRIEVANCE_RATE_LIMIT` | A | Per-client limits, e.g. `20/m`                          |
@@ -230,6 +232,8 @@ Run commands from `backend/` (in Docker: `docker compose exec web python manage.
 | `ingest_corpus`                              | Chunks the PDFs in `data/raw/`, embeds them, writes Chunk rows and Qdrant (needs `requirements-ml.txt`) |
 | `corpus_status`                              | Chunks per document, the Qdrant point count, documents with no chunks      |
 | `eval_retrieval [--questions] [--top-k]`     | Scores retrieval on `data/eval/retrieval_questions.json`; suggests `SCORE_THRESHOLD` |
+| `eval_retrieval --record [--faithfulness X]` | Also saves the run (EvalRun, EvalResult) for the Quality dashboard; see `data/eval/README.md` |
+| `load_test_questions [--path]`               | Loads the evaluation questions into the TestQuestion table                 |
 | `warm_models`                                | Loads the Whisper and embedding models for the real services (start-up)    |
 | `load_sample_documents`, `ensure_superuser`  | Sample library entries (empty table only); the admin account              |
 | `python ../scripts/acceptance.py [URL]`      | Runs `data/eval/conversations.json` against a running stack                |
@@ -254,12 +258,14 @@ and runs `scripts/smoke_test.py` against it.
 
 ## Not done yet (Member A plan)
 
-- **Sprint 2 models:** GrievanceCase (only when `STORE_MESSAGES` is on), and TestQuestion,
-  EvalRun and EvalResult so `/eval/latest` serves real runs instead of sample data.
-- **Resilience:** saved answers for the five scripted conversations, for when a service is down
-  (not built; there is no setting for it yet).
+- **Sprint 2 models:** GrievanceCase (only when `STORE_MESSAGES` is on). TestQuestion, EvalRun
+  and EvalResult are done: `/eval/latest` serves the latest complete run, else sample data.
+  Faithfulness is not measured by any tool; staff enter it in the admin site (Eval runs).
+- **Resilience:** done (`DEMO_CACHE`). The saved answers for the cooperative-member and
+  deposit-grievance questions are placeholders until the owners supply sourced text.
 - **Platform:** choose the demo host and test HTTPS from a phone (Compose and Caddy are done).
-- **Still stubs:** text to speech (Listen), the grievance guide, Bhashini, and asking for a
-  state when the question needs one (`needs_state` in the grounded answer service).
+- **Still stubs:** text to speech (Listen), Bhashini, and asking for a state when the
+  question needs one (`needs_state` in the grounded answer service). The grievance guide
+  only has recorded forums for crop insurance; `forums.yaml` needs the cooperative routes.
 - **Evidence for the real pipeline:** ingest the verified corpus, grow the evaluation
   questions in `data/eval`, and set `SCORE_THRESHOLD` from `eval_retrieval`.

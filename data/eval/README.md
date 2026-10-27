@@ -31,6 +31,24 @@ grievance route. Fill in `expect_doc_ids` on the six starter questions (they are
 `TODO_owner`). Add 5 to 10 more out-of-scope questions. A question with an empty
 `expect_doc_ids` still counts toward the threshold, but not toward the hit rate.
 
+### Recording a run for the Quality dashboard
+
+`python manage.py load_test_questions` copies the questions into the database (the
+`TestQuestion` table, visible in the admin site). `python manage.py eval_retrieval --record`
+does that too, and then saves the run: an `EvalRun` with the settings used (embedding model,
+top-k, `SCORE_THRESHOLD`) and one `EvalResult` per question. The staff-only
+`GET /api/v1/eval/latest` and the Quality page (`/staff/quality`) then show it.
+
+| Metric          | How it is measured                                                                                                                                               |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hit rate        | In-scope questions that list `expect_doc_ids`: was an expected document retrieved?                                                                               |
+| Correct refusal | Out-of-scope questions whose best score is below `SCORE_THRESHOLD`                                                                                               |
+| Faithfulness    | **Not measured by any tool.** A person checks answers against their passages and enters the result (`--faithfulness 0.85`, or in the admin site under Eval runs) |
+
+The dashboard shows only a run with all three metrics, so a run without faithfulness waits.
+Until a complete run exists it shows clearly labelled sample numbers. A run recorded with
+the stub retriever (`--allow-stub`) is always marked as a sample and never shown as real.
+
 ## `conversations.json`: does the whole chat behave?
 
 Used by `python scripts/acceptance.py [BASE_URL]` against a running stack (default

@@ -1,15 +1,40 @@
 import { ChartColumn, CircleCheck, Lock, TriangleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge, type BadgeTone } from '@/components/common/Badge';
+import { ButtonLink } from '@/components/common/Button';
 import { Card, CardTitle } from '@/components/common/Card';
-import { ErrorState, LoadingState } from '@/components/common/EmptyState';
+import { EmptyState, ErrorState, LoadingState } from '@/components/common/EmptyState';
 import { Notice } from '@/components/common/Notice';
 import { PageHeader } from '@/components/common/PageHeader';
 import { useAsync } from '@/hooks/useAsync';
 import { LANGUAGES } from '@/i18n';
 import { formatDate, formatPercent } from '@/lib/format';
-import { api } from '@/services/api';
+import { ApiError, api } from '@/services/api';
 import type { EvalMetric, EvalMetricKey, EvalRun, FailureKind } from '@/types';
+
+/** Django's admin login, which returns here afterwards. The session cookie is what the API checks. */
+const STAFF_LOGIN = '/admin/login/?next=/staff/quality';
+
+/** What the page shows when GET /eval/latest answers 401 (not logged in) or 403 (not staff). */
+function AccessState({ code }: { code: string }) {
+  const signedIn = code === 'staff_only';
+  return (
+    <EmptyState
+      icon={<Lock className="size-6" aria-hidden />}
+      title={signedIn ? 'This page is for staff only' : 'Log in as staff to see this page'}
+      description={
+        signedIn
+          ? 'You are logged in, but your account does not have staff access. Log in with a staff account, or ask an administrator.'
+          : 'The quality numbers are visible to staff only. Log in on the admin site, and you will come back here.'
+      }
+      action={
+        <ButtonLink to={STAFF_LOGIN} reloadDocument variant="primary">
+          {signedIn ? 'Log in with a staff account' : 'Log in as staff'}
+        </ButtonLink>
+      }
+    />
+  );
+}
 
 const FAILURE_LABELS: Record<FailureKind, { label: string; tone: BadgeTone }> = {
   'retrieval-miss': { label: 'Retrieval miss', tone: 'blue' },
@@ -31,7 +56,7 @@ export default function QualityDashboardPage() {
         breadcrumbs={[{ label: t('nav.groups.staff') }]}
         badges={
           <>
-            <Badge tone="saffron">Sample metrics, not real test results</Badge>
+            {data?.is_sample && <Badge tone="saffron">Sample metrics, not real test results</Badge>}
             <Badge tone="neutral" icon={<Lock className="size-3" aria-hidden />}>
               Staff only
             </Badge>
@@ -39,14 +64,19 @@ export default function QualityDashboardPage() {
         }
       />
 
-      <Notice tone="warning" title="Demonstration only" className="mb-6">
-        Every number on this page is invented to lay out the dashboard. Staff authentication and
-        real data from <code className="rounded bg-saffron-100 px-1">GET /api/v1/eval/latest</code>{' '}
-        will be added later.
-      </Notice>
+      {data?.is_sample && (
+        <Notice tone="warning" title="Demonstration only" className="mb-6">
+          Every number on this page is invented to lay out the dashboard. Real numbers from{' '}
+          <code className="rounded bg-saffron-100 px-1">GET /api/v1/eval/latest</code> replace them
+          once an evaluation run has been recorded.
+        </Notice>
+      )}
 
       {loading ? (
         <LoadingState />
+      ) : error instanceof ApiError &&
+        (error.code === 'not_authenticated' || error.code === 'staff_only') ? (
+        <AccessState code={error.code} />
       ) : error || !data ? (
         <ErrorState message={error?.message} onRetry={reload} />
       ) : (
@@ -157,6 +187,11 @@ export default function QualityDashboardPage() {
                 Failed questions (latest run)
               </h2>
             </div>
+            {data.failed_questions.length === 0 && (
+              <p className="px-5 pt-3 pb-5 text-ink-muted">
+                No failed questions in the latest run.
+              </p>
+            )}
             <ul className="mt-3 divide-y divide-line border-t border-line">
               {data.failed_questions.map((fq) => {
                 const failure = FAILURE_LABELS[fq.failure];

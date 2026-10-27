@@ -159,12 +159,12 @@ By default every service is a stub. Each one has its own switch, so you can turn
 real answer service (an LLM writing answers from the retrieved passages) and leave the
 rest as stubs:
 
-| Flag                 | `true` (stub)                | `false` (real)                                      |
-| -------------------- | ---------------------------- | --------------------------------------------------- |
-| `USE_STUB_ANSWER`    | Canned demonstration answers | The LLM writes a cited answer, or declines          |
-| `USE_STUB_RETRIEVER` | Three sample passages        | Qdrant search over the ingested corpus (section 12) |
-| `USE_STUB_SPEECH`    | A fixed transcript           | Whisper speech-to-text (section 10)                 |
-| `USE_STUB_GRIEVANCE` | Template grievance guide     | Not built yet: the grievance page returns an error  |
+| Flag                 | `true` (stub)                | `false` (real)                                                                                                      |
+| -------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `USE_STUB_ANSWER`    | Canned demonstration answers | The LLM writes a cited answer, or declines                                                                          |
+| `USE_STUB_RETRIEVER` | Three sample passages        | Qdrant search over the ingested corpus (section 12)                                                                 |
+| `USE_STUB_SPEECH`    | A fixed transcript           | Whisper speech-to-text (section 10)                                                                                 |
+| `USE_STUB_GRIEVANCE` | Template grievance guide     | Forums and contacts from `forums.yaml` (crop insurance only so far; other categories say the route is not recorded) |
 
 An empty flag follows `USE_STUBS` (default `true`). The LLM can be any server with an
 OpenAI-compatible API.
@@ -319,6 +319,13 @@ chunks) and Qdrant (their vectors). Do these steps in order:
    python scripts/acceptance.py
    ```
 
+   To show a run on the Quality dashboard, add `--record` once the real retriever is on
+   (it refuses to record the stub's scores). The dashboard needs all three metrics: the
+   command measures the hit rate and the correct-refusal rate, and faithfulness is a
+   number you enter after checking answers by hand, either with `--faithfulness 0.85` or
+   in the admin site under Eval runs. Until then the dashboard keeps showing its previous
+   run, or the sample data.
+
    Read `data/eval/README.md` for both file formats. The suggestion is only as good as the
    question set: it warns when the in-scope and out-of-scope scores overlap or when a group
    has fewer than 5 questions.
@@ -349,6 +356,56 @@ chunks) and Qdrant (their vectors). Do these steps in order:
 | Changes you pulled do not show up                                            | Rebuild: `docker compose up --build -d --wait`, then hard-refresh the browser (`Ctrl+Shift+R`).                       |
 | Build fails with "no space left on device"                                   | `docker system prune` removes unused images and build cache.                                                          |
 | Microphone does not work on a phone                                          | Browsers only allow it on HTTPS or `localhost`. Use a public HTTPS deployment for phone tests.                        |
+
+## 14. Before the demo
+
+**Settings.** For a laptop or a public host, put these in `.env` (a public host also needs
+the three HTTPS lines from "Deploying publicly" in the root `README.md`):
+
+```bash
+DEMO_CACHE=true          # the scripted demo questions get their saved answers, and keep
+                         # working if the LLM or the vector store is down
+# USE_STUB_* and LLM_*   # as in sections 9 to 12, if the real pipeline is on
+```
+
+`DEMO_CACHE` only touches the questions in `data/eval/conversations.json`. Any other
+question goes through the normal service, and a failure there is still an error. The saved
+answers are in `backend/data/demo_answers.yaml`; two of them are labelled placeholders
+until the owners supply sourced text.
+
+**Run the demo check** after `docker compose up -d --wait`. It visits every screen's
+endpoint in demo order, plays the five scripted conversations, and prints a PASS or FAIL
+table (exit code 1 if anything fails):
+
+```bash
+python scripts/demo_smoke.py                         # http://localhost
+python scripts/demo_smoke.py https://demo.example.org
+```
+
+`/eval/latest` is staff only. Without a login the check confirms that anonymous access is
+refused. To check the data too, pass a staff login through the environment, so the password
+never appears in the command line:
+
+```bash
+# Windows PowerShell
+$env:DEMO_STAFF_USER = "admin"
+$env:DEMO_STAFF_PASSWORD = docker compose exec -T web cat /secrets/admin_password
+python scripts/demo_smoke.py
+
+# macOS, Linux, Git Bash
+DEMO_STAFF_USER=admin \
+DEMO_STAFF_PASSWORD="$(MSYS_NO_PATHCONV=1 docker compose exec -T web cat /secrets/admin_password)" \
+python scripts/demo_smoke.py
+```
+
+Against an `https://` address it also checks the HSTS header and the Secure cookie flag.
+Use `--api-only` to skip the front-end check when only the backend is running. For a quick
+check that the stack itself is locked down, `python scripts/smoke_test.py` is the other
+script.
+
+**On the day:** keep ports 80 and 443 for a public host (the certificate needs them), do
+not run `docker compose down --volumes` on it (that discards the certificate and the
+admin password), and run the demo check from a second device on the same network.
 
 ## What is running
 
