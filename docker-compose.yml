@@ -137,7 +137,8 @@ services:
       BHASHINI_USER_ID: ${BHASHINI_USER_ID:-}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-intfloat/multilingual-e5-small}
       TOP_K: ${TOP_K:-4}
-      SCORE_THRESHOLD: ${SCORE_THRESHOLD:-0.5}
+      # Provisional (see .env.example); used by the real answer service only.
+      SCORE_THRESHOLD: ${SCORE_THRESHOLD:-0.82}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     volumes:
       - static_files:/srv/django

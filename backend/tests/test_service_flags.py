@@ -106,6 +106,66 @@ def test_flags_follow_use_stubs_and_empty_values_are_unset():
     assert _flags_from_settings(USE_STUB_ANSWER="false") == ["True", "False", "True", "True"]
 
 
+# --- The score threshold --------------------------------------------------------------
+
+
+def _threshold_from_settings(value: str) -> float:
+    """SCORE_THRESHOLD as config.settings reads it in a fresh process. The variable is always
+    set (possibly empty), which also stops backend/.env from supplying a value."""
+    clean = {k: v for k, v in os.environ.items() if not k.startswith(("SCORE_", "DJANGO_"))}
+    result = subprocess.run(
+        [sys.executable, "-c", "from config import settings; print(settings.SCORE_THRESHOLD)"],
+        cwd=BACKEND,
+        env={**clean, "SCORE_THRESHOLD": value},
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert result.returncode == 0, result.stderr
+    return float(result.stdout.strip())
+
+
+def test_the_score_threshold_defaults_to_0_82_and_an_empty_value_is_the_default():
+    assert _threshold_from_settings("") == 0.82  # Compose-style empty value
+    assert _threshold_from_settings("  ") == 0.82
+    assert _threshold_from_settings("0.7") == 0.7  # an explicit value still wins
+
+
+def test_the_committed_defaults_agree_on_0_82():
+    """The code default, both env examples and Compose must not drift apart."""
+    root = BACKEND.parent
+    for path in (root / ".env.example", BACKEND / ".env.example"):
+        assert "\nSCORE_THRESHOLD=0.82\n" in path.read_text(encoding="utf-8"), path
+    assert "${SCORE_THRESHOLD:-0.82}" in (root / "docker-compose.yml").read_text(encoding="utf-8")
+
+
+def test_the_stub_answer_service_ignores_the_score_threshold(client, settings):
+    """The stub's canned scores (0.71 to 0.82) are on their own scale: a real-embedding
+    threshold must not make the default stub stack decline law questions."""
+    settings.USE_STUB_ANSWER = True
+    settings.SCORE_THRESHOLD = 0.95
+    services._answer_service.cache_clear()
+    res = client.post(
+        "/api/v1/chat/ask",
+        data='{"text": "How are board members of a PACS elected?", "state": "TN"}',
+        content_type="application/json",
+    )
+    body = res.json()
+    assert res.status_code == 200 and body["status"] == "answered", body
+    assert body["citations"], "a by-law question still gets its sample citations"
+
+
+def test_the_real_answer_service_uses_the_score_threshold(settings):
+    settings.USE_STUB_ANSWER = False
+    settings.USE_STUB_RETRIEVER = True
+    settings.SCORE_THRESHOLD = 0.82
+    services._answer_service.cache_clear()
+    try:
+        assert services.get_answer_service().min_score == 0.82
+    finally:
+        services._answer_service.cache_clear()
+
+
 # --- The wiring -----------------------------------------------------------------------
 
 

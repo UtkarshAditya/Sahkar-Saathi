@@ -32,18 +32,32 @@ DECLINE_TEXT = {
     "ta": "சரிபார்க்கப்பட்ட ஆவணங்களில் இந்தத் தகவலை என்னால் கண்டுபிடிக்க முடியவில்லை.",
 }
 
+# The instructions for the LLM. tests/test_answer_prompt.py checks that each rule is present,
+# so changing a rule means changing that test on purpose. The JSON shape at the end is what
+# ModelOutput validates; do not change one without the other.
 SYSTEM_PROMPT = """You answer questions about cooperative societies and farmer schemes in India.
 Rules:
-1. Use ONLY the numbered passages provided. Never use outside knowledge.
-2. Copy numbers, dates and deadlines exactly as written in the passages.
-3. Every claim must be supported by a passage. List the numbers of the passages you used
-   in "cited_ids".
-4. If the passages do not contain the answer, set "status" to "declined", leave "cited_ids"
-   empty and say you could not find it.
-5. Give legal information only. Never predict the outcome of a dispute or say what someone will win.
-6. Write the answer in the language requested, in short, simple sentences.
+1. Use ONLY facts that appear in the numbered passages provided. Never use outside knowledge
+   and never guess.
+2. Every claim must come from a passage that you cite. List the numbers of the passages you
+   used in "cited_ids", and cite only passages that directly support what you say.
+3. Do not use a passage about a different procedure, actor or type of case, even if it shares
+   words with the question. For example, a rule about refusing to register a new society
+   says nothing about a member's deposit in an existing society.
+4. If no passage directly answers the question, set "status" to "declined", leave "cited_ids"
+   empty and say you could not find it. A decline is better than a wrong answer.
+5. Copy numbers, dates, time limits and deadlines exactly as written in the passages. Mention
+   a section or rule number only if it appears in the passage you cite.
+6. Do not repeat the question. Keep the answer short: at most 3 sentences, or a short list.
+7. Give legal information only. Never predict the outcome of a dispute or say what someone
+   will win.
+8. Write the answer in the language of the question. If you are not sure of the language,
+   write in English.
 Reply with JSON only, in exactly this shape:
 {"status": "answered" or "declined", "answer_text": "...", "cited_ids": [1, 2]}"""
+
+# The question language as a name, so a small model is told "Tamil" and not "ta".
+LANGUAGE_NAMES = {"en": "English", "hi": "Hindi", "ta": "Tamil"}
 
 
 class ModelOutput(BaseModel):
@@ -62,10 +76,13 @@ def build_user_prompt(question: str, passages: list[Passage], language: str) -> 
         f"{p.published_date})\n{p.text}"
         for n, p in enumerate(passages, start=1)
     ]
+    language_name = LANGUAGE_NAMES.get(language, language)
     return (
         "Passages:\n\n"
         + "\n\n".join(blocks)
-        + f"\n\nQuestion: {question}\nAnswer language: {language}"
+        + f"\n\nQuestion: {question}\nThe question is written in {language_name}. Answer in "
+        "that language (English if you are not sure), using only the passages above; if none "
+        "of them directly answers the question, decline."
     )
 
 

@@ -259,6 +259,16 @@ def reply(payload: dict) -> dict:
         body |= {"status": "declined", "contact": CONTACT}
     elif text.startswith("answered-bare"):
         body |= {"citations": []}
+    elif text.startswith("ta-ok"):
+        body["answer_text"] = "இது ஒரு சோதனை பதில்."  # "This is a test answer."
+    elif text.startswith("ta-echo"):  # Tamil, but it repeats the question inside a longer reply
+        body["answer_text"] = f"இது ஒரு சோதனை பதில். {payload['text']} என்ற கேள்விக்கு பதில் இல்லை."
+    elif text.startswith("ta-mixed"):  # mostly Latin letters with a single Tamil word
+        body["answer_text"] = "Please report the loss to the insurance company at once. பதில்"
+    elif text.startswith("hi-ok"):
+        body["answer_text"] = "यह एक परीक्षण उत्तर है।"  # "This is a test answer."
+    elif text.startswith("empty"):
+        body["answer_text"] = ""
     if omit_flag:
         del body["is_demo"]
     return body
@@ -354,6 +364,170 @@ def test_a_response_without_is_demo_fails(chat_server, tmp_path, capsys):
     file = write_conversations(tmp_path, [conversation({"text": "no-flag cited a"})])
     code, out = run_acceptance(chat_server["url"], file, capsys, "--allow-demo")
     assert code == 1 and "does not say whether it is a demo answer (is_demo)" in out
+
+
+# --- answer_script ---------------------------------------------------------------------
+
+
+def script_turn(text: str, script: str = "Tamil", **extra) -> dict:
+    return {"text": text, "answer_script": script, **extra}
+
+
+def test_a_tamil_answer_passes_the_tamil_script_check(chat_server, tmp_path, capsys):
+    file = write_conversations(tmp_path, [conversation(script_turn("ta-ok question about crops"))])
+    code, out = run_acceptance(chat_server["url"], file, capsys)
+    assert code == 0, out
+    assert "  PASS  " in out
+
+
+def test_an_english_answer_fails_the_tamil_script_check(chat_server, tmp_path, capsys):
+    file = write_conversations(tmp_path, [conversation(script_turn("cited question about crops"))])
+    code, out = run_acceptance(chat_server["url"], file, capsys)
+    assert code == 1
+    assert "answer is not in Tamil script (0% of its letters)" in out
+
+
+def test_a_mostly_latin_answer_with_one_tamil_word_fails(chat_server, tmp_path, capsys):
+    file = write_conversations(tmp_path, [conversation(script_turn("ta-mixed question here"))])
+    code, out = run_acceptance(chat_server["url"], file, capsys)
+    assert code == 1 and "answer is not in Tamil script" in out
+
+
+def test_an_answer_that_repeats_the_question_fails_even_inside_a_longer_reply(
+    chat_server, tmp_path, capsys
+):
+    """The first live run: a Tamil answer that was the question text twice, plus a sentence."""
+    file = write_conversations(tmp_path, [conversation(script_turn("ta-echo what should I do?"))])
+    code, out = run_acceptance(chat_server["url"], file, capsys)
+    assert code == 1
+    assert "answer repeats the question text" in out
+    assert "not in Tamil script" not in out, "it is Tamil; the echo is the problem"
+
+
+def test_an_empty_answer_fails(chat_server, tmp_path, capsys):
+    file = write_conversations(tmp_path, [conversation(script_turn("empty answer please ok"))])
+    code, out = run_acceptance(chat_server["url"], file, capsys)
+    assert code == 1 and "answer is empty" in out
+
+
+def test_the_devanagari_option(chat_server, tmp_path, capsys):
+    turns = [
+        script_turn("hi-ok question about crops", "Devanagari"),
+        script_turn("ta-ok question about crops", "Devanagari"),
+    ]
+    file = write_conversations(tmp_path, [conversation(*turns)])
+    code, out = run_acceptance(chat_server["url"], file, capsys)
+    assert code == 1
+    assert out.count("  PASS  ") == 1 and "answer is not in Devanagari script" in out
+
+
+def test_a_turn_without_answer_script_is_not_checked_for_script(chat_server, tmp_path, capsys):
+    file = write_conversations(tmp_path, [conversation({"text": "ta-echo what should I do?"})])
+    code, _ = run_acceptance(chat_server["url"], file, capsys)
+    assert code == 0, "no answer_script, so the echo is not looked for"
+
+
+def test_an_unknown_script_stops_the_run_when_the_file_is_loaded(tmp_path):
+    file = write_conversations(tmp_path, [conversation(script_turn("anything at all", "Klingon"))])
+    with pytest.raises(SystemExit, match="Unknown answer_script 'Klingon'"):
+        load_acceptance().main(["http://127.0.0.1:1", "--file", file])
+
+
+def test_check_script_directly():
+    acceptance = load_acceptance()
+    tamil = "இது ஒரு சோதனை பதில்."
+    question = "பயிர் சேதமடைந்தால் நான் என்ன செய்ய வேண்டும்?"
+    assert acceptance.check_script("Tamil", tamil, question) == []
+    assert acceptance.check_script("Tamil", "", question) == ["answer is empty"]
+    assert acceptance.check_script("Tamil", "?! 123 ...", question) == ["answer is empty"]
+    # The vowel signs and the pulli are marks, not letters: they count as Tamil too.
+    assert acceptance.script_share("கூட்டுறவு சங்கம்", "Tamil") == 1.0
+    # "PMFBY" is 5 Latin letters; "திட்டம்" is 7 Tamil code points (letters and marks).
+    assert acceptance.script_share("PMFBY திட்டம்", "Tamil") == pytest.approx(7 / 12)
+    # Spacing, case and the final question mark do not hide an echo.
+    assert acceptance.check_script("Tamil", f"{tamil}  {question.rstrip('?')} ", question) == [
+        "answer repeats the question text"
+    ]
+    assert acceptance.check_script("Mandarin", tamil, question)[0].startswith("unknown")
+
+
+def live_answer(text: str, status: str = "answered", citations: int = 1) -> dict:
+    """A /chat/ask response as the first live run returned it."""
+    return {
+        "answer_text": text,
+        "status": status,
+        "citations": [CITATION] * citations,
+        "contact": CONTACT if status == "declined" else None,
+        "is_demo": False,
+    }
+
+
+def committed_turn(conversation_id: str, number: int = 0) -> dict:
+    conversations = load_acceptance().load_conversations(EVAL_DIR / "conversations.json")
+    return {c["id"]: c for c in conversations}[conversation_id]["turns"][number]
+
+
+def test_the_tamil_answer_of_the_first_live_run_now_fails():
+    """It used to pass because the turn only asked for 'answered with a citation'. The model
+    had written the question out twice, inside a longer reply (measured on 28 Oct 2026)."""
+    turn = committed_turn("pmfby-loss-hi-ta", 1)
+    question = turn["text"]
+    answer = (
+        "நீங்கள் காப்பீட்டு குறித்த கோரிக்கையை வங்கிக்கு எழுதவேண்டும். அதற்கான வழிமுறைகள் "
+        f"{question} என்ற பதிலில் குறிப்பிடப்பட்டுள்ளது. {question} என்ற பதிலில் "
+        "குறிப்பிடப்பட்டுள்ளது."
+    )
+    problems = load_acceptance().check_turn(turn, 200, live_answer(answer))
+    assert problems == ["answer repeats the question text"]
+
+
+def test_a_real_tamil_answer_still_passes_the_committed_tamil_turn():
+    turn = committed_turn("pmfby-loss-hi-ta", 1)
+    answer = "பயிர் சேதம் ஏற்பட்டால் உடனடியாகக் காப்பீட்டு நிறுவனத்திற்குத் தெரிவிக்கவும்."
+    assert load_acceptance().check_turn(turn, 200, live_answer(answer)) == []
+
+
+def test_the_deposit_answer_of_the_first_live_run_now_fails():
+    """It used to pass because the turn expected nothing. The cited passage was about refusing
+    to register a new society, yet the answer applied its six-month period to a deposit."""
+    turn = committed_turn("grievance-deposit")
+    answer = (
+        "You can file a complaint with the Registrar. The Registrar may grant permission to a "
+        "society to refund the deposit after a period of six months from the date of "
+        "communication of the order of refusal."
+    )
+    problems = load_acceptance().check_turn(turn, 200, live_answer(answer))
+    assert "status is 'answered', expected 'declined'" in problems
+    assert "expected no citations, got 1" in problems
+
+
+def test_a_clean_decline_passes_the_deposit_turn():
+    turn = committed_turn("grievance-deposit")
+    declined = live_answer("I could not find this in the verified documents.", "declined", 0)
+    assert load_acceptance().check_turn(turn, 200, declined) == []
+
+
+def test_the_english_and_hindi_pmfby_turns_still_fail_a_decline():
+    """The 72-hour turns are not loosened: a decline fails them until the document is ingested."""
+    acceptance = load_acceptance()
+    declined = live_answer("I could not find this in the verified documents.", "declined", 0)
+    english = acceptance.check_turn(committed_turn("pmfby-loss-en"), 200, declined)
+    assert "status is 'declined', expected 'answered'" in english
+    assert "answer does not contain '72'" in english
+    hindi = acceptance.check_turn(committed_turn("pmfby-loss-hi-ta", 0), 200, declined)
+    assert "status is 'declined', expected 'answered'" in hindi
+
+
+def test_a_short_question_is_not_looked_for_in_the_answer():
+    acceptance = load_acceptance()
+    assert acceptance.check_script("Latin", "Why? Because of the rule.", "Why?") == []
+
+
+def test_the_script_names_are_documented_in_the_eval_readme():
+    readme = (EVAL_DIR / "README.md").read_text(encoding="utf-8")
+    assert "answer_script" in readme
+    for name in load_acceptance().SCRIPT_BLOCKS:
+        assert name in readme
 
 
 def test_passing_turns_pass_and_never_print_the_answer(chat_server, tmp_path, capsys):
@@ -462,14 +636,26 @@ def test_the_committed_conversations_have_the_five_scenarios():
     english = by_id["pmfby-loss-en"]["turns"][0]
     assert english["must_contain"] == ["72"] and english["citations"] is True
 
-    languages = [t["language"] for t in by_id["pmfby-loss-hi-ta"]["turns"]]
-    assert languages == ["hi", "ta"]
+    hindi, tamil = by_id["pmfby-loss-hi-ta"]["turns"]
+    assert (hindi["language"], tamil["language"]) == ("hi", "ta")
+    # The PMFBY turns stay as they were: they are meant to fail until the 72-hour document is
+    # ingested, so nothing was loosened. Only the Tamil turn gained a check that can fail.
+    assert hindi["status"] == "answered" and hindi["citations"] is True
+    assert "answer_script" not in hindi
+    assert tamil["status"] == "answered" and tamil["citations"] is True
+    assert tamil["answer_script"] == "Tamil"
 
     assert by_id["coop-member-tn"]["turns"][0]["state"] == "TN"
     assert by_id["coop-member-tn"]["turns"][0]["TODO_owner"] == "Zainab"
 
-    grievance = by_id["grievance-deposit"]["turns"][0]
-    assert grievance["status"] is None and grievance["TODO_owner"] == "Varsha"
+    # The deposit turn has a real expectation, taken from the ingested text (see its note).
+    deposit_conversation = by_id["grievance-deposit"]
+    grievance = deposit_conversation["turns"][0]
+    assert grievance["status"] == "declined" and grievance["citations"] is False
+    assert grievance["contact_when_declined"] is True and grievance["state"] == "TN"
+    assert "TODO" not in " ".join(grievance) and None not in grievance.values()
+    for source in ("s.29", "p.37", "s.90", "s.85A"):
+        assert source in deposit_conversation["note"], "the note names the passages it rests on"
 
     out_of_scope = by_id["out-of-scope-election"]["turns"][0]
     assert out_of_scope["status"] == "declined" and out_of_scope["citations"] is False

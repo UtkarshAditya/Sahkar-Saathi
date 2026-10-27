@@ -144,7 +144,7 @@ Common changes:
 | `USE_STUB_RETRIEVER=false`             | Real retrieval over the ingested documents (see section 12)       |
 | `USE_STUB_SPEECH=false`                | Real speech-to-text with Whisper (see section 10)                 |
 | `INSTALL_ML=false`                     | A smaller, stub-only image: no PyTorch, so no real retrieval      |
-| `SCORE_THRESHOLD`                      | Set from `eval_retrieval`, not by guessing (see section 12)       |
+| `SCORE_THRESHOLD`                      | Default 0.82, provisional; re-tune with `eval_retrieval` (§ 12)   |
 | `BHASHINI_API_KEY`, `BHASHINI_USER_ID` | Speech keys (member C)                                            |
 | `LOAD_SAMPLE_DOCUMENTS=false`          | Start the library empty instead of with 9 sample entries          |
 
@@ -416,6 +416,34 @@ script.
 **On the day:** keep ports 80 and 443 for a public host (the certificate needs them), do
 not run `docker compose down --volumes` on it (that discards the certificate and the
 admin password), and run the demo check from a second device on the same network.
+
+## 15. Known limits of the live run
+
+What the first end-to-end run with Ollama and `llama3.1:8b` showed (details in
+`data/eval/last_live_run.md`). Treat the live pipeline as a rehearsal, not a finished system.
+
+- **Tamil is weak and slow.** The Tamil answers took 79 to 88 s, against 5 to 25 s for
+  English, and the Tamil PMFBY answer repeated the question back instead of answering. The
+  acceptance test now fails an answer that is not in Tamil script or that repeats the
+  question (`answer_script` in `data/eval/README.md`). A fluent speaker must read the Hindi
+  and Tamil answers.
+- **The score threshold is provisional.** `SCORE_THRESHOLD` defaults to 0.82. It comes from
+  six PMFBY-only evaluation questions: off-topic questions scored up to 0.813 and the lowest
+  answerable one 0.8298. Scores are lower in Hindi and Tamil than in English, and no
+  threshold can stop an on-topic question that the corpus does not cover. Re-tune it with
+  `eval_retrieval` once real in-scope questions with expected documents are added.
+- **About half of the corpus is ingested.** 13 of the 26 documents marked `use_in_corpus=Y`
+  have a file; the rest could not be downloaded (see section 12). The PMFBY documents are
+  among the missing ones, so the "72 hours" question is correctly declined and the first
+  PMFBY acceptance turns fail until those PDFs are added and ingested.
+- **An answer can misapply a passage it cites.** The prompt now forbids using a passage about
+  a different procedure or kind of case, but nothing checks it automatically. Read the
+  cited passage next to every answer you show.
+- **Low host memory makes Ollama very slow.** On the test machine only 0.3 GB of 15.7 GB
+  was free, and 42% of the model fitted in the 4 GB graphics memory; the rest ran on the CPU.
+  Close other programs, keep a single model loaded (`ollama ps`), let the first question
+  after a model switch take a while, and raise `LLM_TIMEOUT` (150 s in the test) if you
+  see 502 errors.
 
 ## What is running
 

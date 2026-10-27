@@ -69,14 +69,32 @@ of `turns`; later turns reuse the `conversation_id` returned by the first.
 | `contact_when_declined` | `true`: a declined answer must carry a contact.                    |
 | `must_contain`          | Optional. Strings the answer text must contain (case-insensitive). |
 | `expect_doc_ids`        | Optional. At least one of these documents must be cited.           |
+| `answer_script`         | Optional: `"Tamil"`, `"Devanagari"` or `"Latin"`. See below.       |
 | `answer_language_note`  | Free text for the human reader; not checked.                       |
 
 These are always checked, whatever the turn says: a declined answer has no citations and
 carries a contact; an answered one has at least one citation.
 
-Open items are marked `TODO_owner`: Zainab (the Tamil Nadu question's `expect_doc_ids`) and
-Varsha (what the deposit-grievance question should do). The Tamil question text is
-machine-written and needs review by a fluent speaker.
+**`answer_script`** checks that the answer is really in the language asked for, which the
+other fields cannot. It fails the turn if the answer is empty, if fewer than half of its
+letters (with their vowel signs) are in that script's Unicode block (`Tamil` is U+0B80 to
+U+0BFF, `Devanagari` U+0900 to U+097F), or if the answer contains the question text
+(ignoring case, spacing and the final punctuation). A few Latin acronyms such as PMFBY are
+fine. It stops at the script: it cannot judge whether the sentences are fluent or correct,
+so a fluent speaker still has to read the answer. A script name the script does not know
+stops the run before any question is asked. Only the Tamil PMFBY turn uses it so far; the
+Hindi turn could take `"Devanagari"`.
+
+**The deposit turn** expects a clean decline, and its `note` says why: in the ingested
+documents no provision says when or how a Tamil Nadu society must return a member's
+deposit. Section 29 of the Tamil Nadu Act covers a member's share or interest in capital
+(not deposits), and the Ombudsman route for deposit complaints is for multi-State societies
+only. If a document is added that covers deposits, change the turn to `"answered"` and
+require its section number in `must_contain`, copied from the document.
+
+Open items are marked `TODO_owner`: Zainab (the Tamil Nadu cooperative question's
+`expect_doc_ids`). The Tamil question text is machine-written and needs review by a fluent
+speaker.
 
 ### Live answers and demo answers
 

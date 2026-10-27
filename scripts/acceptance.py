@@ -13,7 +13,9 @@ Checked on every turn, whatever the file says:
 - an answered one has at least one citation;
 - the response says whether it is a demo answer (is_demo).
 Checked when the turn lists it: status, citations (true/false), must_contain (case-
-insensitive), expect_doc_ids (at least one is cited). A null expectation is skipped.
+insensitive), expect_doc_ids (at least one is cited), answer_script ("Tamil", "Devanagari"
+or "Latin": the answer is not empty, most of its letters are in that script, and it does not
+repeat the question text). A null expectation is skipped.
 
 An answer with is_demo=true comes from the demo cache (DEMO_CACHE=true) or from a stub, not
 from the live pipeline, so passing it proves nothing about retrieval or the LLM. Such a
@@ -32,6 +34,7 @@ import json
 import pathlib
 import sys
 import time
+import unicodedata
 import urllib.error
 import urllib.request
 
@@ -39,6 +42,15 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 DEFAULT_FILE = ROOT / "data" / "eval" / "conversations.json"
 TIMEOUT_SECONDS = 180  # a local LLM can take a while on a laptop
 MAX_RATE_LIMIT_WAIT = 65  # the chat limit is per minute
+
+# Unicode blocks for the answer_script check (code point ranges, inclusive).
+SCRIPT_BLOCKS = {
+    "Tamil": (0x0B80, 0x0BFF),
+    "Devanagari": (0x0900, 0x097F),
+    "Latin": (0x0041, 0x024F),
+}
+MIN_SCRIPT_SHARE = 0.5  # a Tamil answer may keep a few Latin acronyms, such as PMFBY
+MIN_ECHO_CHARS = 12  # a shorter question could appear inside an answer by chance
 
 
 def ask(base_url: str, payload: dict) -> tuple[int, dict]:
@@ -72,6 +84,38 @@ def _json_or_empty(raw: bytes) -> dict:
     except ValueError:
         return {}
     return parsed if isinstance(parsed, dict) else {}
+
+
+def _squash(text: str) -> str:
+    """Case, spacing and trailing punctuation do not matter when looking for an echo."""
+    text = " ".join(unicodedata.normalize("NFKC", text).casefold().split())
+    return text.rstrip("?!.।,;: ")
+
+
+def script_share(text: str, script: str) -> float | None:
+    """The share of the letters (and their vowel signs) in ``text`` that are in ``script``,
+    or None if the text has no letters at all."""
+    low, high = SCRIPT_BLOCKS[script]
+    marks = [c for c in text if unicodedata.category(c)[0] in "LM"]
+    if not marks:
+        return None
+    return sum(low <= ord(c) <= high for c in marks) / len(marks)
+
+
+def check_script(script: str, answer: str, question: str) -> list[str]:
+    """Problems with the answer's script: empty, mostly another script, or an echo."""
+    if script not in SCRIPT_BLOCKS:
+        return [f"unknown answer_script {script!r} (use one of {sorted(SCRIPT_BLOCKS)})"]
+    share = script_share(answer, script)
+    if share is None:
+        return ["answer is empty"]
+    problems = []
+    if share < MIN_SCRIPT_SHARE:
+        problems.append(f"answer is not in {script} script ({share:.0%} of its letters)")
+    echoed = _squash(question)
+    if len(echoed) >= MIN_ECHO_CHARS and echoed in _squash(answer):
+        problems.append("answer repeats the question text")
+    return problems
 
 
 def check_turn(turn: dict, http_status: int, body: dict) -> list[str]:
@@ -110,6 +154,10 @@ def check_turn(turn: dict, http_status: int, body: dict) -> list[str]:
     expected = turn.get("expect_doc_ids") or []
     if expected and not cited_ids & set(expected):
         problems.append(f"none of {expected} is cited (cited: {sorted(cited_ids - {None})})")
+    if turn.get("answer_script"):
+        problems += check_script(
+            turn["answer_script"], body.get("answer_text") or "", turn.get("text") or ""
+        )
     return problems
 
 
@@ -124,6 +172,13 @@ def load_conversations(path: pathlib.Path) -> list[dict]:
         turns = conversation.get("turns") if isinstance(conversation, dict) else None
         if not turns or not all(isinstance(t, dict) and t.get("text") for t in turns):
             raise SystemExit(f"Conversation {conversation!r:.60} needs turns with a 'text'.")
+        for turn in turns:
+            script = turn.get("answer_script")
+            if script is not None and script not in SCRIPT_BLOCKS:
+                raise SystemExit(
+                    f"Unknown answer_script {script!r} in {conversation.get('id', '?')!r}; "
+                    f"use one of {sorted(SCRIPT_BLOCKS)}."
+                )
     return data
 
 
