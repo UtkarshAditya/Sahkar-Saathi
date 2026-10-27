@@ -9,3 +9,4 @@ psycopg[binary]>=3.2,<4
 openai>=3.35,<4
 av>=11,<19
 faster-whisper>=1.2,<2 # faster-whisper 1.2.x breaks on PyAV 19+
+pdfplumber
