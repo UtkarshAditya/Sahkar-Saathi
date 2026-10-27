@@ -14,6 +14,7 @@ from services.privacy import scrub_pii
 from services.stubs import DEFAULT_CONTACT
 from services.types import Answer, Passage
 
+from . import demo_cache
 from .models import Citation, Conversation, Message
 from .schemas import AskIn, AskOut, CitationOut, ContactOut
 
@@ -42,6 +43,32 @@ def _normalise(answer: Answer) -> Answer:
         answer.citations = []
         answer.contact = answer.contact or DEFAULT_CONTACT
     return answer
+
+
+async def _answer(payload: AskIn) -> Answer:
+    """The saved answer for a scripted question when DEMO_CACHE is on, else the live service.
+
+    If the live service fails on a scripted question, the saved answer is served instead of
+    an error. Any other question surfaces the failure as usual.
+    """
+    if settings.DEMO_CACHE and not payload.document_id:
+        # "Ask about this document" is a different question from the scripted one.
+        if (saved := demo_cache.lookup(payload.text)) is not None:
+            return saved
+    try:
+        return await get_answer_service().ask(
+            payload.text,
+            language=payload.language,
+            state=payload.state,
+            document_id=payload.document_id,
+        )
+    except Exception as exc:
+        # Not only ProviderError and ServiceNotReady: the vector store's own errors are not
+        # wrapped yet, and a live demo must not end on a 500 when a saved answer exists.
+        if settings.DEMO_CACHE and (saved := demo_cache.lookup(payload.text)) is not None:
+            logger.warning("chat.ask served the demo cache after %s", exc.__class__.__name__)
+            return saved
+        raise
 
 
 def _parse_uuid(value: str | None) -> uuid.UUID | None:
@@ -104,14 +131,7 @@ async def ask(request, payload: AskIn):
     ``message_id`` is what ``POST /feedback`` rates.
     """
     started = time.perf_counter()
-    answer = _normalise(
-        await get_answer_service().ask(
-            payload.text,
-            language=payload.language,
-            state=payload.state,
-            document_id=payload.document_id,
-        )
-    )
+    answer = _normalise(await _answer(payload))
     latency_ms = int((time.perf_counter() - started) * 1000)
 
     try:

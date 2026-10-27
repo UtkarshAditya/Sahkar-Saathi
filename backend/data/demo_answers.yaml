@@ -1,0 +1,164 @@
+# Saved answers for the scripted demo conversations (data/eval/conversations.json), served
+# when DEMO_CACHE=true. See apps/chat/demo_cache.py.
+#
+# Rules, enforced when the file is loaded:
+# - `question` is what the user types; it is matched ignoring case, spacing and punctuation.
+# - A saved answer that is not a placeholder MUST have a `source` and an `as_of` date, and
+#   its text may only say what that source says.
+# - Anything else is `is_placeholder: true` and its text says it is a sample. Nothing here
+#   may invent a deadline, an amount, a helpline number or a link.
+# - Text that was machine-written in Hindi or Tamil has `needs_review: true` until a fluent
+#   speaker has checked it.
+# - A declined answer has no citations; its contact comes from HELPLINE_LABEL/HELPLINE_DETAIL.
+#
+# tests/test_demo_cache.py checks that every scripted question has an entry here.
+
+answers:
+  # --- 1. PMFBY loss reporting, English ---------------------------------------------------
+  - id: pmfby-loss-en
+    conversation: pmfby-loss-en
+    question: "What should I do if my insured crop is damaged under PMFBY?"
+    language: en
+    status: answered
+    answer_text: >-
+      Report the loss within 72 hours of the occurrence of the localized calamity or damage.
+      You can report it on the National Crop Insurance Portal (NCIP) or the PMFBY Mobile App,
+      or tell the insurance company, the toll-free helpline or your local agriculture office
+      directly.
+    followups:
+      - "Which documents do I need for a crop loss claim?"
+    citations:
+      - id: demo-pmfby-loss-reporting
+        document_id: scheme-pmfby
+        title: "Revised Operational Guidelines of Pradhan Mantri Fasal Bima Yojana (PMFBY)"
+        publisher: "Ministry of Agriculture & Farmers Welfare, Department of Agriculture & Farmers Welfare"
+        published_date: null
+        page: null
+        section: "Loss reporting rule"
+        url: "https://pmfby.gov.in/"
+        excerpt: "Within 72 hours of the occurrence of localized calamity or damage"
+    source: "backend/services/data/schemes.yaml, scheme pmfby, loss_reporting_rule"
+    as_of: 2026-10-22
+    is_placeholder: false
+    needs_review: false
+
+  # --- 2. The same question in Hindi, then Tamil ------------------------------------------
+  # Same facts as entry 1; only the wording is translated.
+  - id: pmfby-loss-hi
+    conversation: pmfby-loss-hi-ta
+    question: "अगर पीएमएफबीवाई के तहत मेरी बीमित फसल खराब हो जाए तो मुझे क्या करना चाहिए?"
+    language: hi
+    status: answered
+    # Machine-written translation of entry 1: needs review by a fluent speaker.
+    answer_text: >-
+      स्थानीय आपदा या नुकसान होने के 72 घंटे के भीतर इसकी सूचना दें। आप राष्ट्रीय फसल बीमा पोर्टल (NCIP)
+      या PMFBY मोबाइल ऐप पर सूचना दे सकते हैं, या सीधे बीमा कंपनी, टोल-फ्री हेल्पलाइन या अपने स्थानीय
+      कृषि कार्यालय को बता सकते हैं।
+    followups: []
+    citations:
+      - id: demo-pmfby-loss-reporting
+        document_id: scheme-pmfby
+        title: "Revised Operational Guidelines of Pradhan Mantri Fasal Bima Yojana (PMFBY)"
+        publisher: "Ministry of Agriculture & Farmers Welfare, Department of Agriculture & Farmers Welfare"
+        published_date: null
+        page: null
+        section: "Loss reporting rule"
+        url: "https://pmfby.gov.in/"
+        excerpt: "Within 72 hours of the occurrence of localized calamity or damage"
+    source: "backend/services/data/schemes.yaml, scheme pmfby, loss_reporting_rule"
+    as_of: 2026-10-22
+    is_placeholder: false
+    needs_review: true
+
+  - id: pmfby-loss-ta
+    conversation: pmfby-loss-hi-ta
+    question: "பிஎம்எஃப்பிஒய் திட்டத்தின் கீழ் காப்பீடு செய்யப்பட்ட என் பயிர் சேதமடைந்தால் நான் என்ன செய்ய வேண்டும்?"
+    language: ta
+    status: answered
+    # Machine-written translation of entry 1: needs review by a fluent speaker.
+    answer_text: >-
+      உள்ளூர் இயற்கைப் பேரிடர் அல்லது சேதம் ஏற்பட்ட 72 மணி நேரத்திற்குள் தகவல் தெரிவிக்க வேண்டும்.
+      தேசிய பயிர் காப்பீட்டு இணையதளம் (NCIP) அல்லது PMFBY மொபைல் செயலியில் தெரிவிக்கலாம்; அல்லது
+      காப்பீட்டு நிறுவனம், கட்டணமில்லா உதவி எண் அல்லது உங்கள் உள்ளூர் வேளாண்மை அலுவலகத்திற்கு
+      நேரடியாகத் தெரிவிக்கலாம்.
+    followups: []
+    citations:
+      - id: demo-pmfby-loss-reporting
+        document_id: scheme-pmfby
+        title: "Revised Operational Guidelines of Pradhan Mantri Fasal Bima Yojana (PMFBY)"
+        publisher: "Ministry of Agriculture & Farmers Welfare, Department of Agriculture & Farmers Welfare"
+        published_date: null
+        page: null
+        section: "Loss reporting rule"
+        url: "https://pmfby.gov.in/"
+        excerpt: "Within 72 hours of the occurrence of localized calamity or damage"
+    source: "backend/services/data/schemes.yaml, scheme pmfby, loss_reporting_rule"
+    as_of: 2026-10-22
+    is_placeholder: false
+    needs_review: true
+
+  # --- 3. A member question, Tamil Nadu ---------------------------------------------------
+  # No verified source text for this question exists in the repository yet (owner: Zainab).
+  # This is a labelled placeholder that asserts no right or rule; replace it with an answer
+  # quoted from the ingested Tamil Nadu Act.
+  - id: coop-member-tn
+    conversation: coop-member-tn
+    question: "As a member of a cooperative society, can I attend the general body meeting?"
+    language: en
+    status: answered
+    answer_text: >-
+      Sample answer (placeholder). Members' rights, including attending the general body
+      meeting, are set by the state Cooperative Societies Act and by your society's registered
+      by-laws. The exact provision will be quoted here from the verified Tamil Nadu Act once
+      it is available.
+    followups:
+      - "Who conducts elections in a cooperative society?"
+    citations:
+      - id: demo-sample-tn-act
+        document_id: doc-tn-act
+        title: "Tamil Nadu Co-operative Societies Act, 1983"
+        publisher: "Sample metadata"
+        published_date: null
+        page: null
+        section: "Sample passage (placeholder)"
+        url: null
+        excerpt: "Sample passage. The verified text will appear here after the document is ingested."
+    source: "Placeholder: no verified source yet (TODO owner: Zainab)"
+    as_of: null
+    is_placeholder: true
+    needs_review: false
+
+  # --- 4. Grievance: a society refuses to return a deposit ---------------------------------
+  # No verified source for the route or the time limits exists yet (owner: Varsha), so this
+  # is an honest, clean decline that points to the Grievance helper page.
+  - id: grievance-deposit
+    conversation: grievance-deposit
+    question: "My cooperative society is refusing to return my deposit. What can I do?"
+    language: en
+    status: declined
+    answer_text: >-
+      I could not find the rules for this in my verified sources, so I will not guess. The
+      Grievance helper page can help you prepare a complaint and a checklist of documents.
+    followups:
+      - "Where can I file a complaint against my cooperative society?"
+    citations: []
+    source: "Placeholder: no verified source yet (TODO owner: Varsha)"
+    as_of: null
+    is_placeholder: true
+    needs_review: false
+
+  # --- 5. Out of scope ---------------------------------------------------------------------
+  - id: out-of-scope-election
+    conversation: out-of-scope-election
+    question: "Who will win the next election?"
+    language: en
+    status: declined
+    answer_text: >-
+      I can only explain what public documents say about cooperative societies and farmer
+      schemes, so I cannot answer this.
+    followups: []
+    citations: []
+    source: "Not a factual answer: a scope statement"
+    as_of: null
+    is_placeholder: false
+    needs_review: false

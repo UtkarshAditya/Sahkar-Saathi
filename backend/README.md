@@ -2,9 +2,11 @@
 
 Django 5.2 + Django Ninja, served by uvicorn (ASGI). This is member A's platform layer from
 the Member A plan. Every endpoint in the API contract exists and is frozen in
-[`openapi.json`](openapi.json). Answers, retrieval, speech and grievance guidance still
-come from **stubs**, so B, C and D can build against the real API before the real
-services exist.
+[`openapi.json`](openapi.json). Every service defaults to a **stub**, so the team can
+build against the real API with no network and no model. Retrieval (Qdrant), answers (an
+OpenAI-compatible LLM) and speech-to-text (Whisper) can each be switched to the real thing
+with their own flag, as can the grievance guide (forums from `services/data/forums.yaml`);
+speech synthesis and Bhashini are still stubs.
 
 ## Run it
 
@@ -60,12 +62,12 @@ the team admin once, never resets a password) and, if `LOAD_SAMPLE_DOCUMENTS=tru
 | `GET /health`                 | Deployment check (database, vector store)   | demo checklist            | real                             |
 | `GET /meta/languages`         | Options for the language selector           | sidebar                   | settings                         |
 | `GET /meta/states`            | States, with the covered one marked         | sidebar                   | settings                         |
-| `POST /chat/ask`              | Ask a question in text                      | Ask                       | stub answer service, stored      |
-| `POST /speech/transcribe`     | Speech to text (multipart upload)           | Ask, Grievance            | stub speech provider             |
-| `POST /speech/synthesize`     | Text to speech (`audio/wav`)                | Ask                       | stub speech provider             |
+| `POST /chat/ask`              | Ask a question in text                      | Ask                       | stub, or retriever + LLM (`USE_STUB_ANSWER=false`); stored |
+| `POST /speech/transcribe`     | Speech to text (multipart upload)           | Ask, Grievance            | stub, or Whisper (`USE_STUB_SPEECH=false`) |
+| `POST /speech/synthesize`     | Text to speech (`audio/wav`)                | Ask                       | stub (silent audio) in both modes |
 | `POST /feedback`              | Rate an answer, or send a general comment   | Ask, About                | real, stored                     |
-| `GET /grievance/categories`   | Categories for the problem-type chips       | Grievance                 | stub grievance guide             |
-| `POST /grievance/guide`       | Category, forum, steps, checklist, draft    | Grievance                 | stub grievance guide             |
+| `GET /grievance/categories`   | Categories for the problem-type chips       | Grievance                 | stub, or `forums.yaml` guide (`USE_STUB_GRIEVANCE=false`) |
+| `POST /grievance/guide`       | Category, forum, steps, checklist, draft    | Grievance                 | stub, or `forums.yaml` guide (`USE_STUB_GRIEVANCE=false`) |
 | `GET /schemes`                | Scheme cards (`?category=`)                 | Schemes                   | `data/schemes.yaml`              |
 | `GET /schemes/{slug}`         | One scheme; `pmfby` has the guide facts     | Schemes, Crop insurance   | `data/schemes.yaml`              |
 | `GET /lessons`                | Lessons and the quiz (`?language=`)         | Learn                     | `data/lessons.yaml`              |
@@ -160,12 +162,16 @@ backend/
 │   ├── knowledge/   /documents; Document, Chunk; fixtures/sample_documents.json
 │   ├── meta/        /meta/languages, /meta/states
 │   └── evaluation/  /eval/latest (staff); sample data until EvalRun models exist
-├── data/            schemes.yaml, lessons.yaml (later forums.yaml, test questions)
+├── data/            schemes.yaml, lessons.yaml (the evaluation questions are in ../data/eval)
 ├── services/        plain Python, no Django imports
 │   ├── types.py     interfaces: Retriever, AnswerService, SpeechProvider, GrievanceGuide
-│   ├── stubs.py     stub implementations served while USE_STUBS=true
+│   ├── stubs.py     stub implementations, served while the matching USE_STUB_* flag is true
 │   ├── privacy.py   scrub_pii(): removes personal identifiers before storage
-│   └── retrieval/ speech/ translation/   real implementations go here (B, C)
+│   ├── llm.py       OpenAI-compatible LLM client (settings read at call time)
+│   ├── answer.py    GroundedAnswerService: retrieve, score check, LLM, validated citations
+│   ├── retrieval/   QdrantRetriever (embeds the query, searches Qdrant)
+│   ├── speech/      WhisperSpeechProvider (speech to text); synthesis is still the stub
+│   └── translation/ not started
 ├── ai/              agent, prompts, RAG, embeddings, safety (C, B). Not started
 ├── tests/           pytest (pytest-django), including the contract tests
 └── openapi.json     the frozen contract
@@ -181,8 +187,9 @@ backend/
    `async def` with `httpx.AsyncClient` for network calls.
 2. In `config/services.py`, replace the `raise ServiceNotReady(...)` line in the matching
    function with your implementation.
-3. Run with `USE_STUBS=false`. Until step 2 is done, that endpoint returns
-   `503 service_not_ready`.
+3. Turn it on with its own flag (`USE_STUB_RETRIEVER`, `USE_STUB_ANSWER`, `USE_STUB_SPEECH`
+   or `USE_STUB_GRIEVANCE` set to `false`); the others stay stubs. Until step 2 is done,
+   that endpoint returns `503 service_not_ready`.
 4. Raise `services.types.ProviderError` when an upstream call fails; the API turns it into
    a 502 with the standard error shape.
 
@@ -199,20 +206,47 @@ are the ones the team shares:
 
 | Setting                                                       | Owner    | Purpose                                                                 |
 | ------------------------------------------------------------- | -------- | ----------------------------------------------------------------------- |
-| `USE_STUBS`                                                   | everyone | Serve stubs until the real services land (default `true`)               |
-| `DEMO_CACHE`                                                  | A, D     | Saved answers for the scripted demo (not wired yet)                     |
+| `USE_STUBS`                                                   | everyone | Default for every service: serve stubs (default `true`)                 |
+| `USE_STUB_RETRIEVER`, `_ANSWER`, `_SPEECH`, `_GRIEVANCE`      | everyone | Override `USE_STUBS` for one service; empty follows `USE_STUBS`         |
+| `DEMO_CACHE`                                                  | A, D     | Saved answers for the scripted demo questions (`data/demo_answers.yaml`); also a fallback when a live service fails on one (default `false`) |
 | `STORE_MESSAGES`                                              | A        | Turn off to store no question or answer text (metrics are still stored) |
 | `REGIONAL_LANGUAGE_*`, `COVERED_STATE_CODE`                   | team     | The third language (default Tamil) and the covered state (default TN)  |
 | `CHAT_RATE_LIMIT`, `SPEECH_RATE_LIMIT`, `FEEDBACK_RATE_LIMIT`, `GRIEVANCE_RATE_LIMIT` | A | Per-client limits, e.g. `20/m`                          |
-| `LLM_PROVIDER`, `LLM_MODEL`, `BHASHINI_*`                     | C        | Model and speech access                                                 |
-| `EMBEDDING_MODEL`, `TOP_K`, `SCORE_THRESHOLD`, `QDRANT_URL`   | B        | Retrieval behaviour                                                     |
+| `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`, `LLM_TIMEOUT`, `LLM_JSON_MODE` | C | The LLM server (any OpenAI-compatible API); empty values use the defaults |
+| `WHISPER_MODEL`, `WHISPER_DEVICE`, `WHISPER_COMPUTE_TYPE`     | C        | Speech-to-text; models download into `HF_HOME`                          |
+| `HELPLINE_LABEL`, `HELPLINE_DETAIL`                           | C        | Who a declined answer points to (only verified details)                 |
+| `BHASHINI_*`                                                  | C        | Not used yet                                                            |
+| `EMBEDDING_MODEL`, `TOP_K`, `QDRANT_URL`                      | B        | Retrieval behaviour                                                     |
+| `SCORE_THRESHOLD`                                             | B        | Decline below this top score. Set it from `eval_retrieval`, not by guessing |
+| `SOURCES_CSV`                                                 | A, B     | The document list for `load_sources` and `ingest_corpus`                |
 | `DATABASE_URL`                                                | A        | PostgreSQL in Compose; SQLite when unset                                |
 | `NINJA_NUM_PROXIES`                                           | A        | Set to `1` behind Caddy                                                 |
+
+## Management commands and scripts
+
+Run commands from `backend/` (in Docker: `docker compose exec web python manage.py ...`).
+
+| Command                                      | What it does                                                               |
+| -------------------------------------------- | -------------------------------------------------------------------------- |
+| `load_sources [--dry-run] [--strict]`        | Loads document metadata from `data/sources.csv`; skips and reports bad rows |
+| `ingest_corpus`                              | Chunks the PDFs in `data/raw/`, embeds them, writes Chunk rows and Qdrant (needs `requirements-ml.txt`) |
+| `corpus_status`                              | Chunks per document, the Qdrant point count, documents with no chunks      |
+| `eval_retrieval [--questions] [--top-k]`     | Scores retrieval on `data/eval/retrieval_questions.json`; suggests `SCORE_THRESHOLD` |
+| `eval_retrieval --record [--faithfulness X]` | Also saves the run (EvalRun, EvalResult) for the Quality dashboard; see `data/eval/README.md` |
+| `load_test_questions [--path]`               | Loads the evaluation questions into the TestQuestion table                 |
+| `warm_models`                                | Loads the Whisper and embedding models for the real services (start-up)    |
+| `load_sample_documents`, `ensure_superuser`  | Sample library entries (empty table only); the admin account              |
+| `python ../scripts/acceptance.py [URL]`      | Runs `data/eval/conversations.json` against a running stack                |
+| `python ../scripts/download_pdfs.py`         | Downloads the PDFs with direct links into `data/raw/` (TLS verified)       |
+| `python ../scripts/smoke_test.py [URL]`      | 26 checks that the stack is up and locked down                             |
+
+The ML packages are optional for development: without `requirements-ml.txt` everything runs
+on the stubs, and the commands that need them say so.
 
 ## Quality checks
 
 ```bash
-python -m pytest            # 95 tests: endpoints, errors, storage, privacy, contract, deploy checks
+python -m pytest            # endpoints, errors, storage, privacy, contract, deploy, pipeline (all faked)
 python -m ruff check .
 python -m ruff format --check .
 python manage.py makemigrations --check --dry-run
@@ -224,8 +258,14 @@ and runs `scripts/smoke_test.py` against it.
 
 ## Not done yet (Member A plan)
 
-- **Sprint 2 models:** GrievanceCase (only when `STORE_MESSAGES` is on), and TestQuestion,
-  EvalRun and EvalResult so `/eval/latest` serves real runs instead of sample data.
-- **Resilience:** `DEMO_CACHE` (saved answers for the five scripted conversations).
+- **Sprint 2 models:** GrievanceCase (only when `STORE_MESSAGES` is on). TestQuestion, EvalRun
+  and EvalResult are done: `/eval/latest` serves the latest complete run, else sample data.
+  Faithfulness is not measured by any tool; staff enter it in the admin site (Eval runs).
+- **Resilience:** done (`DEMO_CACHE`). The saved answers for the cooperative-member and
+  deposit-grievance questions are placeholders until the owners supply sourced text.
 - **Platform:** choose the demo host and test HTTPS from a phone (Compose and Caddy are done).
-- **Real services** from members B and C, plugged in through `config/services.py`.
+- **Still stubs:** text to speech (Listen), Bhashini, and asking for a state when the
+  question needs one (`needs_state` in the grounded answer service). The grievance guide
+  only has recorded forums for crop insurance; `forums.yaml` needs the cooperative routes.
+- **Evidence for the real pipeline:** ingest the verified corpus, grow the evaluation
+  questions in `data/eval`, and set `SCORE_THRESHOLD` from `eval_retrieval`.

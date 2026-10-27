@@ -13,6 +13,7 @@ import pytest
 from config import services
 from config.settings import env_bool, env_value
 from services.answer import GroundedAnswerService
+from services.grievance import ForumsGrievanceGuide
 from services.retrieval.qdrant_retriever import QdrantRetriever
 from services.speech.whisper_provider import WhisperSpeechProvider
 from services.stubs import (
@@ -118,7 +119,7 @@ def test_every_service_defaults_to_its_stub(all_stubs):
         ("USE_STUB_RETRIEVER", "retriever", QdrantRetriever),
         ("USE_STUB_ANSWER", "answer", GroundedAnswerService),
         ("USE_STUB_SPEECH", "speech", WhisperSpeechProvider),
-        ("USE_STUB_GRIEVANCE", "grievance", ServiceNotReady),
+        ("USE_STUB_GRIEVANCE", "grievance", ForumsGrievanceGuide),
     ],
 )
 def test_each_flag_flips_only_its_own_service(all_stubs, flag, service, real):
@@ -148,10 +149,20 @@ def test_real_speech_keeps_stub_synthesis_and_loads_no_model(all_stubs, monkeypa
     services._speech_provider.cache_clear()
 
 
-def test_not_ready_messages_name_the_flag(all_stubs):
+def test_not_ready_messages_name_the_flag(all_stubs, monkeypatch):
+    """If forums.yaml cannot be used the real guide is a 503 that names the flag."""
+
+    def broken():
+        raise ValueError("forums.yaml: forum 'x' needs 'source_url'")
+
+    monkeypatch.setattr("services.grievance.load_forums", broken)
+    services._grievance_guide.cache_clear()
     all_stubs.USE_STUB_GRIEVANCE = False
-    with pytest.raises(ServiceNotReady, match="USE_STUB_GRIEVANCE=true"):
-        services.get_grievance_guide()
+    try:
+        with pytest.raises(ServiceNotReady, match="USE_STUB_GRIEVANCE=true"):
+            services.get_grievance_guide()
+    finally:
+        services._grievance_guide.cache_clear()
 
 
 @patch("services.retrieval.qdrant_retriever.QdrantClient")

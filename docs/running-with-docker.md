@@ -141,7 +141,10 @@ Common changes:
 | -------------------------------------- | ----------------------------------------------------------------- |
 | `HTTP_PORT=8080`                       | Port 80 is taken on your machine. Then open http://localhost:8080 |
 | `USE_STUB_ANSWER=false`                | Real answers from an LLM (see section 9)                          |
+| `USE_STUB_RETRIEVER=false`             | Real retrieval over the ingested documents (see section 12)       |
 | `USE_STUB_SPEECH=false`                | Real speech-to-text with Whisper (see section 10)                 |
+| `INSTALL_ML=false`                     | A smaller, stub-only image: no PyTorch, so no real retrieval      |
+| `SCORE_THRESHOLD`                      | Set from `eval_retrieval`, not by guessing (see section 12)       |
 | `BHASHINI_API_KEY`, `BHASHINI_USER_ID` | Speech keys (member C)                                            |
 | `LOAD_SAMPLE_DOCUMENTS=false`          | Start the library empty instead of with 9 sample entries          |
 
@@ -156,12 +159,12 @@ By default every service is a stub. Each one has its own switch, so you can turn
 real answer service (an LLM writing answers from the retrieved passages) and leave the
 rest as stubs:
 
-| Flag                 | `true` (stub)                | `false` (real)                                       |
-| -------------------- | ---------------------------- | ---------------------------------------------------- |
-| `USE_STUB_ANSWER`    | Canned demonstration answers | The LLM writes a cited answer, or declines           |
-| `USE_STUB_RETRIEVER` | Three sample passages        | Not built yet: every question returns an error (503) |
-| `USE_STUB_SPEECH`    | A fixed transcript           | Whisper speech-to-text (section 10)                  |
-| `USE_STUB_GRIEVANCE` | Template grievance guide     | Not built yet: the grievance page returns an error   |
+| Flag                 | `true` (stub)                | `false` (real)                                                                                                      |
+| -------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `USE_STUB_ANSWER`    | Canned demonstration answers | The LLM writes a cited answer, or declines                                                                          |
+| `USE_STUB_RETRIEVER` | Three sample passages        | Qdrant search over the ingested corpus (section 12)                                                                 |
+| `USE_STUB_SPEECH`    | A fixed transcript           | Whisper speech-to-text (section 10)                                                                                 |
+| `USE_STUB_GRIEVANCE` | Template grievance guide     | Forums and contacts from `forums.yaml` (crop insurance only so far; other categories say the route is not recorded) |
 
 An empty flag follows `USE_STUBS` (default `true`). The LLM can be any server with an
 OpenAI-compatible API.
@@ -206,8 +209,9 @@ docker compose up --build -d --wait
 docker compose logs -f web      # each question logs its status and latency
 ```
 
-**Retrieval is still a stub**, so answers cite the three sample passages, not the real
-documents. When the real retriever is ready, `USE_STUB_RETRIEVER=false` is the only change.
+**Until you turn on the real retriever, retrieval is still a stub**, so answers cite the
+three sample passages, not the real documents. To search the real documents, ingest them
+and set `USE_STUB_RETRIEVER=false`: section 12.
 
 If the LLM cannot be reached, the app shows an error ("An upstream service failed") and
 the log shows `provider error: LLM call failed ...` with the model and URL it tried.
@@ -251,7 +255,95 @@ docker compose exec web python manage.py load_sources
 Rows that are invalid are skipped, never guessed or fixed. Documents not in the CSV
 (samples, or ones added in the admin site) are left alone.
 
-## 12. Troubleshooting
+## 12. Loading the real corpus
+
+The real pipeline answers from documents that have been read into PostgreSQL (the text
+chunks) and Qdrant (their vectors). Do these steps in order:
+
+1. **Put the PDFs in `data/raw/`**, taken from the team Drive. The folder is git-ignored and
+   is mounted read-only into the API container. The file names must match the `local_path`
+   column of `data/sources.csv`. Optionally fetch the ones with direct links first:
+
+   ```bash
+   python scripts/download_pdfs.py     # certificates are verified; --insecure is a last resort
+   ```
+
+2. **Start the stack.** The first build installs PyTorch and the other ML packages, which
+   takes several minutes and makes the image much larger (`INSTALL_ML=false` in `.env`
+   skips them). On start, `load_sources` loads the document list into the database.
+
+   ```bash
+   docker compose up --build -d --wait
+   ```
+
+3. **Ingest the documents.** This reads every `use_in_corpus=Y` row of the CSV, cuts the
+   PDF into chunks, embeds them and writes them to PostgreSQL and Qdrant. The first run
+   also downloads the embedding model into the `models` volume. It is safe to run again:
+   each document's chunks are replaced. It ends with a summary and lists every document
+   that needs attention (PDF missing, no text, or no document row).
+
+   ```bash
+   docker compose exec web python manage.py ingest_corpus
+   ```
+
+4. **Check what was ingested.** Every document should have chunks, and PostgreSQL and
+   Qdrant should agree on the count:
+
+   ```bash
+   docker compose exec web python manage.py corpus_status
+   ```
+
+5. **Switch the pipeline on.** In `.env`, set the flags and the LLM (section 9), then
+   recreate the API container:
+
+   ```bash
+   USE_STUB_RETRIEVER=false
+   USE_STUB_ANSWER=false
+   LLM_BASE_URL=http://host.docker.internal:11434/v1
+   LLM_MODEL=llama3.1:8b
+   ```
+
+   ```bash
+   docker compose up -d
+   ```
+
+6. **Measure retrieval and set the threshold.** `eval_retrieval` runs the questions in
+   `data/eval/retrieval_questions.json`, prints the hit rate and suggests a
+   `SCORE_THRESHOLD`. Put the suggestion in `.env` (do not guess it), apply it, and run the
+   acceptance conversations in `data/eval/conversations.json`:
+
+   ```bash
+   docker compose exec web python manage.py eval_retrieval
+   # edit .env: SCORE_THRESHOLD=<the suggested value>
+   docker compose up -d
+   python scripts/acceptance.py
+   ```
+
+   To show a run on the Quality dashboard, add `--record` once the real retriever is on
+   (it refuses to record the stub's scores). The dashboard needs all three metrics: the
+   command measures the hit rate and the correct-refusal rate, and faithfulness is a
+   number you enter after checking answers by hand, either with `--faithfulness 0.85` or
+   in the admin site under Eval runs. Until then the dashboard keeps showing its previous
+   run, or the sample data.
+
+   Read `data/eval/README.md` for both file formats. The suggestion is only as good as the
+   question set: it warns when the in-scope and out-of-scope scores overlap or when a group
+   has fewer than 5 questions.
+
+**If something goes wrong:**
+
+| Problem                                            | Likely cause and fix                                                                                                                                                           |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/chat/ask` returns 503 `service_not_ready`        | The retriever is unavailable: the image was built with `INSTALL_ML=false` (rebuild with `INSTALL_ML=true`), or a package is missing. `docker compose logs web` names it.       |
+| `/chat/ask` returns 500 with the real retriever on | Usually Qdrant has no collection yet (run `ingest_corpus`) or is down (`docker compose ps`). The error is in `docker compose logs web`.                                        |
+| `/chat/ask` returns 502 `provider_error`           | The LLM cannot be reached. Check it is running, that `LLM_BASE_URL` is right (`host.docker.internal` for Ollama on your machine) and the key. The log names the URL and model. |
+| Every question is declined                         | `SCORE_THRESHOLD` is too high for the embedding scores, or nothing is ingested. Run `corpus_status`, then `eval_retrieval` and use its suggested value.                        |
+| The first question or the first start is slow      | The models download into the `models` volume the first time (`docker compose logs web`). Later starts reuse them.                                                              |
+| `ingest_corpus` lists "no Document row"            | `load_sources` skipped that row of the CSV as invalid. `load_sources --dry-run` shows why; the CSV owner fixes the row.                                                        |
+| `ingest_corpus` lists "PDF not found"              | The file in `data/raw/` is missing or named differently from `local_path` in `data/sources.csv`.                                                                               |
+| `ingest_corpus` says it needs the ML packages      | The image was built with `INSTALL_ML=false`. Rebuild with `INSTALL_ML=true`.                                                                                                   |
+
+## 13. Troubleshooting
 
 | Problem                                                                      | Fix                                                                                                                   |
 | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
@@ -264,6 +356,56 @@ Rows that are invalid are skipped, never guessed or fixed. Documents not in the 
 | Changes you pulled do not show up                                            | Rebuild: `docker compose up --build -d --wait`, then hard-refresh the browser (`Ctrl+Shift+R`).                       |
 | Build fails with "no space left on device"                                   | `docker system prune` removes unused images and build cache.                                                          |
 | Microphone does not work on a phone                                          | Browsers only allow it on HTTPS or `localhost`. Use a public HTTPS deployment for phone tests.                        |
+
+## 14. Before the demo
+
+**Settings.** For a laptop or a public host, put these in `.env` (a public host also needs
+the three HTTPS lines from "Deploying publicly" in the root `README.md`):
+
+```bash
+DEMO_CACHE=true          # the scripted demo questions get their saved answers, and keep
+                         # working if the LLM or the vector store is down
+# USE_STUB_* and LLM_*   # as in sections 9 to 12, if the real pipeline is on
+```
+
+`DEMO_CACHE` only touches the questions in `data/eval/conversations.json`. Any other
+question goes through the normal service, and a failure there is still an error. The saved
+answers are in `backend/data/demo_answers.yaml`; two of them are labelled placeholders
+until the owners supply sourced text.
+
+**Run the demo check** after `docker compose up -d --wait`. It visits every screen's
+endpoint in demo order, plays the five scripted conversations, and prints a PASS or FAIL
+table (exit code 1 if anything fails):
+
+```bash
+python scripts/demo_smoke.py                         # http://localhost
+python scripts/demo_smoke.py https://demo.example.org
+```
+
+`/eval/latest` is staff only. Without a login the check confirms that anonymous access is
+refused. To check the data too, pass a staff login through the environment, so the password
+never appears in the command line:
+
+```bash
+# Windows PowerShell
+$env:DEMO_STAFF_USER = "admin"
+$env:DEMO_STAFF_PASSWORD = docker compose exec -T web cat /secrets/admin_password
+python scripts/demo_smoke.py
+
+# macOS, Linux, Git Bash
+DEMO_STAFF_USER=admin \
+DEMO_STAFF_PASSWORD="$(MSYS_NO_PATHCONV=1 docker compose exec -T web cat /secrets/admin_password)" \
+python scripts/demo_smoke.py
+```
+
+Against an `https://` address it also checks the HSTS header and the Secure cookie flag.
+Use `--api-only` to skip the front-end check when only the backend is running. For a quick
+check that the stack itself is locked down, `python scripts/smoke_test.py` is the other
+script.
+
+**On the day:** keep ports 80 and 443 for a public host (the certificate needs them), do
+not run `docker compose down --volumes` on it (that discards the certificate and the
+admin password), and run the demo check from a second device on the same network.
 
 ## What is running
 

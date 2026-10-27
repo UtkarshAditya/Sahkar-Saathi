@@ -1,0 +1,91 @@
+[
+  {
+    "id": "pmfby-loss-report-deadline",
+    "question": "By when must I report crop damage under PMFBY?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [],
+    "TODO_owner": "Zainab",
+    "source": "backend/services/data/schemes.yaml (loss_reporting_rule)"
+  },
+  {
+    "id": "pmfby-loss-report-how",
+    "question": "How can I report crop loss under PMFBY?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [],
+    "TODO_owner": "Zainab",
+    "source": "backend/services/data/schemes.yaml (loss_reporting_rule)"
+  },
+  {
+    "id": "pmfby-premium-kharif",
+    "question": "How much premium do I pay for kharif food grain and oilseed crops under PMFBY?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [],
+    "TODO_owner": "Zainab",
+    "source": "backend/services/data/schemes.yaml (premium_shares)"
+  },
+  {
+    "id": "pmfby-tenant-eligible",
+    "question": "Can a tenant farmer or sharecropper take PMFBY crop insurance?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [],
+    "TODO_owner": "Zainab",
+    "source": "backend/services/data/schemes.yaml (eligibility)"
+  },
+  {
+    "id": "pmfby-non-loanee-enrol",
+    "question": "How can a farmer without a crop loan enrol in PMFBY?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [],
+    "TODO_owner": "Zainab",
+    "source": "backend/services/data/schemes.yaml (eligibility)"
+  },
+  {
+    "id": "pmfby-grievance-where",
+    "question": "Where can I register a complaint about my crop insurance claim?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [],
+    "TODO_owner": "Zainab",
+    "source": "backend/services/data/forums.yaml (krph_helpline)"
+  },
+  {
+    "id": "oos-cricket",
+    "question": "Who won the cricket match yesterday?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": []
+  },
+  {
+    "id": "oos-weather",
+    "question": "What will the weather be in Chennai tomorrow?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": []
+  },
+  {
+    "id": "oos-celebrity",
+    "question": "Which film actor is the richest in India?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": []
+  },
+  {
+    "id": "oos-election",
+    "question": "Who will win the next election?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": []
+  },
+  {
+    "id": "oos-recipe",
+    "question": "How do I cook sambar for twenty people?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": []
+  }
+]

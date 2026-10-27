@@ -94,5 +94,16 @@ def _speech_provider(use_stub: bool) -> SpeechProvider:
 def _grievance_guide(use_stub: bool) -> GrievanceGuide:
     if use_stub:
         return StubGrievanceGuide()
-    # Member C: return the forums.yaml-backed guide here.
-    raise ServiceNotReady("The grievance guide is not connected yet. Set USE_STUB_GRIEVANCE=true.")
+    from services.grievance import ForumsGrievanceGuide, load_forums
+
+    try:
+        return ForumsGrievanceGuide(
+            load_forums(),
+            contact=Contact(label=settings.HELPLINE_LABEL, detail=settings.HELPLINE_DETAIL),
+        )
+    except (OSError, ValueError) as exc:  # missing file, bad YAML, a forum without a source
+        logger.error("The grievance guide's forums.yaml could not be used: %s", exc)
+        raise ServiceNotReady(
+            "The grievance guide's data could not be loaded. Set USE_STUB_GRIEVANCE=true "
+            "to use the sample guide."
+        ) from exc

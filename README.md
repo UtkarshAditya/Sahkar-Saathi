@@ -4,8 +4,10 @@ Multilingual Cooperative Governance & Legal Assistance Chatbot. SIH 2026, proble
 **26088** (Ministry of Cooperation, NCCT).
 
 This repository holds the **React front end** and a **Django + Ninja backend** that serves
-the whole API contract (`backend/openapi.json`). Answers, retrieval and speech still come
-from stub services until members B and C plug in the real ones. All sample content is
+the whole API contract (`backend/openapi.json`). By default answers, retrieval and speech
+come from stub services. The real pipeline (retrieval over the ingested documents, answers
+from an LLM, Whisper speech-to-text) can be switched on one service at a time; see
+[What is real and what is stubbed](#what-is-real-and-what-is-stubbed). All sample content is
 labelled as sample or placeholder in the UI, and no premium amounts, deadlines, helpline
 numbers or document URLs are invented.
 
@@ -176,17 +178,37 @@ Consider TanStack Query in place of `useAsync` now that real endpoints exist.
 
 Testing hook: in mock mode, sending `/error` on the Ask page shows the error state.
 
+## What is real and what is stubbed
+
+Every service defaults to a stub, so the app, CI and `scripts/smoke_test.py` run with no
+network, no model download and no LLM. Each real service has its own switch
+(`USE_STUB_RETRIEVER`, `USE_STUB_ANSWER`, `USE_STUB_SPEECH`, `USE_STUB_GRIEVANCE`).
+
+| Part                         | Default                      | When switched on                                                                                                           |
+| ---------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Retrieval                    | Three canned sample passages | Qdrant search with multilingual-e5 embeddings, after `manage.py ingest_corpus`                                             |
+| Answers                      | Canned demonstration answers | The LLM writes a cited answer from the retrieved passages, or declines                                                     |
+| Speech to text               | A fixed transcript           | Whisper (faster-whisper)                                                                                                   |
+| Text to speech (Listen)      | Silent WAV audio             | Still a stub, also with `USE_STUB_SPEECH=false`                                                                            |
+| Grievance guide              | Keyword categories, template | Forums and contacts from `forums.yaml` (crop insurance only so far); other categories state that the route is not recorded |
+| Bhashini speech and language | Not used                     | Not built yet                                                                                                              |
+
+The LLM is any OpenAI-compatible server (Ollama on your machine, or a hosted API). Whether
+the answers are good is measured, not assumed: `manage.py eval_retrieval` and
+`scripts/acceptance.py` (see `data/eval/README.md`). The steps are in
+[docs/running-with-docker.md](docs/running-with-docker.md), sections 9 to 12.
+
 ## Not implemented yet
 
-| Item                        | Current state                                   | Planned                                                                 |
-| --------------------------- | ----------------------------------------------- | ----------------------------------------------------------------------- |
-| Real answers and retrieval  | Stub answer service with sample citations       | Members B and C plug in retrieval and the agent (`USE_STUBS=false`)     |
-| Voice input (mic)           | Button shows a "not connected yet" notice       | Sprint 2: `useRecorder` hook, `/speech/transcribe`, editable transcript |
-| Listen (text to speech)     | Disabled, labelled "coming soon"                | Sprint 2: `/speech/synthesize` (endpoint and client already exist)      |
-| Grievance voice description | Hint text only                                  | Sprint 3                                                                |
-| Quality dashboard data      | Sample numbers from `/eval/latest` (staff only) | Sprint 2: EvalRun models filled by member B's eval runner               |
-| Library documents           | 9 sample entries loaded into an empty database  | Member B ingests the verified corpus (`data/sources.csv`)               |
-| Body content translation    | English only                                    | Language service                                                        |
+| Item                        | Current state                                                                            | Planned                                                                 |
+| --------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Verified corpus in use      | Stub retrieval unless the corpus is ingested                                             | Ingest the verified PDFs, set `SCORE_THRESHOLD` from `eval_retrieval`   |
+| Voice input (mic)           | Button shows a "not connected yet" notice                                                | Sprint 2: `useRecorder` hook, `/speech/transcribe`, editable transcript |
+| Listen (text to speech)     | Disabled, labelled "coming soon"                                                         | Sprint 2: `/speech/synthesize` (endpoint and client already exist)      |
+| Grievance voice description | Hint text only                                                                           | Sprint 3                                                                |
+| Quality dashboard data      | Sample numbers from `/eval/latest` (staff only)                                          | Sprint 2: EvalRun models filled by member B's eval runner               |
+| Library documents           | The `sources.csv` rows that pass validation; the 9 samples load only into an empty table | Fix the rows `load_sources` reports as skipped, then ingest             |
+| Body content translation    | English only                                                                             | Language service                                                        |
 
 ## Team ownership
 
