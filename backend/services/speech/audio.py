@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 
 from .whisper_provider import whisper_provider
@@ -5,11 +6,11 @@ from .whisper_provider import whisper_provider
 
 async def evaluate_recording(file_path: str, ground_truth: str, language: str):
     path = Path(file_path)
-    if not path.exists():
+    if not await asyncio.to_thread(path.exists):
         print(f"Error: Audio file not found at {file_path}")
         return
 
-    audio_bytes = path.read_bytes()
+    audio_bytes = await asyncio.to_thread(path.read_bytes)
     print(f"\n[Evaluating] File: {path.name} | Language: {language}")
 
     try:
