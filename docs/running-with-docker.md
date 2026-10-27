@@ -260,13 +260,18 @@ Rows that are invalid are skipped, never guessed or fixed. Documents not in the 
 The real pipeline answers from documents that have been read into PostgreSQL (the text
 chunks) and Qdrant (their vectors). Do these steps in order:
 
-1. **Put the PDFs in `data/raw/`**, taken from the team Drive. The folder is git-ignored and
-   is mounted read-only into the API container. The file names must match the `local_path`
-   column of `data/sources.csv`. Optionally fetch the ones with direct links first:
+1. **Put the PDFs in `data/raw/`**, taken from the team Drive. The folder is mounted
+   read-only into the API container. The file names must match the `local_path` column of
+   `data/sources.csv`. Optionally fetch the ones with direct links first:
 
    ```bash
    python scripts/download_pdfs.py     # certificates are verified; --insecure is a last resort
    ```
+
+   > **PDFs and git.** Some PDFs are already tracked in the repository (they were added
+   > with `git add -f`). The pattern `data/raw/*` is still in `.gitignore`, so a new PDF is
+   > ignored unless it is added with `git add -f data/raw/<file>.pdf`. A PDF that is only on
+   > your machine is not shared with the team until someone does that or puts it on the Drive.
 
 2. **Start the stack.** The first build installs PyTorch and the other ML packages, which
    takes several minutes and makes the image much larger (`INSTALL_ML=false` in `.env`
@@ -314,10 +319,15 @@ chunks) and Qdrant (their vectors). Do these steps in order:
 
    ```bash
    docker compose exec web python manage.py eval_retrieval
-   # edit .env: SCORE_THRESHOLD=<the suggested value>
+   # edit .env: SCORE_THRESHOLD=<the suggested value>, and DEMO_CACHE=false
    docker compose up -d
    python scripts/acceptance.py
    ```
+
+   `acceptance.py` tells live answers from demo answers. With `DEMO_CACHE=true`, or with
+   any stub still on, the answers are `is_demo=true`: the lines read `DEMO` and the run
+   fails, because a pass on saved answers says nothing about the live pipeline. Check the
+   live pipeline with `DEMO_CACHE=false`; `--allow-demo` is only for rehearsing the demo.
 
    To show a run on the Quality dashboard, add `--record` once the real retriever is on
    (it refuses to record the stub's scores). The dashboard needs all three metrics: the

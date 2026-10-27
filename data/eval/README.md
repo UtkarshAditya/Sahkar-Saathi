@@ -4,6 +4,11 @@ Two small files that let the team measure the real pipeline instead of judging a
 eye. Nothing here is a source of facts: a question may only come from a verified document,
 and an expectation may only name a document id that is in `data/sources.csv`.
 
+> **PDFs and git.** The source PDFs in `data/raw/` are what the questions below are
+> answered from. Some are tracked in git (added with `git add -f`), but `data/raw/*` is
+> still ignored, so a new PDF needs `git add -f` to be shared. Check what is actually there
+> with `python manage.py corpus_status --files`.
+
 ## `retrieval_questions.json`: does retrieval find the right document?
 
 Used by `python manage.py eval_retrieval` (inside Docker:
@@ -73,6 +78,25 @@ Open items are marked `TODO_owner`: Zainab (the Tamil Nadu question's `expect_do
 Varsha (what the deposit-grievance question should do). The Tamil question text is
 machine-written and needs review by a fluent speaker.
 
-With the stubs on, some turns fail by design: the stub answer does not quote the "72"
-deadline, and it treats the word "election" as a by-laws question and asks for a state. Run
-the script against the real pipeline (see `docs/running-with-docker.md`).
+### Live answers and demo answers
+
+Every answer says whether it is a demo answer (`is_demo`): true for the stubs and for the
+saved answers of `DEMO_CACHE=true`, false for the live pipeline. The script reports which
+is which, because a passing run on saved answers proves nothing about retrieval or the LLM:
+
+| Line   | Meaning                                                                                   |
+| ------ | ----------------------------------------------------------------------------------------- |
+| `PASS` | A live answer that meets every expectation.                                               |
+| `DEMO` | A demo answer (cache or stub). It counts as a **failure** unless `--allow-demo` is given. |
+| `FAIL` | An expectation is not met, or there was no answer.                                        |
+
+The summary says how many answers were live, how many were demo and how many turns got no
+answer at all. **With `DEMO_CACHE=true`, a run without `--allow-demo` fails by design.** To
+check the live pipeline, set `DEMO_CACHE=false` (and `USE_STUB_RETRIEVER=false`,
+`USE_STUB_ANSWER=false`) in `.env`, recreate the API container with `docker compose up -d`,
+and run `python scripts/acceptance.py`. Use `--allow-demo` only to rehearse the demo itself;
+`scripts/demo_smoke.py` does that check and labels cached answers "demo answer, not live".
+
+With the stubs on, some turns also fail on their own expectations: the stub answer does not
+quote the "72" deadline, and it treats the word "election" as a by-laws question and asks
+for a state.

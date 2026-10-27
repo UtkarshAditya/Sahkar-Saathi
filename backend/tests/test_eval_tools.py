@@ -233,8 +233,12 @@ CONTACT = {"label": "District office", "detail": "Details"}
 
 
 def reply(payload: dict) -> dict:
-    """What the fake chat endpoint answers, chosen by the start of the question."""
+    """What the fake chat endpoint answers, chosen by the start of the question. A "demo "
+    prefix makes it a demo-cache answer (is_demo=true); "no-flag " leaves is_demo out."""
     text = payload["text"]
+    is_demo = text.startswith("demo ")
+    omit_flag = text.startswith("no-flag ")
+    text = text.removeprefix("demo ").removeprefix("no-flag ")
     body = {
         "conversation_id": payload.get("conversation_id") or "conv-1",
         "message_id": "m-1",
@@ -244,7 +248,7 @@ def reply(payload: dict) -> dict:
         "citations": [CITATION],
         "followups": [],
         "contact": None,
-        "is_demo": False,
+        "is_demo": is_demo,
     }
     if text.startswith("declined-ok"):
         body |= {"status": "declined", "answer_text": "Not found.", "citations": []}
@@ -255,6 +259,8 @@ def reply(payload: dict) -> dict:
         body |= {"status": "declined", "contact": CONTACT}
     elif text.startswith("answered-bare"):
         body |= {"citations": []}
+    if omit_flag:
+        del body["is_demo"]
     return body
 
 
@@ -298,9 +304,56 @@ def conversation(*turns: dict, cid: str = "c1") -> dict:
     return {"id": cid, "title": "Test conversation", "turns": list(turns)}
 
 
-def run_acceptance(url: str, file: str, capsys) -> tuple[int, str]:
-    code = load_acceptance().main([url, "--file", file])
+def run_acceptance(url: str, file: str, capsys, *extra: str) -> tuple[int, str]:
+    code = load_acceptance().main([url, "--file", file, *extra])
     return code, capsys.readouterr().out
+
+
+def test_demo_answers_fail_by_default_and_are_printed_as_demo(chat_server, tmp_path, capsys):
+    turns = [{"text": "cited live"}, {"text": "demo cited cached"}]
+    file = write_conversations(tmp_path, [conversation(*turns)])
+    code, out = run_acceptance(chat_server["url"], file, capsys)
+    assert code == 1, "a demo answer is not evidence that the live pipeline works"
+    assert out.count("  PASS  ") == 1 and out.count("  DEMO  ") == 1
+    assert "demo answer (is_demo=true), not the live pipeline" in out
+    assert "Answers: 1 live, 1 demo (is_demo=true), 0 without an answer." in out
+    assert "2 turn(s): 1 passed, 1 failed." in out
+    assert "1 turn(s) were demo answers and count as failed" in out
+
+
+def test_allow_demo_accepts_them_but_still_prints_demo_and_says_so(chat_server, tmp_path, capsys):
+    turns = [{"text": "cited live"}, {"text": "demo cited cached"}]
+    file = write_conversations(tmp_path, [conversation(*turns)])
+    code, out = run_acceptance(chat_server["url"], file, capsys, "--allow-demo")
+    assert code == 0, out
+    assert out.count("  PASS  ") == 1 and out.count("  DEMO  ") == 1
+    assert "(demo answer, accepted by --allow-demo)" in out
+    assert "Answers: 1 live, 1 demo (is_demo=true), 0 without an answer." in out
+    assert "2 turn(s): 2 passed, 0 failed." in out
+    assert "NOTE: 1 turn(s) were demo answers" in out and "does not show" in out
+
+
+def test_a_run_of_only_demo_answers_is_never_reported_as_live(chat_server, tmp_path, capsys):
+    turns = [{"text": "demo cited a"}, {"text": "demo declined-ok"}]
+    file = write_conversations(tmp_path, [conversation(*turns)])
+    _, out = run_acceptance(chat_server["url"], file, capsys, "--allow-demo")
+    assert "PASS" not in out and out.count("  DEMO  ") == 2
+    assert "Answers: 0 live, 2 demo" in out
+
+
+def test_a_demo_answer_that_also_breaks_an_expectation_is_a_fail(chat_server, tmp_path, capsys):
+    file = write_conversations(
+        tmp_path, [conversation({"text": "demo cited a", "must_contain": ["nowhere"]})]
+    )
+    code, out = run_acceptance(chat_server["url"], file, capsys, "--allow-demo")
+    assert code == 1 and "FAIL  c1 turn 1 [en] (demo answer):" in out
+    assert "answer does not contain 'nowhere'" in out
+
+
+def test_a_response_without_is_demo_fails(chat_server, tmp_path, capsys):
+    file = write_conversations(tmp_path, [conversation({"text": "no-flag cited a"})])
+    code, out = run_acceptance(chat_server["url"], file, capsys, "--allow-demo")
+    assert code == 1 and "does not say whether it is a demo answer (is_demo)" in out
 
 
 def test_passing_turns_pass_and_never_print_the_answer(chat_server, tmp_path, capsys):
@@ -312,7 +365,8 @@ def test_passing_turns_pass_and_never_print_the_answer(chat_server, tmp_path, ca
     file = write_conversations(tmp_path, [conversation(*turns)])
     code, out = run_acceptance(chat_server["url"], file, capsys)
     assert code == 0, out
-    assert out.count("PASS") == 3 and "FAIL" not in out
+    assert out.count("PASS") == 3 and "FAIL" not in out and "DEMO" not in out
+    assert "Answers: 3 live, 0 demo (is_demo=true), 0 without an answer." in out
     assert "3 turn(s): 3 passed, 0 failed." in out
     assert "Report within 72 hours" not in out and "Not found." not in out
 
@@ -389,6 +443,7 @@ def test_an_unreachable_server_fails_every_turn(tmp_path, capsys):
     file = write_conversations(tmp_path, [conversation({"text": "cited x"})])
     code, out = run_acceptance(f"http://127.0.0.1:{port}", file, capsys)
     assert code == 1 and "FAIL" in out and "no response" in out
+    assert "Answers: 0 live, 0 demo (is_demo=true), 1 without an answer." in out
 
 
 @pytest.mark.parametrize("content", ["not json", "[]", '[{"id": "c", "turns": []}]'])

@@ -34,7 +34,8 @@ backend/staticfiles/
 .pytest_cache/
 .ruff_cache/
 
-# Raw source PDFs live in Drive, not in git
+# Raw source PDFs are ignored by default (the team Drive has them all). Some are tracked
+# anyway (added with `git add -f`); a new PDF needs `git add -f` to be committed.
 data/raw/*
 !data/raw/.gitkeep
 data/qdrant_local/

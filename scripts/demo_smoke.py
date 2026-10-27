@@ -280,7 +280,10 @@ def conversation_checks(
                 if problems:
                     raise Failure("; ".join(problems))
                 found.setdefault("message_id", body.get("message_id"))
-                return f"{body['status']}, {len(body.get('citations') or [])} citation(s)"
+                # A PASS on a saved or stub answer must not read as a live-pipeline check;
+                # scripts/acceptance.py (DEMO_CACHE=false) is the live check.
+                kind = " [demo answer, not live]" if body.get("is_demo") else ""
+                return f"{body['status']}, {len(body.get('citations') or [])} citation(s){kind}"
 
             language = turn.get("language", "en")
             label = f"POST /chat/ask · {conversation['id']} #{number} [{language}]"
