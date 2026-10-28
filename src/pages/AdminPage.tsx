@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Card } from '@/components/common/Card';
-import { Notice } from '@/components/common/Notice';
 import { PageHeader } from '@/components/common/PageHeader';
 import { USE_MOCKS } from '@/services/api';
 
@@ -74,12 +73,6 @@ export default function AdminPage() {
         icon={<Settings className="size-6" aria-hidden />}
         breadcrumbs={[{ label: t('nav.groups.staff') }]}
       />
-
-      <Notice tone="info" title="Provided by the backend" className="mb-6">
-        Administration uses the built-in Django admin site at <code>/admin/</code>. Log in with a
-        staff account; the team superuser is created on first start.
-        {USE_MOCKS && ' Mock mode is on, so there is no backend to link to.'}
-      </Notice>
 
       <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {MODULES.map((module) => (

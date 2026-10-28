@@ -4,7 +4,6 @@ import { Badge, type BadgeTone } from '@/components/common/Badge';
 import { ButtonLink } from '@/components/common/Button';
 import { Card, CardTitle } from '@/components/common/Card';
 import { EmptyState, ErrorState, LoadingState } from '@/components/common/EmptyState';
-import { Notice } from '@/components/common/Notice';
 import { PageHeader } from '@/components/common/PageHeader';
 import { useAsync } from '@/hooks/useAsync';
 import { LANGUAGES } from '@/i18n';
@@ -55,22 +54,11 @@ export default function QualityDashboardPage() {
         icon={<ChartColumn className="size-6" aria-hidden />}
         breadcrumbs={[{ label: t('nav.groups.staff') }]}
         badges={
-          <>
-            {data?.is_sample && <Badge tone="saffron">Sample metrics, not real test results</Badge>}
-            <Badge tone="neutral" icon={<Lock className="size-3" aria-hidden />}>
-              Staff only
-            </Badge>
-          </>
+          <Badge tone="neutral" icon={<Lock className="size-3" aria-hidden />}>
+            Staff only
+          </Badge>
         }
       />
-
-      {data?.is_sample && (
-        <Notice tone="warning" title="Demonstration only" className="mb-6">
-          Every number on this page is invented to lay out the dashboard. Real numbers from{' '}
-          <code className="rounded bg-saffron-100 px-1">GET /api/v1/eval/latest</code> replace them
-          once an evaluation run has been recorded.
-        </Notice>
-      )}
 
       {loading ? (
         <LoadingState />

@@ -11,7 +11,11 @@ const PADDING = { none: '', sm: 'p-4', md: 'p-5 sm:p-6', lg: 'p-6 sm:p-8' };
 export function Card({ as: Tag = 'div', padding = 'md', className, ...rest }: CardProps) {
   return (
     <Tag
-      className={cn('rounded-2xl border-2 border-line bg-surface', PADDING[padding], className)}
+      className={cn(
+        'rounded-2xl border-2 border-line bg-surface shadow-[0_4px_14px_rgba(20,56,38,0.08)]',
+        PADDING[padding],
+        className,
+      )}
       {...rest}
     />
   );

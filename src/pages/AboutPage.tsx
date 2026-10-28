@@ -94,6 +94,14 @@ export default function AboutPage() {
           </p>
         </Card>
 
+        <Card as="section" aria-labelledby="legal-disclosure">
+          <CardTitle
+            icon={<Info className="size-5" aria-hidden />}
+            title={<span id="legal-disclosure">{t('notice.legalTitle')}</span>}
+          />
+          <p className="text-ink-soft">{t('notice.legalBody')}</p>
+        </Card>
+
         <Card as="section" aria-labelledby="languages">
           <CardTitle
             icon={<Languages className="size-5" aria-hidden />}

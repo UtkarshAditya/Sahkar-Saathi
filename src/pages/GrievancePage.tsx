@@ -135,13 +135,6 @@ export default function GrievancePage() {
         breadcrumbs={[]}
       />
 
-      <div className="mb-6 flex flex-col gap-3">
-        <Notice tone="warning" title="Sahkar Saathi never files a complaint for you">
-          This page only helps you prepare. Nothing is sent to any office or stored with your name.
-          You decide whether and where to submit the draft.
-        </Notice>
-      </div>
-
       <ol className="mb-6 grid gap-3 sm:grid-cols-3">
         {PROCESS.map((step, i) => (
           <li key={step.title} className="flex gap-3 rounded-2xl border border-line bg-surface p-4">

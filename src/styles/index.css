@@ -32,12 +32,15 @@
   --color-saffron-700: #9c460a;
   --color-saffron-800: #7f3910;
 
-  --color-canvas: #f7f6f1;
+  --color-canvas: #f4f5f1;
   --color-surface: #ffffff;
-  --color-line: #737d76;
-  --color-ink: #1c2420;
-  --color-ink-soft: #4a554f;
-  --color-ink-muted: #646d68;
+  --color-surface-alt: #f0f5f1;
+  --color-line: #7a857f;
+  --color-ink: #1d2723;
+  --color-ink-soft: #4d5a55;
+  --color-ink-muted: #67756f;
+  --shadow-soft: 0 10px 22px rgba(20, 56, 38, 0.08);
+  --shadow-card: 0 4px 14px rgba(20, 56, 38, 0.08);
 }
 
 @layer base {
@@ -49,6 +52,7 @@
 
   body {
     @apply bg-canvas font-sans text-ink antialiased;
+    background-image: radial-gradient(circle at top, rgba(26, 69, 47, 0.04), transparent 30%);
     line-height: 1.55;
     overflow-wrap: anywhere;
   }
@@ -69,6 +73,15 @@
   [role='button'] {
     cursor: pointer;
   }
+
+  select,
+  input,
+  textarea {
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      background-color 0.2s ease;
+  }
 }
 
 @layer components {
@@ -77,7 +90,7 @@
   }
 
   .field-input {
-    @apply block min-h-12 w-full rounded-lg border-2 border-line bg-surface px-3 py-2.5 text-base text-ink placeholder:text-ink-muted focus:border-brand-600 focus:ring-2 focus:ring-brand-300 disabled:cursor-not-allowed disabled:bg-canvas;
+    @apply block min-h-12 w-full rounded-xl border-2 border-line bg-surface px-3 py-2.5 text-base text-ink shadow-sm placeholder:text-ink-muted focus:border-brand-700 focus:ring-2 focus:ring-brand-200 disabled:cursor-not-allowed disabled:bg-canvas;
   }
 
   .field-hint {

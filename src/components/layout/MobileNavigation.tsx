@@ -54,7 +54,7 @@ export function MobileNavigation({ open, onOpen, onClose }: MobileNavigationProp
 
       <nav
         aria-label={t('nav.primary')}
-        className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_20px_rgba(20,56,38,0.06)] lg:hidden"
       >
         <ul className="mx-auto grid max-w-lg grid-cols-4">
           {NAV_ITEMS.filter((item) => item.primaryOnMobile).map((item) => (
@@ -65,7 +65,7 @@ export function MobileNavigation({ open, onOpen, onClose }: MobileNavigationProp
                 end={item.to === '/'}
                 className={({ isActive }) =>
                   cn(
-                    'flex min-h-16 flex-col items-center justify-center gap-0.5 px-1 text-xs font-semibold',
+                    'flex min-h-16 flex-col items-center justify-center gap-0.5 px-1 text-xs font-semibold transition-colors',
                     isActive ? 'text-brand-800' : 'text-ink-muted hover:text-brand-800',
                   )
                 }
@@ -74,8 +74,10 @@ export function MobileNavigation({ open, onOpen, onClose }: MobileNavigationProp
                   <>
                     <span
                       className={cn(
-                        'flex h-7 w-12 items-center justify-center rounded-full',
-                        isActive && 'bg-brand-100',
+                        'flex h-8 w-12 items-center justify-center rounded-full border transition-colors',
+                        isActive
+                          ? 'border-brand-200 bg-brand-100 text-brand-800 shadow-sm'
+                          : 'border-transparent bg-transparent text-current',
                       )}
                     >
                       <item.icon className="size-5" aria-hidden />
@@ -90,9 +92,9 @@ export function MobileNavigation({ open, onOpen, onClose }: MobileNavigationProp
             <button
               type="button"
               onClick={onOpen}
-              className="flex min-h-16 w-full flex-col items-center justify-center gap-0.5 px-1 text-xs font-semibold text-ink-muted hover:text-brand-800"
+              className="flex min-h-16 w-full flex-col items-center justify-center gap-0.5 px-1 text-xs font-semibold text-ink-muted transition-colors hover:text-brand-800"
             >
-              <span className="flex h-7 w-12 items-center justify-center rounded-full">
+              <span className="flex h-8 w-12 items-center justify-center rounded-full border border-transparent">
                 <Ellipsis className="size-5" aria-hidden />
               </span>
               {t('nav.more')}
