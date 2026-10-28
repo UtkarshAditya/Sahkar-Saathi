@@ -22,7 +22,7 @@ export function Badge({ tone = 'neutral', icon, children, className }: BadgeProp
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap ring-1 ring-inset',
+        'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset',
         TONES[tone],
         className,
       )}
@@ -31,9 +31,4 @@ export function Badge({ tone = 'neutral', icon, children, className }: BadgeProp
       {children}
     </span>
   );
-}
-
-/** The standard "Sample data" marker used on every mock item. */
-export function SampleBadge({ label = 'Sample data' }: { label?: string }) {
-  return <Badge tone="saffron">{label}</Badge>;
 }

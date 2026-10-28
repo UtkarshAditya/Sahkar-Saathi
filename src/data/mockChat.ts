@@ -1,52 +1,20 @@
-import type { AskRequest, AskResponse, ChatMessage, Citation, SuggestedQuestion } from '@/types';
+import type { AskRequest, AskResponse, ChatMessage, Citation } from '@/types';
+import { makeId } from '@/lib/format';
 import { COVERED_STATE_CODE, stateName } from './options';
+import { SUGGESTED_QUESTIONS } from './suggestedQuestions';
 
-/*
- * Mock chat data. Every answer here is a DEMONSTRATION, written to exercise the UI.
- * None of it is verified legal guidance, and citations point to sample metadata.
- * The real answers will come from POST /api/v1/chat/ask.
- */
-
-export const SUGGESTED_QUESTIONS: SuggestedQuestion[] = [
-  {
-    id: 'sq-law-1',
-    topic: 'law',
-    text: 'How are board members of a primary agricultural credit society (PACS) elected?',
-  },
-  {
-    id: 'sq-law-2',
-    topic: 'law',
-    text: 'Can a member see the accounts and audit report of their cooperative society?',
-  },
-  {
-    id: 'sq-pmfby-1',
-    topic: 'pmfby',
-    text: 'What should I do if my insured crop is damaged under PMFBY?',
-  },
-  {
-    id: 'sq-schemes-1',
-    topic: 'schemes',
-    text: 'Which government schemes support PACS computerisation?',
-  },
-  {
-    id: 'sq-grievance-1',
-    topic: 'grievance',
-    text: 'My society has not refunded my deposit. Where can I complain?',
-  },
-];
+/* Local fixture responses used only when VITE_USE_MOCKS is enabled. */
 
 const PMFBY_CITATIONS: Citation[] = [
   {
     id: 'cit-pmfby-1',
     document_id: 'doc-pmfby-guidelines',
     title: 'PMFBY Operational Guidelines',
-    publisher: 'Sample metadata',
+    publisher: '',
     published_date: '2026-01-15',
     page: 34,
-    section: 'Localised calamities (sample section)',
+    section: 'Localised calamities',
     url: null,
-    excerpt:
-      'Demonstration excerpt. The verified passage will be shown here once the document is ingested.',
   },
 ];
 
@@ -59,30 +27,20 @@ function lawCitations(stateCode: string): Citation[] {
         stateCode === COVERED_STATE_CODE
           ? 'Tamil Nadu Co-operative Societies Act, 1983'
           : 'Multi-State Co-operative Societies Act, 2002',
-      publisher: 'Sample metadata',
+      publisher: '',
       published_date: '2024-03-01',
       page: 18,
-      section: 'Management of societies (sample section)',
+      section: 'Management of societies',
       url: null,
-      excerpt: 'Demonstration excerpt. Real passage text will appear after ingestion.',
     },
     {
       id: 'cit-law-2',
       document_id: 'doc-model-bylaws-en',
       title: 'Model Bye-laws for PACS',
-      publisher: 'Sample metadata',
+      publisher: '',
       published_date: '2023-01-05',
       page: 12,
-      section: 'Board of directors (sample section)',
-      url: null,
-    },
-    {
-      id: 'cit-law-3',
-      document_id: 'doc-circular-undated',
-      title: 'Sample circular with no stated date',
-      publisher: 'Sample metadata',
-      published_date: null,
-      page: null,
+      section: 'Board of directors',
       url: null,
     },
   ];
@@ -90,14 +48,8 @@ function lawCitations(stateCode: string): Citation[] {
 
 const DEFAULT_CONTACT = {
   label: 'Your district cooperative office (Registrar of Co-operative Societies)',
-  detail: 'Verified helpline numbers will be added from forums.yaml before the demo.',
+  detail: '',
 };
-
-let counter = 0;
-export function makeId(prefix: string): string {
-  counter += 1;
-  return `${prefix}-${Date.now().toString(36)}-${counter}`;
-}
 
 const LAW_WORDS = [
   'by-law',
@@ -157,7 +109,7 @@ export function buildMockAnswer(req: AskRequest): AskResponse {
       status: 'answered',
       needs_state: false,
       answer_text:
-        'Demonstration answer: under PMFBY, a farmer whose insured crop is damaged should report the loss as early as possible to the insurance company, their bank or the local agriculture office, with details of the crop, area and cause of loss. The exact reporting window and helpline will be quoted from the verified PMFBY guidelines, not estimated.',
+        'Under PMFBY, a farmer whose insured crop is damaged should report the loss as early as possible to the insurance company, their bank or the local agriculture office, with details of the crop, area and cause of loss.',
       citations: PMFBY_CITATIONS,
       followups: [
         'Which documents do I need for a crop loss claim?',
@@ -172,7 +124,7 @@ export function buildMockAnswer(req: AskRequest): AskResponse {
       status: 'partial',
       needs_state: false,
       answer_text:
-        'Demonstration answer: complaints about a cooperative society usually start with a written request to the society itself, and can then go to the Registrar of Co-operative Societies for your district. Use the Grievance helper to get the steps, a documents checklist and a draft you can edit.',
+        'Complaints about a cooperative society usually start with a written request to the society itself, and can then go to the Registrar of Co-operative Societies for your district. Use the Grievance helper to get the steps, a documents checklist and a draft you can edit.',
       citations: lawCitations(req.state ?? 'central').slice(0, 1),
       followups: ['Open the Grievance helper', 'What documents should I keep for a complaint?'],
     };
@@ -184,13 +136,13 @@ export function buildMockAnswer(req: AskRequest): AskResponse {
       status: 'answered',
       needs_state: false,
       answer_text:
-        'Demonstration answer: the Schemes and services page lists programmes for cooperatives, such as PACS computerisation and PACS working as service centres. Each card shows who can use it and how to access it, with its source and date.',
+        'The Schemes and services page lists programmes for cooperatives, such as PACS computerisation and PACS working as service centres. Each card shows any available source and date.',
       citations: [
         {
           id: 'cit-scheme-1',
           document_id: 'doc-circular-pacs',
           title: 'Scheme note: Computerisation of PACS',
-          publisher: 'Sample metadata',
+          publisher: '',
           published_date: '2025-06-10',
           page: 2,
           url: null,
@@ -218,8 +170,8 @@ export function buildMockAnswer(req: AskRequest): AskResponse {
       status: covered ? 'answered' : 'partial',
       needs_state: false,
       answer_text: covered
-        ? `Demonstration answer for ${stateName(req.state)}: board members of a cooperative society are generally elected by its members at the general body meeting, following the election rules in the state Act and the society’s registered by-laws. Check your society’s own by-laws for the exact number of seats and the term.`
-        : `Demonstration answer: ${stateName(req.state)} is not yet in the knowledge base, so this answer uses only the central documents and the model by-laws. Check your state’s Co-operative Societies Act for the exact rules.`,
+        ? `In ${stateName(req.state)}, board members of a cooperative society are generally elected by its members at the general body meeting, following the election rules in the state Act and the society’s registered by-laws. Check your society’s own by-laws for the exact number of seats and the term.`
+        : `${stateName(req.state)} is not covered by the current knowledge base, so this answer uses only the central documents and the model by-laws. Check your state’s Co-operative Societies Act for the exact rules.`,
       citations: lawCitations(req.state),
       followups: [
         'Who conducts elections in a cooperative society?',

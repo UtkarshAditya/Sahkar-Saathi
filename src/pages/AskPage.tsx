@@ -9,14 +9,14 @@ import { SuggestedQuestions } from '@/components/chat/SuggestedQuestions';
 import { Badge } from '@/components/common/Badge';
 import { Button } from '@/components/common/Button';
 import { Card } from '@/components/common/Card';
-import { LegalNotice, Notice } from '@/components/common/Notice';
+import { Notice } from '@/components/common/Notice';
 import { PageHeader } from '@/components/common/PageHeader';
-import { buildDemoConversation, makeId, SUGGESTED_QUESTIONS } from '@/data/mockChat';
-import { MOCK_DOCUMENTS } from '@/data/mockDocuments';
+import { SUGGESTED_QUESTIONS } from '@/data/suggestedQuestions';
 import { stateName } from '@/data/options';
+import { makeId } from '@/lib/format';
 import { useSettings } from '@/hooks/useSettings';
 import { useSpeechPlayback } from '@/hooks/useSpeechPlayback';
-import { api, MOCK_ERROR_TRIGGER, USE_MOCKS } from '@/services/api';
+import { api, apiErrorTranslationKey, MOCK_ERROR_TRIGGER, USE_MOCKS } from '@/services/api';
 import type { ChatMessage } from '@/types';
 
 export default function AskPage() {
@@ -26,23 +26,43 @@ export default function AskPage() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // The example conversation is shown up front only in mock mode; with the real API it
-  // stays one click away ("Show example conversation").
-  const [messages, setMessages] = useState<ChatMessage[]>(() =>
-    USE_MOCKS ? buildDemoConversation() : [],
-  );
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState(() => params.get('q') ?? '');
   const [loading, setLoading] = useState(false);
   const [failedText, setFailedText] = useState<string | null>(null);
+  const [failedErrorKey, setFailedErrorKey] = useState('chat.errorBody');
   const [failedFromVoice, setFailedFromVoice] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(USE_MOCKS ? 'demo-a1' : null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const shouldScroll = useRef(false);
+  const userInteractedRef = useRef(false);
+  const askControllerRef = useRef<AbortController | null>(null);
+  const askInFlightRef = useRef(false);
+
+  useEffect(
+    () => () => {
+      askControllerRef.current?.abort();
+    },
+    [],
+  );
 
   // "Ask about this" links arrive as /?q=…&doc=…. Prefill (never auto-send).
   const docId = params.get('doc');
-  const limitedDoc = useMemo(() => MOCK_DOCUMENTS.find((d) => d.id === docId) ?? null, [docId]);
+  const limitedDoc = docId ? { id: docId, title: params.get('docTitle') ?? docId } : null;
+
+  useEffect(() => {
+    if (!USE_MOCKS) return;
+    let active = true;
+    void import('@/data/mockChat').then(({ buildDemoConversation }) => {
+      if (!active || userInteractedRef.current) return;
+      setMessages(buildDemoConversation());
+      setSelectedId('demo-a1');
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
   useEffect(() => {
     const q = params.get('q');
     if (q) setInput(q);
@@ -61,21 +81,30 @@ export default function AskPage() {
   );
 
   async function ask(text: string, overrideState?: string, fromVoice = false) {
+    if (askInFlightRef.current) return;
+    userInteractedRef.current = true;
+    const controller = new AbortController();
+    askControllerRef.current = controller;
+    askInFlightRef.current = true;
     const userMessage: ChatMessage = { id: makeId('u'), role: 'user', text };
     shouldScroll.current = true;
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setFailedText(null);
+    setFailedErrorKey('chat.errorBody');
     setFailedFromVoice(false);
     setLoading(true);
     try {
-      const response = await api.ask({
-        conversation_id: conversationId,
-        text,
-        language,
-        state: overrideState ?? stateCode,
-        document_id: limitedDoc?.id ?? null,
-      });
+      const response = await api.ask(
+        {
+          conversation_id: conversationId,
+          text,
+          language,
+          state: overrideState ?? stateCode,
+          document_id: limitedDoc?.id ?? null,
+        },
+        controller.signal,
+      );
       setConversationId(response.conversation_id);
       const reply: ChatMessage = {
         id: response.message_id,
@@ -89,11 +118,15 @@ export default function AskPage() {
       shouldScroll.current = true;
       setMessages((prev) => [...prev, reply]);
       if (response.citations.length > 0) setSelectedId(reply.id);
-    } catch {
+    } catch (cause) {
+      if (controller.signal.aborted) return;
       setFailedText(text);
+      setFailedErrorKey(apiErrorTranslationKey(cause));
       setFailedFromVoice(fromVoice);
     } finally {
-      setLoading(false);
+      askInFlightRef.current = false;
+      askControllerRef.current = null;
+      if (!controller.signal.aborted) setLoading(false);
     }
   }
 
@@ -116,17 +149,27 @@ export default function AskPage() {
   }
 
   function clearConversation() {
+    userInteractedRef.current = true;
     speechPlayback.clear();
     setMessages([]);
     setConversationId(null);
     setSelectedId(null);
     setFailedText(null);
+    setFailedErrorKey('chat.errorBody');
     setFailedFromVoice(false);
+  }
+
+  async function showExampleConversation() {
+    userInteractedRef.current = true;
+    const { buildDemoConversation } = await import('@/data/mockChat');
+    setMessages(buildDemoConversation());
+    setSelectedId('demo-a1');
   }
 
   function clearDocLimit() {
     const next = new URLSearchParams(params);
     next.delete('doc');
+    next.delete('docTitle');
     next.delete('q');
     setParams(next, { replace: true });
   }
@@ -139,36 +182,30 @@ export default function AskPage() {
         title={t('pages.ask.title')}
         description={t('pages.ask.description')}
         icon={<MessageSquareText className="size-6" aria-hidden />}
-        badges={
-          <>
-            <Badge tone="saffron">{t('common.demo')}: answers come from local mock data</Badge>
-            {stateCode && <Badge tone="brand">{stateName(stateCode)}</Badge>}
-          </>
-        }
+        badges={<>{stateCode && <Badge tone="brand">{stateName(stateCode)}</Badge>}</>}
       />
 
-      <LegalNotice className="mb-6" />
-
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <Card padding="none" className="flex flex-col">
-          <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3 sm:px-5">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <Card padding="none" className="flex min-w-0 flex-col">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3 sm:px-5">
             <h2 className="font-semibold">{t('chat.conversation')}</h2>
             {isEmpty ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={<RotateCcw className="size-4" aria-hidden />}
-                onClick={() => {
-                  setMessages(buildDemoConversation());
-                  setSelectedId('demo-a1');
-                }}
-              >
-                Show example conversation
-              </Button>
+              USE_MOCKS && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="min-w-0 max-w-full"
+                  icon={<RotateCcw className="size-4" aria-hidden />}
+                  onClick={() => void showExampleConversation()}
+                >
+                  Show example conversation
+                </Button>
+              )
             ) : (
               <Button
                 variant="ghost"
                 size="sm"
+                className="min-w-0 max-w-full"
                 icon={<Trash className="size-4" aria-hidden />}
                 onClick={clearConversation}
                 disabled={loading}
@@ -191,12 +228,6 @@ export default function AskPage() {
                 />
               </div>
             </section>
-
-            {!isEmpty && messages[0]?.id.startsWith('demo-') && (
-              <p className="text-center text-xs font-semibold tracking-wide text-ink-muted uppercase">
-                Example conversation · demonstration only
-              </p>
-            )}
 
             {messages.map((message) => (
               <MessageBubble
@@ -221,7 +252,7 @@ export default function AskPage() {
 
             {failedText && (
               <Notice tone="warning" role="alert" title={t('chat.errorTitle')}>
-                <p>{t('chat.errorBody')}</p>
+                <p>{t(failedErrorKey)}</p>
                 <Button
                   variant="secondary"
                   size="sm"
@@ -273,10 +304,6 @@ export default function AskPage() {
         <div className="hidden lg:block">
           <div className="sticky top-24 flex flex-col gap-4">
             <CitationPanel citations={selectedCitations} />
-            <Notice tone="info" title="How answers work">
-              Each answer is checked against its sources. If the evidence is weak, Sahkar Saathi
-              says it could not find the answer and names who to contact, instead of guessing.
-            </Notice>
           </div>
         </div>
       </div>

@@ -1,5 +1,5 @@
-import { NavLink } from 'react-router';
-import { ShieldAlert } from 'lucide-react';
+import { NavLink, useLocation } from 'react-router';
+import { Check, ShieldAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { NAV_GROUPS, NAV_ITEMS } from '@/app/navigation';
 import { LanguageSelector } from '@/components/common/LanguageSelector';
@@ -10,6 +10,8 @@ import { Brand } from './Brand';
 /** Navigation, language and state selectors, and the safety notice. Shared with the mobile drawer. */
 export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { t } = useTranslation();
+  const { pathname } = useLocation();
+  const isStaffRoute = pathname.startsWith('/staff') || pathname.startsWith('/admin');
 
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto px-4 py-5">
@@ -29,10 +31,10 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                     onClick={onNavigate}
                     className={({ isActive }) =>
                       cn(
-                        'relative flex min-h-11 items-center gap-3 rounded-lg px-3 font-medium transition-colors',
+                        'relative flex min-h-12 items-center gap-3 rounded-lg border-2 px-3 font-medium transition-colors',
                         isActive
-                          ? 'bg-brand-800 text-white'
-                          : 'text-ink-soft hover:bg-brand-50 hover:text-brand-900',
+                          ? 'border-brand-800 bg-brand-800 text-white'
+                          : 'border-transparent text-ink-soft hover:border-line hover:bg-brand-50 hover:text-brand-900',
                       )
                     }
                   >
@@ -45,7 +47,8 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                           )}
                           aria-hidden
                         />
-                        <span>{t(item.labelKey)}</span>
+                        <span className="flex-1">{t(item.labelKey)}</span>
+                        {isActive && <Check className="size-4 shrink-0" aria-hidden />}
                       </>
                     )}
                   </NavLink>
@@ -67,10 +70,12 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <StateSelector showHint />
       </section>
 
-      <p className="mt-auto flex gap-2 rounded-xl bg-saffron-50 px-3 py-2.5 text-xs leading-relaxed text-saffron-800 ring-1 ring-saffron-200">
-        <ShieldAlert className="size-4 shrink-0" aria-hidden />
-        {t('notice.sidebar')}
-      </p>
+      {!isStaffRoute && (
+        <p className="mt-auto flex gap-2 rounded-xl border-2 border-saffron-700 bg-saffron-50 px-3 py-2.5 text-xs leading-relaxed text-saffron-800">
+          <ShieldAlert className="size-4 shrink-0" aria-hidden />
+          {t('notice.sidebar')}
+        </p>
+      )}
     </div>
   );
 }

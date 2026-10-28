@@ -1,29 +1,17 @@
-import type { DocumentType, LibraryDocument } from '@/types';
+import type { LibraryDocument } from '@/types';
 
-/*
- * SAMPLE library metadata. Titles name real public documents so the table reads
- * naturally, but publishers, dates and versions are placeholders and no URLs are
- * included. Member B replaces this with GET /api/v1/documents once ingestion runs.
- */
-
-export const DOCUMENT_TYPES: { id: DocumentType; label: string }[] = [
-  { id: 'act', label: 'Act' },
-  { id: 'rules', label: 'Rules' },
-  { id: 'model-bylaws', label: 'Model by-laws' },
-  { id: 'circular', label: 'Circular' },
-  { id: 'scheme-guideline', label: 'Scheme guideline' },
-];
+/* Local fixture data used only when VITE_USE_MOCKS is enabled. */
 
 export const MOCK_DOCUMENTS: LibraryDocument[] = [
   {
     id: 'doc-mscs-act',
     title: 'Multi-State Co-operative Societies Act, 2002',
-    publisher: 'Government of India (sample metadata)',
+    publisher: '',
     doc_type: 'act',
     state: 'central',
     language: 'en',
-    published_date: '2024-03-01',
-    version: 'Sample v1',
+    published_date: null,
+    version: '',
     status: 'active',
     source_url: null,
     is_sample: true,
@@ -31,12 +19,12 @@ export const MOCK_DOCUMENTS: LibraryDocument[] = [
   {
     id: 'doc-mscs-amendment',
     title: 'Multi-State Co-operative Societies (Amendment) Act, 2023',
-    publisher: 'Government of India (sample metadata)',
+    publisher: '',
     doc_type: 'act',
     state: 'central',
     language: 'en',
-    published_date: '2024-03-01',
-    version: 'Sample v1',
+    published_date: null,
+    version: '',
     status: 'active',
     source_url: null,
     is_sample: true,
@@ -44,12 +32,12 @@ export const MOCK_DOCUMENTS: LibraryDocument[] = [
   {
     id: 'doc-mscs-rules',
     title: 'Multi-State Co-operative Societies Rules',
-    publisher: 'Government of India (sample metadata)',
+    publisher: '',
     doc_type: 'rules',
     state: 'central',
     language: 'en',
-    published_date: '2024-03-01',
-    version: 'Sample v1',
+    published_date: null,
+    version: '',
     status: 'active',
     source_url: null,
     is_sample: true,
@@ -57,12 +45,12 @@ export const MOCK_DOCUMENTS: LibraryDocument[] = [
   {
     id: 'doc-model-bylaws-en',
     title: 'Model Bye-laws for PACS',
-    publisher: 'Ministry of Cooperation (sample metadata)',
+    publisher: '',
     doc_type: 'model-bylaws',
     state: 'central',
     language: 'en',
-    published_date: '2023-01-05',
-    version: 'Sample v2',
+    published_date: null,
+    version: '',
     status: 'active',
     source_url: null,
     is_sample: true,
@@ -70,12 +58,12 @@ export const MOCK_DOCUMENTS: LibraryDocument[] = [
   {
     id: 'doc-model-bylaws-hi',
     title: 'पैक्स के लिए आदर्श उपनियम (Model Bye-laws for PACS, Hindi)',
-    publisher: 'Ministry of Cooperation (sample metadata)',
+    publisher: '',
     doc_type: 'model-bylaws',
     state: 'central',
     language: 'hi',
-    published_date: '2023-01-05',
-    version: 'Sample v2',
+    published_date: null,
+    version: '',
     status: 'active',
     source_url: null,
     is_sample: true,
@@ -83,12 +71,12 @@ export const MOCK_DOCUMENTS: LibraryDocument[] = [
   {
     id: 'doc-tn-act',
     title: 'Tamil Nadu Co-operative Societies Act, 1983',
-    publisher: 'Government of Tamil Nadu (sample metadata)',
+    publisher: '',
     doc_type: 'act',
     state: 'TN',
     language: 'en',
-    published_date: '2024-03-01',
-    version: 'Sample v1',
+    published_date: null,
+    version: '',
     status: 'active',
     source_url: null,
     is_sample: true,
@@ -96,12 +84,12 @@ export const MOCK_DOCUMENTS: LibraryDocument[] = [
   {
     id: 'doc-tn-rules',
     title: 'Tamil Nadu Co-operative Societies Rules, 1988',
-    publisher: 'Government of Tamil Nadu (sample metadata)',
+    publisher: '',
     doc_type: 'rules',
     state: 'TN',
     language: 'ta',
-    published_date: '2024-03-01',
-    version: 'Sample v1',
+    published_date: null,
+    version: '',
     status: 'active',
     source_url: null,
     is_sample: true,
@@ -109,44 +97,40 @@ export const MOCK_DOCUMENTS: LibraryDocument[] = [
   {
     id: 'doc-pmfby-guidelines',
     title: 'PMFBY Operational Guidelines',
-    publisher: 'Government of India (sample metadata)',
+    publisher: '',
     doc_type: 'scheme-guideline',
     state: 'central',
     language: 'en',
-    published_date: '2026-01-15',
-    version: 'Sample v3',
+    published_date: null,
+    version: '',
     status: 'active',
     source_url: null,
     is_sample: true,
   },
   {
     id: 'doc-circular-undated',
-    title: 'Sample circular with no stated date',
-    publisher: 'Sample publisher',
+    title: 'PACS circular with no stated date',
+    publisher: '',
     doc_type: 'circular',
     state: 'central',
     language: 'en',
     published_date: null,
-    version: 'Sample v1',
+    version: '',
     status: 'active',
     source_url: null,
     is_sample: true,
   },
   {
     id: 'doc-circular-pacs',
-    title: 'Sample circular: PACS computerisation progress',
-    publisher: 'Sample publisher',
+    title: 'PACS computerisation progress circular',
+    publisher: '',
     doc_type: 'circular',
     state: 'central',
     language: 'en',
-    published_date: '2025-06-10',
-    version: 'Sample v1',
+    published_date: null,
+    version: '',
     status: 'retired',
     source_url: null,
     is_sample: true,
   },
 ];
-
-export function documentTypeLabel(type: DocumentType): string {
-  return DOCUMENT_TYPES.find((d) => d.id === type)?.label ?? type;
-}

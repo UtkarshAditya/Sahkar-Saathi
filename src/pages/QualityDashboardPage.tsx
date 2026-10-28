@@ -45,7 +45,7 @@ const FAILURE_LABELS: Record<FailureKind, { label: string; tone: BadgeTone }> = 
 
 export default function QualityDashboardPage() {
   const { t } = useTranslation();
-  const { data, loading, error, reload } = useAsync(api.latestEval);
+  const { data, loading, error, reload } = useAsync((signal) => api.latestEval(signal));
 
   return (
     <>
@@ -78,7 +78,7 @@ export default function QualityDashboardPage() {
         (error.code === 'not_authenticated' || error.code === 'staff_only') ? (
         <AccessState code={error.code} />
       ) : error || !data ? (
-        <ErrorState message={error?.message} onRetry={reload} />
+        <ErrorState error={error} onRetry={reload} />
       ) : (
         <div className="flex flex-col gap-6">
           <section aria-labelledby="latest-heading">
@@ -91,24 +91,28 @@ export default function QualityDashboardPage() {
                 questions
               </p>
             </div>
-            <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {data.metrics.map((metric) => (
-                <li key={metric.key}>
-                  <MetricTile metric={metric} />
+            {data.metrics.length === 0 ? (
+              <EmptyState title={t('common.noResults')} />
+            ) : (
+              <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                {data.metrics.map((metric) => (
+                  <li key={metric.key}>
+                    <MetricTile metric={metric} />
+                  </li>
+                ))}
+                <li>
+                  <Card className="h-full">
+                    <p className="text-sm font-semibold text-ink-soft">Failed questions</p>
+                    <p className="mt-1 text-4xl font-bold tracking-tight">
+                      {data.failed_questions.length}
+                    </p>
+                    <p className="mt-2 text-sm text-ink-muted">
+                      Listed below with the reason, for prompt and data fixes.
+                    </p>
+                  </Card>
                 </li>
-              ))}
-              <li>
-                <Card className="h-full">
-                  <p className="text-sm font-semibold text-ink-soft">Failed questions</p>
-                  <p className="mt-1 text-4xl font-bold tracking-tight">
-                    {data.failed_questions.length}
-                  </p>
-                  <p className="mt-2 text-sm text-ink-muted">
-                    Listed below with the reason, for prompt and data fixes.
-                  </p>
-                </Card>
-              </li>
-            </ul>
+              </ul>
+            )}
           </section>
 
           <Card as="section" aria-labelledby="trend-heading">
@@ -117,11 +121,15 @@ export default function QualityDashboardPage() {
               title={<span id="trend-heading">Change across runs</span>}
               description="Each bar is one evaluation run. The dashed line is the team target."
             />
-            <div className="grid gap-6 md:grid-cols-3">
-              {data.metrics.map((metric) => (
-                <RunBars key={metric.key} metric={metric} runs={data.runs} />
-              ))}
-            </div>
+            {data.runs.length === 0 ? (
+              <EmptyState title={t('common.noResults')} />
+            ) : (
+              <div className="grid gap-6 md:grid-cols-3">
+                {data.metrics.map((metric) => (
+                  <RunBars key={metric.key} metric={metric} runs={data.runs} />
+                ))}
+              </div>
+            )}
           </Card>
 
           <Card as="section" padding="none" aria-labelledby="runs-heading">
@@ -133,52 +141,58 @@ export default function QualityDashboardPage() {
                 Each run records its settings so results can be compared.
               </p>
             </div>
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full min-w-[44rem] text-left text-sm">
-                <thead className="border-y border-line bg-canvas text-xs tracking-wide text-ink-muted uppercase">
-                  <tr>
-                    <th scope="col" className="px-5 py-2.5 font-semibold">
-                      Run
-                    </th>
-                    <th scope="col" className="px-3 py-2.5 font-semibold">
-                      Settings
-                    </th>
-                    <th scope="col" className="px-3 py-2.5 text-right font-semibold">
-                      Hit rate
-                    </th>
-                    <th scope="col" className="px-3 py-2.5 text-right font-semibold">
-                      Faithfulness
-                    </th>
-                    <th scope="col" className="px-5 py-2.5 text-right font-semibold">
-                      Refusal
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line">
-                  {[...data.runs].reverse().map((run) => (
-                    <tr key={run.id}>
-                      <td className="px-5 py-3">
-                        <p className="font-semibold">{run.label}</p>
-                        <p className="text-ink-muted">{formatDate(run.run_at)}</p>
-                      </td>
-                      <td className="px-3 py-3 text-ink-soft">
-                        {run.config.embedding_model} · {run.config.llm} · top-k {run.config.top_k} ·
-                        threshold {run.config.threshold} · prompt {run.config.prompt_version}
-                      </td>
-                      <td className="px-3 py-3 text-right tabular-nums">
-                        {formatPercent(run.hit_rate)}
-                      </td>
-                      <td className="px-3 py-3 text-right tabular-nums">
-                        {formatPercent(run.faithfulness)}
-                      </td>
-                      <td className="px-5 py-3 text-right tabular-nums">
-                        {formatPercent(run.correct_refusal)}
-                      </td>
+            {data.runs.length === 0 ? (
+              <div className="m-5">
+                <EmptyState title={t('common.noResults')} />
+              </div>
+            ) : (
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full min-w-[44rem] text-left text-sm">
+                  <thead className="border-y border-line bg-canvas text-xs tracking-wide text-ink-muted uppercase">
+                    <tr>
+                      <th scope="col" className="px-5 py-2.5 font-semibold">
+                        Run
+                      </th>
+                      <th scope="col" className="px-3 py-2.5 font-semibold">
+                        Settings
+                      </th>
+                      <th scope="col" className="px-3 py-2.5 text-right font-semibold">
+                        Hit rate
+                      </th>
+                      <th scope="col" className="px-3 py-2.5 text-right font-semibold">
+                        Faithfulness
+                      </th>
+                      <th scope="col" className="px-5 py-2.5 text-right font-semibold">
+                        Refusal
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {[...data.runs].reverse().map((run) => (
+                      <tr key={run.id}>
+                        <td className="px-5 py-3">
+                          <p className="font-semibold">{run.label}</p>
+                          <p className="text-ink-muted">{formatDate(run.run_at)}</p>
+                        </td>
+                        <td className="px-3 py-3 text-ink-soft">
+                          {run.config.embedding_model} · {run.config.llm} · top-k {run.config.top_k}{' '}
+                          · threshold {run.config.threshold} · prompt {run.config.prompt_version}
+                        </td>
+                        <td className="px-3 py-3 text-right tabular-nums">
+                          {formatPercent(run.hit_rate)}
+                        </td>
+                        <td className="px-3 py-3 text-right tabular-nums">
+                          {formatPercent(run.faithfulness)}
+                        </td>
+                        <td className="px-5 py-3 text-right tabular-nums">
+                          {formatPercent(run.correct_refusal)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </Card>
 
           <Card as="section" padding="none" aria-labelledby="failed-heading">

@@ -10,14 +10,12 @@ import {
   Wallet,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Badge } from '@/components/common/Badge';
 import { Button } from '@/components/common/Button';
 import { Card } from '@/components/common/Card';
-import { Notice } from '@/components/common/Notice';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SourceMeta } from '@/components/common/SourceMeta';
-import { ErrorState, LoadingState } from '@/components/common/EmptyState';
-import { CROP_TYPES, factsFor, SEASONS } from '@/data/mockCropInsurance';
+import { EmptyState, ErrorState, LoadingState } from '@/components/common/EmptyState';
+import { CROP_TYPES, factsFor, SEASONS } from '@/data/options';
 import { useAsync } from '@/hooks/useAsync';
 import { api } from '@/services/api';
 import type { CropFactKind, CropType, Season } from '@/types';
@@ -38,7 +36,12 @@ export default function CropInsurancePage() {
   const [season, setSeason] = useState<Season>('kharif');
   const [crop, setCrop] = useState<CropType>('food');
 
-  const { data: pmfby, loading, error, reload } = useAsync(() => api.getScheme('pmfby'));
+  const {
+    data: pmfby,
+    loading,
+    error,
+    reload,
+  } = useAsync((signal) => api.getScheme('pmfby', signal));
   const facts = useMemo(() => factsFor(pmfby?.facts ?? [], season, crop), [pmfby, season, crop]);
   const seasonLabel = SEASONS.find((s) => s.id === season)?.label ?? '';
   const cropLabel = CROP_TYPES.find((c) => c.id === crop)?.label ?? '';
@@ -55,10 +58,13 @@ export default function CropInsurancePage() {
         description={t('pages.cropInsurance.description')}
         icon={<Sprout className="size-6" aria-hidden />}
         breadcrumbs={[{ label: t('nav.groups.guides') }]}
-        badges={<Badge tone="saffron">{t('common.placeholder')}: figures not yet verified</Badge>}
         actions={
-          <Button onClick={askFollowUp} icon={<MessageSquareText className="size-5" aria-hidden />}>
-            Ask a follow-up
+          <Button
+            className="whitespace-nowrap"
+            onClick={askFollowUp}
+            icon={<MessageSquareText className="size-5" aria-hidden />}
+          >
+            {t('common.askFollowUp')}
           </Button>
         }
       />
@@ -117,11 +123,6 @@ export default function CropInsurancePage() {
               </div>
             </div>
           </Card>
-
-          <Notice tone="warning" title="No numbers until verified">
-            Premium shares, deadlines and helpline numbers are left blank on purpose. They will be
-            added from the official guidelines, each with its source and date.
-          </Notice>
         </div>
 
         <section aria-labelledby="facts-heading">
@@ -132,37 +133,38 @@ export default function CropInsurancePage() {
             Showing: {seasonLabel} · {cropLabel}
           </p>
           {loading && <LoadingState />}
-          {error && <ErrorState message={error.message} onRetry={reload} />}
-          <ul className="grid gap-4 md:grid-cols-2">
-            {facts.map((fact) => {
-              const Icon = FACT_ICONS[fact.kind];
-              return (
-                <li key={fact.id}>
-                  <Card as="article" className="flex h-full flex-col">
-                    <div className="mb-3 flex items-start justify-between gap-2">
-                      <span className="flex items-center gap-2">
-                        <span className="flex size-10 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
-                          <Icon className="size-5" aria-hidden />
+          {error && <ErrorState error={error} onRetry={reload} />}
+          {facts.length === 0 && !loading && !error ? (
+            <EmptyState title={t('common.noResults')} />
+          ) : (
+            <ul className="grid gap-4 md:grid-cols-2">
+              {facts.map((fact) => {
+                const Icon = FACT_ICONS[fact.kind];
+                return (
+                  <li key={fact.id}>
+                    <Card as="article" className="flex h-full flex-col">
+                      <div className="mb-3 flex items-start justify-between gap-2">
+                        <span className="flex items-center gap-2">
+                          <span className="flex size-10 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
+                            <Icon className="size-5" aria-hidden />
+                          </span>
+                          <h3 className="font-semibold">{fact.title}</h3>
                         </span>
-                        <h3 className="font-semibold">{fact.title}</h3>
-                      </span>
-                      {fact.is_placeholder && (
-                        <Badge tone="saffron">{t('common.placeholder')}</Badge>
-                      )}
-                    </div>
-                    <p className="flex-1 text-ink-soft">{fact.body}</p>
-                    <div className="mt-4 border-t border-line pt-3">
-                      <SourceMeta
-                        sourceLabel={fact.source_label}
-                        sourceUrl={fact.source_url}
-                        asOf={fact.as_of}
-                      />
-                    </div>
-                  </Card>
-                </li>
-              );
-            })}
-          </ul>
+                      </div>
+                      <p className="flex-1 text-ink-soft">{fact.body}</p>
+                      <div className="mt-4 border-t border-line pt-3">
+                        <SourceMeta
+                          sourceLabel={fact.source_label}
+                          sourceUrl={fact.source_url}
+                          asOf={fact.as_of}
+                        />
+                      </div>
+                    </Card>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
           <div className="mt-6 flex flex-col items-start gap-3 rounded-2xl border border-brand-200 bg-brand-50 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="font-semibold text-brand-900">Still have a question about your crop?</p>
@@ -171,10 +173,11 @@ export default function CropInsurancePage() {
               </p>
             </div>
             <Button
+              className="whitespace-nowrap"
               onClick={askFollowUp}
               icon={<MessageSquareText className="size-5" aria-hidden />}
             >
-              Ask a follow-up
+              {t('common.askFollowUp')}
             </Button>
           </div>
         </section>

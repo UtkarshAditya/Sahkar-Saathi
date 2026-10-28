@@ -42,7 +42,7 @@ export function MobileNavigation({ open, onOpen, onClose }: MobileNavigationProp
             <button
               type="button"
               onClick={onClose}
-              className="flex size-10 items-center justify-center rounded-lg text-ink-muted hover:bg-canvas hover:text-ink"
+              className="flex size-12 items-center justify-center rounded-lg text-ink-muted hover:bg-canvas hover:text-ink"
               aria-label={t('nav.closeMenu')}
             >
               <X className="size-5" aria-hidden />

@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import { Languages } from 'lucide-react';
+import { Check, Languages } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useSettings } from '@/hooks/useSettings';
 import { LANGUAGES } from '@/i18n';
@@ -30,7 +30,7 @@ export function LanguageSelector({ variant = 'full', className }: LanguageSelect
           id={id}
           value={language}
           onChange={(e) => setLanguage(e.target.value)}
-          className="min-h-10 appearance-none rounded-lg border border-line bg-surface py-1.5 pr-3 pl-8 text-sm font-semibold text-ink"
+          className="min-h-12 appearance-none rounded-lg border-2 border-line bg-surface py-1.5 pr-3 pl-8 text-sm font-semibold text-ink"
         >
           {LANGUAGES.map((lang) => (
             <option key={lang.code} value={lang.code}>
@@ -60,10 +60,13 @@ export function LanguageSelector({ variant = 'full', className }: LanguageSelect
               title={lang.englishLabel}
               onClick={() => setLanguage(lang.code)}
               className={cn(
-                'min-h-10 rounded-lg px-1 text-sm font-semibold transition-colors',
-                active ? 'bg-brand-800 text-white' : 'text-ink-soft hover:bg-surface',
+                'flex min-h-12 items-center justify-center gap-1 rounded-lg border-2 px-1 text-sm font-semibold transition-colors',
+                active
+                  ? 'border-brand-800 bg-brand-800 text-white'
+                  : 'border-transparent text-ink-soft hover:border-line hover:bg-surface',
               )}
             >
+              {active && <Check className="size-3.5 shrink-0" aria-hidden />}
               {lang.label}
             </button>
           );

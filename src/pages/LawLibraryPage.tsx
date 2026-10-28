@@ -6,11 +6,9 @@ import { Badge } from '@/components/common/Badge';
 import { Button } from '@/components/common/Button';
 import { Card } from '@/components/common/Card';
 import { EmptyState, ErrorState, LoadingState } from '@/components/common/EmptyState';
-import { Notice } from '@/components/common/Notice';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SearchInput } from '@/components/common/SearchInput';
-import { DOCUMENT_TYPES, documentTypeLabel } from '@/data/mockDocuments';
-import { stateName } from '@/data/options';
+import { DOCUMENT_TYPES, documentTypeLabel, stateName } from '@/data/options';
 import { useAsync } from '@/hooks/useAsync';
 import { LANGUAGES } from '@/i18n';
 import { formatDate } from '@/lib/format';
@@ -25,7 +23,7 @@ export default function LawLibraryPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const ids = { state: useId(), language: useId(), type: useId(), retired: useId() };
-  const { data, loading, error, reload } = useAsync(() => api.listDocuments());
+  const { data, loading, error, reload } = useAsync((signal) => api.listDocuments({}, signal));
 
   const [search, setSearch] = useState('');
   const [state, setState] = useState('');
@@ -52,6 +50,7 @@ export default function LawLibraryPage() {
   }, [data, search, state, language, docType, showRetired]);
 
   const hasFilters = Boolean(search || state || language || docType);
+  const hasVersions = filtered.some((doc) => doc.version.trim().length > 0);
 
   function clearFilters() {
     setSearch('');
@@ -61,7 +60,9 @@ export default function LawLibraryPage() {
   }
 
   function askAbout(doc: LibraryDocument) {
-    navigate(`/?doc=${doc.id}&q=${encodeURIComponent(`What does "${doc.title}" say about `)}`);
+    navigate(
+      `/?doc=${encodeURIComponent(doc.id)}&docTitle=${encodeURIComponent(doc.title)}&q=${encodeURIComponent(`What does "${doc.title}" say about `)}`,
+    );
   }
 
   return (
@@ -71,16 +72,7 @@ export default function LawLibraryPage() {
         description={t('pages.library.description')}
         icon={<BookOpen className="size-6" aria-hidden />}
         breadcrumbs={[{ label: t('nav.groups.guides') }]}
-        badges={
-          <Badge tone="saffron">{t('common.sample')}: metadata and links to be verified</Badge>
-        }
       />
-
-      <Notice tone="info" className="mb-6">
-        These entries are sample metadata only. Real titles, dates, versions and links will be
-        filled in by the ingestion pipeline. “Ask about this document” limits your next question to
-        that document.
-      </Notice>
 
       <Card padding="sm" className="mb-6">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -150,7 +142,7 @@ export default function LawLibraryPage() {
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <label
             htmlFor={ids.retired}
-            className="flex min-h-10 cursor-pointer items-center gap-2 text-sm"
+            className="flex min-h-12 cursor-pointer items-center gap-2 text-sm"
           >
             <input
               id={ids.retired}
@@ -172,7 +164,7 @@ export default function LawLibraryPage() {
       {loading ? (
         <LoadingState />
       ) : error ? (
-        <ErrorState message={error.message} onRetry={reload} />
+        <ErrorState error={error} onRetry={reload} />
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={<SearchX className="size-6" aria-hidden />}
@@ -191,7 +183,7 @@ export default function LawLibraryPage() {
           </p>
 
           {/* Table from tablet width up */}
-          <div className="hidden overflow-x-auto rounded-2xl border border-line bg-surface md:block">
+          <div className="hidden overflow-x-auto rounded-2xl border-2 border-line bg-surface md:block">
             <table className="w-full text-left text-sm">
               <caption className="sr-only">Library documents</caption>
               <thead className="border-b border-line bg-canvas text-xs tracking-wide text-ink-muted uppercase">
@@ -208,9 +200,11 @@ export default function LawLibraryPage() {
                   <th scope="col" className="px-4 py-3 font-semibold">
                     Published
                   </th>
-                  <th scope="col" className="px-4 py-3 font-semibold">
-                    Version
-                  </th>
+                  {hasVersions && (
+                    <th scope="col" className="px-4 py-3 font-semibold">
+                      Version
+                    </th>
+                  )}
                   <th scope="col" className="px-4 py-3 font-semibold">
                     <span className="sr-only">Actions</span>
                   </th>
@@ -222,7 +216,8 @@ export default function LawLibraryPage() {
                     <td className="px-4 py-3">
                       <p className="font-semibold text-ink">{doc.title}</p>
                       <p className="text-ink-muted">
-                        {doc.publisher} · {languageName(doc.language)}
+                        {doc.publisher.trim() && `${doc.publisher} · `}
+                        {languageName(doc.language)}
                       </p>
                       <SourceLink doc={doc} />
                     </td>
@@ -233,23 +228,28 @@ export default function LawLibraryPage() {
                         ? formatDate(doc.published_date)
                         : t('common.dateNotStated')}
                     </td>
-                    <td className="px-4 py-3">
-                      <span className="whitespace-nowrap">{doc.version}</span>
-                      {doc.status === 'retired' && (
-                        <Badge tone="neutral" className="mt-1">
-                          Retired
-                        </Badge>
-                      )}
-                    </td>
+                    {hasVersions && (
+                      <td className="px-4 py-3">
+                        {doc.version.trim() && (
+                          <span className="whitespace-nowrap">{doc.version}</span>
+                        )}
+                        {doc.status === 'retired' && (
+                          <Badge tone="neutral" className="mt-1">
+                            Retired
+                          </Badge>
+                        )}
+                      </td>
+                    )}
                     <td className="px-4 py-3 text-right">
                       <Button
-                        variant="subtle"
+                        variant="primary"
                         size="sm"
+                        className="min-w-[10rem] whitespace-nowrap"
                         disabled={doc.status === 'retired'}
                         onClick={() => askAbout(doc)}
                         icon={<MessageSquareText className="size-4" aria-hidden />}
                       >
-                        Ask
+                        {t('common.askAboutThis')}
                       </Button>
                     </td>
                   </tr>
@@ -270,29 +270,38 @@ export default function LawLibraryPage() {
                   </div>
                   <h2 className="font-semibold">{doc.title}</h2>
                   <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-sm">
-                    <dt className="text-ink-muted">Publisher</dt>
-                    <dd>{doc.publisher}</dd>
+                    {doc.publisher.trim() && (
+                      <>
+                        <dt className="text-ink-muted">Publisher</dt>
+                        <dd>{doc.publisher}</dd>
+                      </>
+                    )}
                     <dt className="text-ink-muted">Published</dt>
                     <dd>
                       {doc.published_date
                         ? formatDate(doc.published_date)
                         : t('common.dateNotStated')}
                     </dd>
-                    <dt className="text-ink-muted">Version</dt>
-                    <dd>{doc.version}</dd>
+                    {doc.version.trim() && (
+                      <>
+                        <dt className="text-ink-muted">Version</dt>
+                        <dd>{doc.version}</dd>
+                      </>
+                    )}
                     <dt className="text-ink-muted">Language</dt>
                     <dd>{languageName(doc.language)}</dd>
                   </dl>
-                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                  <div className="mt-3">
                     <SourceLink doc={doc} />
                     <Button
-                      variant="subtle"
+                      variant="primary"
                       size="sm"
+                      className="mt-3 w-full whitespace-nowrap"
                       disabled={doc.status === 'retired'}
                       onClick={() => askAbout(doc)}
                       icon={<MessageSquareText className="size-4" aria-hidden />}
                     >
-                      Ask about this document
+                      {t('common.askAboutThis')}
                     </Button>
                   </div>
                 </Card>
@@ -306,7 +315,6 @@ export default function LawLibraryPage() {
 }
 
 function SourceLink({ doc }: { doc: LibraryDocument }) {
-  const { t } = useTranslation();
   if (doc.source_url) {
     return (
       <a
@@ -320,10 +328,5 @@ function SourceLink({ doc }: { doc: LibraryDocument }) {
       </a>
     );
   }
-  return (
-    <span className="mt-1 inline-flex items-center gap-1 text-sm text-ink-muted">
-      <ExternalLink className="size-3.5" aria-hidden />
-      {t('common.linkPending')}
-    </span>
-  );
+  return null;
 }

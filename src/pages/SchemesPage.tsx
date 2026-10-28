@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Landmark, MessageSquareText, SearchX } from 'lucide-react';
+import { Check, Landmark, MessageSquareText, SearchX } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/common/Badge';
 import { Button } from '@/components/common/Button';
@@ -10,7 +10,7 @@ import { Modal } from '@/components/common/Modal';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SearchInput } from '@/components/common/SearchInput';
 import { SourceMeta } from '@/components/common/SourceMeta';
-import { SCHEME_CATEGORIES } from '@/data/mockSchemes';
+import { SCHEME_CATEGORIES } from '@/data/options';
 import { useAsync } from '@/hooks/useAsync';
 import { cn } from '@/lib/format';
 import { api } from '@/services/api';
@@ -23,7 +23,7 @@ function categoryLabel(id: SchemeCategory) {
 export default function SchemesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { data, loading, error, reload } = useAsync(api.listSchemes);
+  const { data, loading, error, reload } = useAsync((signal) => api.listSchemes(signal));
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<SchemeCategory | 'all'>('all');
   const [open, setOpen] = useState<Scheme | null>(null);
@@ -48,7 +48,6 @@ export default function SchemesPage() {
         description={t('pages.schemes.description')}
         icon={<Landmark className="size-6" aria-hidden />}
         breadcrumbs={[{ label: t('nav.groups.guides') }]}
-        badges={<Badge tone="saffron">{t('common.sample')}: details not yet verified</Badge>}
       />
 
       <Card padding="sm" className="mb-6">
@@ -66,12 +65,13 @@ export default function SchemesPage() {
               aria-pressed={category === c.id}
               onClick={() => setCategory(c.id)}
               className={cn(
-                'min-h-10 rounded-full border px-3.5 text-sm font-medium transition-colors',
+                'flex min-h-12 items-center gap-1.5 rounded-full border-2 px-3.5 text-sm font-medium transition-colors',
                 category === c.id
                   ? 'border-brand-700 bg-brand-800 text-white'
                   : 'border-line bg-surface text-ink-soft hover:bg-brand-50',
               )}
             >
+              {category === c.id && <Check className="size-4 shrink-0" aria-hidden />}
               {c.label}
             </button>
           ))}
@@ -81,7 +81,7 @@ export default function SchemesPage() {
       {loading ? (
         <LoadingState />
       ) : error ? (
-        <ErrorState message={error.message} onRetry={reload} />
+        <ErrorState error={error} onRetry={reload} />
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={<SearchX className="size-6" aria-hidden />}
@@ -110,28 +110,32 @@ export default function SchemesPage() {
                 <Card as="article" className="flex h-full flex-col">
                   <div className="mb-2 flex flex-wrap gap-2">
                     <Badge tone="brand">{categoryLabel(scheme.category)}</Badge>
-                    {scheme.is_sample && <Badge tone="saffron">{t('common.sample')}</Badge>}
                   </div>
                   <h2 className="text-lg font-semibold">{scheme.title}</h2>
                   <p className="mt-1 text-ink-soft">{scheme.summary}</p>
-                  <dl className="mt-3 flex-1 text-sm">
-                    <dt className="font-semibold">Who can use it</dt>
-                    <dd className="text-ink-muted">{scheme.eligibility}</dd>
-                  </dl>
-                  <div className="mt-4 border-t border-line pt-3">
-                    <SourceMeta
-                      sourceLabel={scheme.source_label}
-                      sourceUrl={scheme.source_url}
-                      asOf={scheme.as_of}
-                    />
-                  </div>
+                  {scheme.eligibility.trim() && (
+                    <dl className="mt-3 flex-1 text-sm">
+                      <dt className="font-semibold">Who can use it</dt>
+                      <dd className="text-ink-muted">{scheme.eligibility}</dd>
+                    </dl>
+                  )}
+                  {scheme.source_label.trim() || scheme.source_url || scheme.as_of ? (
+                    <div className="mt-4 border-t border-line pt-3">
+                      <SourceMeta
+                        sourceLabel={scheme.source_label}
+                        sourceUrl={scheme.source_url}
+                        asOf={scheme.as_of}
+                      />
+                    </div>
+                  ) : null}
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Button variant="secondary" size="sm" onClick={() => setOpen(scheme)}>
                       {t('common.viewDetails')}
                     </Button>
                     <Button
-                      variant="subtle"
+                      variant="primary"
                       size="sm"
+                      className="whitespace-nowrap"
                       onClick={() => askAbout(scheme)}
                       icon={<MessageSquareText className="size-4" aria-hidden />}
                     >
@@ -156,6 +160,7 @@ export default function SchemesPage() {
                 {t('common.close')}
               </Button>
               <Button
+                className="whitespace-nowrap"
                 onClick={() => askAbout(open)}
                 icon={<MessageSquareText className="size-5" aria-hidden />}
               >
@@ -169,27 +174,34 @@ export default function SchemesPage() {
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap gap-2">
               <Badge tone="brand">{categoryLabel(open.category)}</Badge>
-              {open.is_sample && <Badge tone="saffron">{t('common.sample')}</Badge>}
             </div>
             <dl className="flex flex-col gap-3">
-              <div>
-                <dt className="font-semibold">What it is</dt>
-                <dd className="text-ink-soft">{open.summary}</dd>
-              </div>
-              <div>
-                <dt className="font-semibold">Who can use it</dt>
-                <dd className="text-ink-soft">{open.eligibility}</dd>
-              </div>
-              <div>
-                <dt className="font-semibold">How to access it</dt>
-                <dd className="text-ink-soft">{open.how_to_access}</dd>
-              </div>
+              {open.summary.trim() && (
+                <div>
+                  <dt className="font-semibold">What it is</dt>
+                  <dd className="text-ink-soft">{open.summary}</dd>
+                </div>
+              )}
+              {open.eligibility.trim() && (
+                <div>
+                  <dt className="font-semibold">Who can use it</dt>
+                  <dd className="text-ink-soft">{open.eligibility}</dd>
+                </div>
+              )}
+              {open.how_to_access.trim() && (
+                <div>
+                  <dt className="font-semibold">How to access it</dt>
+                  <dd className="text-ink-soft">{open.how_to_access}</dd>
+                </div>
+              )}
             </dl>
-            <SourceMeta
-              sourceLabel={open.source_label}
-              sourceUrl={open.source_url}
-              asOf={open.as_of}
-            />
+            {(open.source_label.trim() || open.source_url || open.as_of) && (
+              <SourceMeta
+                sourceLabel={open.source_label}
+                sourceUrl={open.source_url}
+                asOf={open.as_of}
+              />
+            )}
           </div>
         )}
       </Modal>

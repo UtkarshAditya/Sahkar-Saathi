@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import {
   Check,
   ClipboardList,
@@ -13,17 +13,17 @@ import {
   Wand,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Badge } from '@/components/common/Badge';
 import { Button } from '@/components/common/Button';
 import { Card, CardTitle } from '@/components/common/Card';
-import { LegalNotice, Notice } from '@/components/common/Notice';
+import { Notice } from '@/components/common/Notice';
 import { PageHeader } from '@/components/common/PageHeader';
 import { StateSelector } from '@/components/common/StateSelector';
-import { GRIEVANCE_CATEGORIES } from '@/data/mockGrievance';
+import { ErrorState, LoadingState } from '@/components/common/EmptyState';
 import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
+import { useAsync } from '@/hooks/useAsync';
 import { useSettings } from '@/hooks/useSettings';
 import { cn, downloadTextFile } from '@/lib/format';
-import { api } from '@/services/api';
+import { api, apiErrorTranslationKey } from '@/services/api';
 import type { GrievanceGuide } from '@/types';
 
 const MIN_LENGTH = 20;
@@ -38,6 +38,12 @@ export default function GrievancePage() {
   const { t } = useTranslation();
   const settings = useSettings();
   const descriptionId = useId();
+  const {
+    data: categories,
+    loading: categoriesLoading,
+    error: categoriesError,
+    reload: reloadCategories,
+  } = useAsync((signal) => api.grievanceCategories(signal));
 
   const [description, setDescription] = useState('');
   const [stateCode, setStateCode] = useState<string | null>(settings.stateCode);
@@ -49,37 +55,61 @@ export default function GrievancePage() {
   const [draft, setDraft] = useState('');
   const [checked, setChecked] = useState<Set<number>>(new Set());
   const resultRef = useRef<HTMLElement>(null);
+  const guideControllerRef = useRef<AbortController | null>(null);
   const { copied, error: copyError, copy } = useCopyToClipboard();
 
   const tooShort = description.trim().length < MIN_LENGTH;
+
+  useEffect(
+    () => () => {
+      guideControllerRef.current?.abort();
+    },
+    [],
+  );
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setTouched(true);
     if (tooShort) return;
+    await prepareGuide();
+  }
+
+  async function prepareGuide() {
+    if (guideControllerRef.current) return;
+    const controller = new AbortController();
+    guideControllerRef.current = controller;
     setLoading(true);
     setError(null);
     try {
-      const result = await api.grievanceGuide({
-        description,
-        state: stateCode,
-        language: settings.language,
-        category_hint: categoryHint,
-      });
+      const result = await api.grievanceGuide(
+        {
+          description,
+          state: stateCode,
+          language: settings.language,
+          category_hint: categoryHint,
+        },
+        controller.signal,
+      );
+      if (controller.signal.aborted) return;
       setGuide(result);
       setDraft(result.draft_text);
       setChecked(new Set());
       requestAnimationFrame(() =>
         resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
       );
-    } catch {
-      setError('Could not prepare guidance. Please try again.');
+    } catch (cause) {
+      if (!controller.signal.aborted) setError(apiErrorTranslationKey(cause));
     } finally {
-      setLoading(false);
+      guideControllerRef.current = null;
+      if (!controller.signal.aborted) setLoading(false);
     }
   }
 
   function reset() {
+    guideControllerRef.current?.abort();
+    guideControllerRef.current = null;
+    setLoading(false);
+    setError(null);
     setGuide(null);
     setDraft('');
     setDescription('');
@@ -103,9 +133,6 @@ export default function GrievancePage() {
         description={t('pages.grievance.description')}
         icon={<Scale className="size-6" aria-hidden />}
         breadcrumbs={[]}
-        badges={
-          <Badge tone="saffron">{t('common.demo')}: guidance uses sample forums and steps</Badge>
-        }
       />
 
       <div className="mb-6 flex flex-col gap-3">
@@ -113,7 +140,6 @@ export default function GrievancePage() {
           This page only helps you prepare. Nothing is sent to any office or stored with your name.
           You decide whether and where to submit the draft.
         </Notice>
-        <LegalNotice />
       </div>
 
       <ol className="mb-6 grid gap-3 sm:grid-cols-3">
@@ -148,7 +174,7 @@ export default function GrievancePage() {
               >
                 Detect from my description
               </button>
-              {GRIEVANCE_CATEGORIES.map((c) => (
+              {(categories ?? []).map((c) => (
                 <button
                   key={c.id}
                   type="button"
@@ -161,6 +187,12 @@ export default function GrievancePage() {
                 </button>
               ))}
             </div>
+            {categoriesLoading && <LoadingState />}
+            {categoriesError && (
+              <div className="mt-2">
+                <ErrorState error={categoriesError} onRetry={reloadCategories} />
+              </div>
+            )}
           </fieldset>
 
           <div>
@@ -201,8 +233,17 @@ export default function GrievancePage() {
           />
 
           {error && (
-            <Notice tone="warning" role="alert">
-              {error}
+            <Notice tone="warning" role="alert" title={t('chat.errorTitle')}>
+              <p>{t(error)}</p>
+              <Button
+                variant="secondary"
+                size="md"
+                className="mt-2"
+                disabled={loading}
+                onClick={() => void prepareGuide()}
+              >
+                {t('common.retry')}
+              </Button>
             </Notice>
           )}
 
@@ -235,7 +276,6 @@ export default function GrievancePage() {
             <h2 id="result-heading" className="text-xl font-bold">
               Your guidance
             </h2>
-            <Badge tone="saffron">Sample guidance, not verified</Badge>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
@@ -286,7 +326,7 @@ export default function GrievancePage() {
               <ul className="grid gap-2 sm:grid-cols-2">
                 {guide.documents_needed.map((doc, i) => (
                   <li key={doc}>
-                    <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border border-line px-3 py-2.5 hover:bg-brand-50">
+                    <label className="flex min-h-12 cursor-pointer items-start gap-3 rounded-xl border border-line px-3 py-2.5 hover:bg-brand-50">
                       <input
                         type="checkbox"
                         checked={checked.has(i)}
@@ -354,7 +394,7 @@ export default function GrievancePage() {
 
 function chipClass(active: boolean) {
   return cn(
-    'min-h-10 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors',
+    'min-h-12 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors',
     active
       ? 'border-brand-700 bg-brand-800 text-white'
       : 'border-line bg-surface text-ink-soft hover:border-brand-300 hover:bg-brand-50',

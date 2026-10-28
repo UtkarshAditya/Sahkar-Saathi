@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { CircleAlert, Inbox, LoaderCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { apiErrorTranslationKey } from '@/services/api';
 import { Button } from './Button';
 
 interface EmptyStateProps {
@@ -36,13 +37,13 @@ export function LoadingState({ label }: { label?: string }) {
   );
 }
 
-export function ErrorState({ message, onRetry }: { message?: string; onRetry?: () => void }) {
+export function ErrorState({ error, onRetry }: { error?: unknown; onRetry?: () => void }) {
   const { t } = useTranslation();
   return (
     <EmptyState
       icon={<CircleAlert className="size-6 text-red-700" aria-hidden />}
       title={t('chat.errorTitle')}
-      description={message}
+      description={t(apiErrorTranslationKey(error))}
       action={
         onRetry && (
           <Button variant="secondary" onClick={onRetry}>

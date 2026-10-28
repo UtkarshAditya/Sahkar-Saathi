@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import {
   BookOpen,
   CircleAlert,
@@ -10,22 +10,18 @@ import {
   Languages,
   Lock,
   MessageSquareText,
-  Phone,
   Scale,
   Search,
-  ShieldCheck,
   Sprout,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
-import { Badge } from '@/components/common/Badge';
 import { Button, ButtonLink } from '@/components/common/Button';
 import { Card, CardTitle } from '@/components/common/Card';
 import { Notice } from '@/components/common/Notice';
 import { PageHeader } from '@/components/common/PageHeader';
-import { MOCK_DOCUMENTS } from '@/data/mockDocuments';
 import { LANGUAGES } from '@/i18n';
-import { api, ApiError, USE_MOCKS } from '@/services/api';
+import { api, apiErrorTranslationKey } from '@/services/api';
 
 const HOW_IT_WORKS = [
   {
@@ -37,11 +33,6 @@ const HOW_IT_WORKS = [
     icon: Search,
     title: 'It searches sources',
     body: 'It looks only in a small, checked set of public cooperative documents, filtered by your state.',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'It checks the evidence',
-    body: 'If the evidence is weak, or a claim has no source, it does not answer.',
   },
   {
     icon: FileText,
@@ -77,8 +68,6 @@ const FEEDBACK_TYPES = [
 
 export default function AboutPage() {
   const { t } = useTranslation();
-  const activeDocs = MOCK_DOCUMENTS.filter((d) => d.status === 'active').length;
-
   return (
     <>
       <PageHeader
@@ -197,7 +186,6 @@ export default function AboutPage() {
           <CardTitle
             icon={<Eye className="size-5" aria-hidden />}
             title={<span id="sources">Source transparency</span>}
-            action={<Badge tone="saffron">{t('common.sample')}</Badge>}
           />
           <p className="text-ink-soft">
             The assistant searches a small set of public documents: the Multi-State Co-operative
@@ -206,8 +194,7 @@ export default function AboutPage() {
             replaced.
           </p>
           <p className="mt-2 text-sm text-ink-muted">
-            The library currently lists {activeDocs} active sample entries. Real metadata will
-            replace them after ingestion.
+            Each document lists its publisher, date and version so you can check the source.
           </p>
           <ButtonLink
             to="/library"
@@ -217,18 +204,6 @@ export default function AboutPage() {
           >
             Open the law library
           </ButtonLink>
-        </Card>
-
-        <Card as="section" aria-labelledby="helplines">
-          <CardTitle
-            icon={<Phone className="size-5" aria-hidden />}
-            title={<span id="helplines">Helplines</span>}
-          />
-          <Notice tone="warning" title="Not yet verified">
-            Helpline numbers will be listed here only after the team verifies each one against an
-            official source, with the date it was checked. Until then, contact your PACS, bank
-            branch or district cooperative office.
-          </Notice>
         </Card>
       </div>
 
@@ -243,6 +218,7 @@ interface FeedbackErrors {
 }
 
 function FeedbackForm() {
+  const { t } = useTranslation();
   const id = useId();
   const [type, setType] = useState('');
   const [message, setMessage] = useState('');
@@ -251,6 +227,14 @@ function FeedbackForm() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const requestControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(
+    () => () => {
+      requestControllerRef.current?.abort();
+    },
+    [],
+  );
 
   function validate(): FeedbackErrors {
     const next: FeedbackErrors = {};
@@ -264,27 +248,30 @@ function FeedbackForm() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (requestControllerRef.current) return;
     const next = validate();
     setErrors(next);
     if (Object.keys(next).length > 0) return;
     setSubmitting(true);
     setSendError(null);
+    const controller = new AbortController();
+    requestControllerRef.current = controller;
     try {
-      await api.sendFeedback({
-        message_id: null,
-        rating: null,
-        comment: message,
-        reason: `${type}${page ? ` · ${page}` : ''}`.slice(0, 100),
-      });
-      setSubmitted(true);
-    } catch (err) {
-      setSendError(
-        err instanceof ApiError && err.code === 'rate_limited'
-          ? 'Too many messages in a short time. Please wait a minute and try again.'
-          : 'Could not send your feedback. Please try again.',
+      await api.sendFeedback(
+        {
+          message_id: null,
+          rating: null,
+          comment: message,
+          reason: `${type}${page ? ` · ${page}` : ''}`.slice(0, 100),
+        },
+        controller.signal,
       );
+      setSubmitted(true);
+    } catch (cause) {
+      if (!controller.signal.aborted) setSendError(apiErrorTranslationKey(cause));
     } finally {
-      setSubmitting(false);
+      requestControllerRef.current = null;
+      if (!controller.signal.aborted) setSubmitting(false);
     }
   }
 
@@ -298,9 +285,7 @@ function FeedbackForm() {
       {submitted ? (
         <div className="flex flex-col items-start gap-3">
           <Notice tone="success" role="status" title="Thank you for your feedback">
-            {USE_MOCKS
-              ? 'In this demo it is not sent anywhere. With the backend connected it reaches the review queue.'
-              : 'It has reached the team’s review queue.'}
+            Your feedback has been received.
           </Notice>
           <Button
             variant="secondary"
@@ -373,7 +358,7 @@ function FeedbackForm() {
           <div className="flex flex-col items-start gap-2 sm:col-span-2">
             {sendError && (
               <p role="alert" className="field-error">
-                {sendError}
+                {t(sendError)}
               </p>
             )}
             <Button type="submit" loading={submitting}>

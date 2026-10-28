@@ -6,11 +6,7 @@ interface MockGrievanceCategory extends GrievanceCategory {
 }
 import { stateName } from './options';
 
-/*
- * SAMPLE grievance guidance. Forums and steps are general patterns used to exercise
- * the UI; verified forums and contacts will come from forums.yaml (member C) through
- * POST /api/v1/grievance/guide. Nothing is ever filed automatically.
- */
+/* Local fixture data used only when VITE_USE_MOCKS is enabled. Nothing is filed automatically. */
 
 export const GRIEVANCE_CATEGORIES: MockGrievanceCategory[] = [
   {
@@ -65,12 +61,12 @@ export function detectCategory(description: string, hint?: string | null): MockG
 
 const FORUM_BY_CATEGORY: Record<string, { forum: string; note: string }> = {
   'crop-insurance': {
-    forum: 'Insurance company grievance cell, then the district grievance committee (sample forum)',
-    note: 'Sample forum. The verified PMFBY grievance route and helpline will be added from forums.yaml.',
+    forum: 'Insurance company grievance cell, then the district grievance committee',
+    note: 'Ask the district agriculture office to confirm the correct route for your area.',
   },
   default: {
-    forum: 'Registrar of Co-operative Societies, district office (sample forum)',
-    note: 'Sample forum. The exact authority depends on your state Act and will be confirmed from forums.yaml.',
+    forum: 'Registrar of Co-operative Societies, district office',
+    note: 'Check your state cooperative rules to confirm the correct authority.',
   },
 };
 
@@ -80,7 +76,7 @@ export function buildMockGuide(req: GrievanceRequest): GrievanceGuide {
   const state = req.state ? stateName(req.state) : '[Your state]';
 
   const draft = `To,
-${forum.forum.replace(' (sample forum)', '')}
+${forum.forum}
 ${state}
 
 Subject: Complaint regarding ${category.label.toLowerCase()}
@@ -107,7 +103,7 @@ Yours faithfully,
     steps: [
       'Write to the secretary or board of your society first, and keep a dated copy or receipt.',
       'Wait for a reply for a reasonable period. Note the date if there is no response.',
-      `If unresolved, send the complaint below to the ${forum.forum.replace(' (sample forum)', '')}.`,
+      `If unresolved, send the complaint below to the ${forum.forum}.`,
       'Attach copies (never originals) of the documents in the checklist.',
       'Keep the acknowledgement or receipt number and follow up in person if needed.',
     ],

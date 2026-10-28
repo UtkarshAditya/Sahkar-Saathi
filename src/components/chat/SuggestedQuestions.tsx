@@ -34,18 +34,21 @@ export function SuggestedQuestions({
     <div>
       <p className="mb-2 text-sm font-semibold text-ink-soft">{title}</p>
       <ul
-        className={cn(variant === 'chips' ? 'flex flex-wrap gap-2' : 'grid gap-2 sm:grid-cols-2')}
+        className={cn(
+          'min-w-0',
+          variant === 'chips' ? 'flex flex-wrap gap-2' : 'grid gap-2 sm:grid-cols-2',
+        )}
       >
         {items.map((q) => {
           const Icon = q.topic ? TOPIC_ICONS[q.topic] : ArrowRight;
           return (
-            <li key={q.id}>
+            <li key={q.id} className="min-w-0">
               <button
                 type="button"
                 disabled={disabled}
                 onClick={() => onSelect(q.text)}
                 className={cn(
-                  'flex w-full items-start gap-2 text-left text-sm font-medium transition-colors disabled:opacity-50',
+                  'flex min-w-0 w-full items-start gap-2 text-left text-sm font-medium transition-colors disabled:opacity-50',
                   variant === 'chips'
                     ? 'rounded-full border border-brand-200 bg-surface px-3 py-1.5 text-brand-800 hover:bg-brand-50'
                     : 'h-full rounded-xl border border-line bg-surface px-3 py-2.5 text-ink hover:border-brand-300 hover:bg-brand-50',
@@ -58,7 +61,7 @@ export function SuggestedQuestions({
                   )}
                   aria-hidden
                 />
-                <span>{q.text}</span>
+                <span className="[overflow-wrap:anywhere]">{q.text}</span>
               </button>
             </li>
           );

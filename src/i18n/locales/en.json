@@ -2,7 +2,9 @@
   "app": {
     "name": "Sahkar Saathi",
     "tagline": "Cooperative guidance in your language",
-    "demoBadge": "Demo build · sample data"
+    "crashTitle": "Something went wrong",
+    "crashBody": "Reload the page to continue.",
+    "reload": "Reload page"
   },
   "nav": {
     "primary": "Main navigation",
@@ -76,7 +78,9 @@
     },
     "admin": {
       "title": "Admin",
-      "description": "Document, feedback and evaluation management is provided by the Django admin site."
+      "description": "Document, feedback and evaluation management is provided by the Django admin site.",
+      "notConnected": "Not connected",
+      "comingSoon": "Coming soon"
     },
     "notFound": {
       "title": "Page not found",
@@ -144,7 +148,6 @@
     "sources": "Sources",
     "viewSources": "View sources",
     "noSources": "Select an answer to see the documents it is based on.",
-    "demoAnswer": "Demonstration answer, not verified legal guidance",
     "declinedTitle": "I could not find this in my sources",
     "contactInstead": "Who to contact instead",
     "stateNeeded": "Which state's rules apply?",
@@ -168,17 +171,12 @@
     "thanks": "Thank you for your rating. It helps improve the answers."
   },
   "common": {
-    "sample": "Sample data",
-    "demo": "Demo",
-    "placeholder": "Placeholder",
     "source": "Source",
     "asOf": "As of",
     "page": "Page",
-    "sourcePending": "Source pending verification",
-    "datePending": "Date pending",
     "dateNotStated": "Date not stated",
-    "linkPending": "Link pending",
     "askAboutThis": "Ask about this",
+    "askFollowUp": "Ask a follow-up",
     "viewDetails": "View details",
     "close": "Close",
     "search": "Search",
@@ -189,6 +187,15 @@
     "copied": "Copied",
     "download": "Download",
     "noResults": "No results",
-    "clearFilters": "Clear filters"
+    "clearFilters": "Clear filters",
+    "errors": {
+      "offline": "You appear to be offline. Check your connection and try again.",
+      "timeout": "This is taking too long. Please try again.",
+      "rateLimited": "Too many requests, please wait a moment.",
+      "permission": "You do not have access to this information. Please sign in with a staff account.",
+      "request": "We could not process this request. Please check the details and try again.",
+      "server": "The service is temporarily unavailable. Please try again.",
+      "general": "Something went wrong. Please try again."
+    }
   }
 }

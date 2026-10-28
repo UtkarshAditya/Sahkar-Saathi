@@ -11,7 +11,7 @@ interface AsyncState<T> {
  * Minimal data-loading hook for the scaffold. When pages move to real endpoints,
  * TanStack Query (see the architecture doc) can replace this without changing pages much.
  */
-export function useAsync<T>(load: () => Promise<T>): AsyncState<T> {
+export function useAsync<T>(load: (signal: AbortSignal) => Promise<T>): AsyncState<T> {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -19,9 +19,10 @@ export function useAsync<T>(load: () => Promise<T>): AsyncState<T> {
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
     setLoading(true);
     setError(null);
-    load()
+    load(controller.signal)
       .then((result) => {
         if (!cancelled) setData(result);
       })
@@ -33,6 +34,7 @@ export function useAsync<T>(load: () => Promise<T>): AsyncState<T> {
       });
     return () => {
       cancelled = true;
+      controller.abort();
     };
     // `load` is expected to be a stable module function; re-run only on retry.
     // eslint-disable-next-line react-hooks/exhaustive-deps

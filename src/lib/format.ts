@@ -26,3 +26,10 @@ export function downloadTextFile(filename: string, text: string) {
 export function cn(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(' ');
 }
+
+let idCounter = 0;
+
+export function makeId(prefix: string): string {
+  idCounter += 1;
+  return `${prefix}-${Date.now().toString(36)}-${idCounter}`;
+}

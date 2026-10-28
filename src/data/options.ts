@@ -1,4 +1,11 @@
-import type { StateOption } from '@/types';
+import type {
+  CropFact,
+  CropType,
+  DocumentType,
+  SchemeCategory,
+  Season,
+  StateOption,
+} from '@/types';
 
 /**
  * Options for the state selector. The backend will serve this from /meta/states.
@@ -51,4 +58,43 @@ export function stateName(code: string | null | undefined): string {
   if (!code) return '';
   if (code === 'central') return 'Central (all states)';
   return STATES.find((s) => s.code === code)?.name ?? code;
+}
+
+export const SCHEME_CATEGORIES: { id: SchemeCategory; label: string }[] = [
+  { id: 'cooperative-development', label: 'Cooperative development' },
+  { id: 'credit', label: 'Credit' },
+  { id: 'insurance', label: 'Insurance' },
+  { id: 'storage-marketing', label: 'Storage & marketing' },
+  { id: 'digital-services', label: 'Digital services' },
+];
+
+export const DOCUMENT_TYPES: { id: DocumentType; label: string }[] = [
+  { id: 'act', label: 'Act' },
+  { id: 'rules', label: 'Rules' },
+  { id: 'model-bylaws', label: 'Model by-laws' },
+  { id: 'circular', label: 'Circular' },
+  { id: 'scheme-guideline', label: 'Scheme guideline' },
+];
+
+export function documentTypeLabel(type: DocumentType): string {
+  return DOCUMENT_TYPES.find((documentType) => documentType.id === type)?.label ?? type;
+}
+
+export const SEASONS: { id: Season; label: string }[] = [
+  { id: 'kharif', label: 'Kharif (monsoon season)' },
+  { id: 'rabi', label: 'Rabi (winter season)' },
+  { id: 'commercial', label: 'Annual commercial or horticultural' },
+];
+
+export const CROP_TYPES: { id: CropType; label: string }[] = [
+  { id: 'food', label: 'Food crops (cereals, millets, pulses)' },
+  { id: 'oilseed', label: 'Oilseeds' },
+  { id: 'horticulture', label: 'Commercial or horticultural crops' },
+];
+
+export function factsFor(facts: CropFact[], season: Season, crop: CropType): CropFact[] {
+  return facts.filter(
+    (fact) =>
+      (!fact.season || fact.season === season) && (!fact.crop_type || fact.crop_type === crop),
+  );
 }

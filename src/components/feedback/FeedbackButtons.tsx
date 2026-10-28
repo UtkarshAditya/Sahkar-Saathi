@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/common/Button';
 import { cn } from '@/lib/format';
-import { api } from '@/services/api';
+import { api, apiErrorTranslationKey } from '@/services/api';
 import type { FeedbackRating } from '@/types';
 
 const REASONS = [
@@ -27,25 +27,40 @@ export function FeedbackButtons({ messageId, localOnly = false }: FeedbackButton
   const [reason, setReason] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const controllerRef = useRef<AbortController | null>(null);
+
+  useEffect(
+    () => () => {
+      controllerRef.current?.abort();
+    },
+    [],
+  );
 
   async function submit(r: FeedbackRating, why: string | null) {
+    if (controllerRef.current) return;
+    const controller = new AbortController();
+    controllerRef.current = controller;
     setSending(true);
-    setError(false);
+    setError(null);
     try {
       if (!localOnly) {
-        await api.sendFeedback({
-          message_id: messageId,
-          rating: r,
-          comment: '',
-          reason: why ?? undefined,
-        });
+        await api.sendFeedback(
+          {
+            message_id: messageId,
+            rating: r,
+            comment: '',
+            reason: why ?? undefined,
+          },
+          controller.signal,
+        );
       }
       setSent(true);
-    } catch {
-      setError(true);
+    } catch (cause) {
+      if (!controller.signal.aborted) setError(apiErrorTranslationKey(cause));
     } finally {
-      setSending(false);
+      controllerRef.current = null;
+      if (!controller.signal.aborted) setSending(false);
     }
   }
 
@@ -57,7 +72,7 @@ export function FeedbackButtons({ messageId, localOnly = false }: FeedbackButton
 
   const toggle = (active: boolean) =>
     cn(
-      'flex size-10 items-center justify-center rounded-lg border transition-colors disabled:cursor-default',
+      'flex size-12 items-center justify-center rounded-lg border transition-colors disabled:cursor-default',
       active
         ? 'border-brand-700 bg-brand-800 text-white'
         : 'border-line bg-surface text-ink-soft hover:bg-brand-50 hover:text-brand-800',
@@ -100,7 +115,7 @@ export function FeedbackButtons({ messageId, localOnly = false }: FeedbackButton
                 aria-pressed={reason === r}
                 onClick={() => setReason(r)}
                 className={cn(
-                  'rounded-full border px-3 py-1 text-sm',
+                  'min-h-12 rounded-full border px-3 py-1 text-sm',
                   reason === r
                     ? 'border-brand-700 bg-brand-800 text-white'
                     : 'border-line bg-surface hover:bg-brand-50',
@@ -124,7 +139,7 @@ export function FeedbackButtons({ messageId, localOnly = false }: FeedbackButton
 
       {error && (
         <p role="alert" className="flex flex-wrap items-center gap-2 text-sm text-red-700">
-          Could not send your rating.
+          {t(error)}
           <button
             type="button"
             className="font-semibold underline"

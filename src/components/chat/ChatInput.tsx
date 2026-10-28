@@ -77,25 +77,34 @@ export function ChatInput({ value, onChange, onSubmit, loading, language }: Chat
   const originalDraft = useRef('');
   const previousLanguage = useRef(language);
   const transcriptionRequestId = useRef(0);
+  const transcriptionControllerRef = useRef<AbortController | null>(null);
   const recognition = useSpeechRecognition();
   const cancelRecognition = recognition.cancel;
 
   const transcribe = useCallback(
     async (audio: Blob) => {
+      transcriptionControllerRef.current?.abort();
+      const controller = new AbortController();
+      transcriptionControllerRef.current = controller;
       const requestId = transcriptionRequestId.current;
       setPendingBlob(audio);
       setTranscribing(true);
       setTranscriptionFailed(false);
       try {
-        const result = await api.transcribe(audio, language);
-        if (requestId !== transcriptionRequestId.current) return;
+        const result = await api.transcribe(audio, language, controller.signal);
+        if (controller.signal.aborted || requestId !== transcriptionRequestId.current) return;
         onChange(combineTranscript(originalDraft.current, result.text));
         setLowConfidence(result.confidence < 0.6);
         setReviewingTranscript(true);
       } catch {
-        if (requestId === transcriptionRequestId.current) setTranscriptionFailed(true);
+        if (!controller.signal.aborted && requestId === transcriptionRequestId.current) {
+          setTranscriptionFailed(true);
+        }
       } finally {
-        if (requestId === transcriptionRequestId.current) {
+        if (transcriptionControllerRef.current === controller) {
+          transcriptionControllerRef.current = null;
+        }
+        if (!controller.signal.aborted && requestId === transcriptionRequestId.current) {
           setTranscribing(false);
           setActiveProvider(null);
         }
@@ -126,6 +135,8 @@ export function ChatInput({ value, onChange, onSubmit, loading, language }: Chat
     if (previousLanguage.current === language) return;
     previousLanguage.current = language;
     transcriptionRequestId.current += 1;
+    transcriptionControllerRef.current?.abort();
+    transcriptionControllerRef.current = null;
     cancelRecorder();
     cancelRecognition();
     if (activeProvider === 'browser') onChange(originalDraft.current);
@@ -137,6 +148,15 @@ export function ChatInput({ value, onChange, onSubmit, loading, language }: Chat
     setLowConfidence(false);
     setVoiceInputError(null);
   }, [activeProvider, cancelRecognition, cancelRecorder, language, onChange]);
+
+  useEffect(
+    () => () => {
+      transcriptionRequestId.current += 1;
+      transcriptionControllerRef.current?.abort();
+      transcriptionControllerRef.current = null;
+    },
+    [],
+  );
 
   useEffect(() => {
     if (activeProvider !== 'browser') return;
@@ -216,6 +236,8 @@ export function ChatInput({ value, onChange, onSubmit, loading, language }: Chat
 
   function cancelRecording() {
     transcriptionRequestId.current += 1;
+    transcriptionControllerRef.current?.abort();
+    transcriptionControllerRef.current = null;
     if (activeProvider === 'browser') cancelRecognition();
     if (activeProvider === 'backend') cancelRecorder();
     setActiveProvider(null);
@@ -354,14 +376,14 @@ export function ChatInput({ value, onChange, onSubmit, loading, language }: Chat
       <label htmlFor={id} className="sr-only">
         {t('chat.inputLabel')}
       </label>
-      <div className="flex items-end gap-2 rounded-2xl border border-line bg-surface p-2 focus-within:border-brand-600 focus-within:ring-2 focus-within:ring-brand-200">
+      <div className="flex items-end gap-2 rounded-2xl border-2 border-line bg-surface p-2 focus-within:border-brand-600 focus-within:outline-3 focus-within:outline-offset-2 focus-within:outline-brand-800 max-[20rem]:flex-col max-[20rem]:items-stretch">
         <button
           type="button"
           onClick={startRecording}
           disabled={micDisabled}
           aria-pressed={isListening}
           aria-label={t('chat.mic')}
-          className="flex min-h-12 min-w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl bg-saffron-50 px-2 py-1 text-xs font-semibold text-saffron-800 ring-1 ring-saffron-200 hover:bg-saffron-100 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex min-h-12 min-w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl bg-saffron-50 px-2 py-1 text-xs font-semibold text-saffron-800 ring-1 ring-saffron-200 hover:bg-saffron-100 disabled:cursor-not-allowed disabled:opacity-50 max-[20rem]:w-full"
         >
           <Mic className="size-5" aria-hidden />
           <span>{t('chat.micButton')}</span>
@@ -373,7 +395,7 @@ export function ChatInput({ value, onChange, onSubmit, loading, language }: Chat
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={t('chat.placeholder')}
-          className="max-h-40 min-h-12 min-w-0 flex-1 resize-none bg-transparent px-2 py-2.5 text-base outline-none placeholder:text-ink-muted"
+          className="max-h-40 min-h-12 min-w-0 flex-1 resize-none bg-transparent px-2 py-2.5 text-base placeholder:text-ink-muted max-[20rem]:w-full max-[20rem]:flex-none"
           style={{ fieldSizing: 'content' } as CSSProperties}
         />
         <Button
@@ -381,7 +403,7 @@ export function ChatInput({ value, onChange, onSubmit, loading, language }: Chat
           disabled={!canSend}
           loading={loading}
           icon={<Send className="size-5" aria-hidden />}
-          className="min-h-12 shrink-0 rounded-xl px-3"
+          className="min-h-12 shrink-0 rounded-xl px-3 max-[20rem]:w-full"
           aria-label={t('chat.send')}
         >
           {t('chat.send')}

@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/common/Badge';
 import { Button } from '@/components/common/Button';
 import { Card, CardTitle } from '@/components/common/Card';
-import { ErrorState, LoadingState } from '@/components/common/EmptyState';
+import { EmptyState, ErrorState, LoadingState } from '@/components/common/EmptyState';
 import { Notice } from '@/components/common/Notice';
 import { PageHeader } from '@/components/common/PageHeader';
 
@@ -32,7 +32,7 @@ const ICONS: Record<LessonIcon, typeof Wallet> = {
 
 export default function FinancialLiteracyPage() {
   const { t } = useTranslation();
-  const { data, loading, error, reload } = useAsync(api.listLessons);
+  const { data, loading, error, reload } = useAsync((signal) => api.listLessons(undefined, signal));
   const [openSlug, setOpenSlug] = useState<string | null>(null);
   const openLesson = data?.lessons.find((l) => l.slug === openSlug) ?? null;
 
@@ -46,17 +46,14 @@ export default function FinancialLiteracyPage() {
         badges={<Badge tone="blue">Introductory learning material</Badge>}
       />
 
-      <Notice tone="info" className="mb-6">
-        These lessons explain general ideas only. For rates, limits and current rules, ask your bank
-        branch, PACS or the official source.
-      </Notice>
-
       {loading ? (
         <LoadingState />
       ) : error ? (
-        <ErrorState message={error.message} onRetry={reload} />
+        <ErrorState error={error} onRetry={reload} />
       ) : openLesson ? (
         <LessonDetail lesson={openLesson} onBack={() => setOpenSlug(null)} />
+      ) : data?.lessons.length === 0 ? (
+        <EmptyState title={t('common.noResults')} />
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2">
           {(data?.lessons ?? []).map((lesson) => {
@@ -185,7 +182,7 @@ function Quiz({ questions }: { questions: QuizQuestion[] }) {
                     <label
                       key={option}
                       className={cn(
-                        'flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-3 py-2',
+                        'flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border px-3 py-2',
                         !submitted &&
                           (isChosen
                             ? 'border-brand-600 bg-brand-50'

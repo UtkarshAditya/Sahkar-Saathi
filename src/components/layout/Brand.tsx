@@ -19,7 +19,7 @@ export function Brand({ compact = false }: { compact?: boolean }) {
         />
         <path d="M16 48h32" stroke="#fff" strokeWidth="4" strokeLinecap="round" />
       </svg>
-      <span className="min-w-0 leading-tight">
+      <span className="min-w-0 leading-tight max-[20rem]:hidden">
         <span className="block text-lg font-bold whitespace-nowrap text-brand-900">
           {t('app.name')}
         </span>

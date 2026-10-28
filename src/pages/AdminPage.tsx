@@ -9,7 +9,6 @@ import {
   ThumbsDown,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Badge } from '@/components/common/Badge';
 import { Card } from '@/components/common/Card';
 import { Notice } from '@/components/common/Notice';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -74,7 +73,6 @@ export default function AdminPage() {
         description={t('pages.admin.description')}
         icon={<Settings className="size-6" aria-hidden />}
         breadcrumbs={[{ label: t('nav.groups.staff') }]}
-        badges={USE_MOCKS ? <Badge tone="neutral">Placeholder</Badge> : undefined}
       />
 
       <Notice tone="info" title="Provided by the backend" className="mb-6">
@@ -98,7 +96,7 @@ export default function AdminPage() {
               {module.href && !USE_MOCKS ? (
                 <a
                   href={module.href}
-                  className="mt-4 inline-flex min-h-10 items-center justify-center gap-1.5 self-start rounded-lg border border-line px-3 text-sm font-semibold text-brand-800 hover:bg-brand-50"
+                  className="mt-4 inline-flex min-h-12 items-center justify-center gap-1.5 self-start rounded-lg border border-line px-3 text-sm font-semibold text-brand-800 hover:bg-brand-50"
                 >
                   Open in Django admin
                   <ExternalLink className="size-4" aria-hidden />
@@ -106,9 +104,9 @@ export default function AdminPage() {
               ) : (
                 <span
                   aria-disabled="true"
-                  className="mt-4 inline-flex min-h-10 cursor-not-allowed items-center justify-center self-start rounded-lg border border-dashed border-line px-3 text-sm font-semibold text-ink-muted"
+                  className="mt-4 inline-flex min-h-12 cursor-not-allowed items-center justify-center self-start rounded-lg border border-dashed border-line px-3 text-sm font-semibold text-ink-muted"
                 >
-                  {module.href ? 'Not connected (mock mode)' : 'Coming in Sprint 2'}
+                  {module.href ? t('pages.admin.notConnected') : t('pages.admin.comingSoon')}
                 </span>
               )}
             </Card>

@@ -1,6 +1,5 @@
 import { BookOpen, ExternalLink, Quote } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Badge } from '@/components/common/Badge';
 import { Card } from '@/components/common/Card';
 import { formatDate } from '@/lib/format';
 import type { Citation } from '@/types';
@@ -42,7 +41,6 @@ export function CitationPanel({ citations }: CitationPanelProps) {
           <BookOpen className="size-5 text-brand-700" aria-hidden />
           {t('chat.sources')}
         </h2>
-        {citations && citations.length > 0 && <Badge tone="saffron">{t('common.demo')}</Badge>}
       </div>
 
       {!citations || citations.length === 0 ? (
@@ -58,8 +56,12 @@ export function CitationPanel({ citations }: CitationPanelProps) {
                 <span>{c.title}</span>
               </p>
               <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-sm">
-                <dt className="text-ink-muted">Publisher</dt>
-                <dd>{c.publisher}</dd>
+                {c.publisher.trim() && (
+                  <>
+                    <dt className="text-ink-muted">Publisher</dt>
+                    <dd>{c.publisher}</dd>
+                  </>
+                )}
                 <dt className="text-ink-muted">Date</dt>
                 <dd>
                   {c.published_date ? formatDate(c.published_date) : t('common.dateNotStated')}
@@ -76,8 +78,8 @@ export function CitationPanel({ citations }: CitationPanelProps) {
                   {c.excerpt}
                 </blockquote>
               )}
-              <div className="mt-2">
-                {c.url ? (
+              {c.url && (
+                <div className="mt-2">
                   <a
                     href={c.url}
                     target="_blank"
@@ -87,13 +89,8 @@ export function CitationPanel({ citations }: CitationPanelProps) {
                     Open original
                     <ExternalLink className="size-3.5" aria-hidden />
                   </a>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-sm text-ink-muted">
-                    <ExternalLink className="size-3.5" aria-hidden />
-                    {t('common.linkPending')}
-                  </span>
-                )}
-              </div>
+                </div>
+              )}
             </li>
           ))}
         </ol>

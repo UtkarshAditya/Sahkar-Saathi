@@ -40,7 +40,7 @@ export function Modal({ open, onClose, title, children, footer }: ModalProps) {
         <button
           type="button"
           onClick={onClose}
-          className="-m-1 flex size-9 shrink-0 items-center justify-center rounded-lg text-ink-muted hover:bg-canvas hover:text-ink"
+          className="-m-1 flex size-12 shrink-0 items-center justify-center rounded-lg text-ink-muted hover:bg-canvas hover:text-ink"
           aria-label={t('common.close')}
         >
           <X className="size-5" aria-hidden />
