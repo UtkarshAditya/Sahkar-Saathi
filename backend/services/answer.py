@@ -17,6 +17,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from .answer_checks import repeats_question, unsupported_numbers
 from .llm import generate, model_name
 from .stubs import DEFAULT_CONTACT
 from .types import Answer, Contact, Passage, Retriever
@@ -142,8 +143,15 @@ class GroundedAnswerService:
                 continue
             if out.status == "declined":
                 return self._declined(language, top_score, "model_declined")
+            if repeats_question(text, out.answer_text):
+                logger.info("answer repeats the question; retrying")
+                continue
             if out.cited_ids and all(1 <= i <= len(passages) for i in out.cited_ids):
                 cited = [passages[i - 1] for i in dict.fromkeys(out.cited_ids)]
+                invented = unsupported_numbers(out.answer_text, [p.text for p in cited], text)
+                if invented:
+                    logger.info("answer has numbers not in its sources: %s", sorted(invented))
+                    continue
                 return Answer(
                     text=out.answer_text,
                     status="answered",
