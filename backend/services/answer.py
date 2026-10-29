@@ -103,6 +103,7 @@ class GroundedAnswerService:
         retries: int = 1,
         top_k: int = 4,
         contact: Contact | None = None,
+        fast_path=None,
     ) -> None:
         # min_score depends on the embedding model's score scale, so re-tune it
         # whenever B changes the embedding model.
@@ -112,6 +113,9 @@ class GroundedAnswerService:
         self.top_k = top_k
         # Who a declined answer points to; the API wiring passes HELPLINE_LABEL/DETAIL.
         self.contact = contact or DEFAULT_CONTACT
+        # Optional: answers questions covered by a verified fact in schemes.yaml straight from
+        # that fact (services/schemes_fastpath.py). None means every question goes to the model.
+        self.fast_path = fast_path
 
     async def ask(
         self,
@@ -121,6 +125,11 @@ class GroundedAnswerService:
         state: str | None,
         document_id: str | None = None,
     ) -> Answer:
+        # "Ask about this document" must stay limited to that document, so skip the fast path.
+        if self.fast_path is not None and document_id is None:
+            fast = self.fast_path.answer(text, language)
+            if fast is not None:
+                return fast
         # TODO Sprint 2: if the question needs a state and state is None, return
         # Answer(needs_state=True, ...) before searching.
         passages = await self.retriever.search(

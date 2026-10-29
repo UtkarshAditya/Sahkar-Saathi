@@ -1,0 +1,20 @@
+# Hindi and Tamil text for the PMFBY loss-reporting fast path (services/schemes_fastpath.py).
+#
+# The English answer is the `body` of the "loss" fact in data/schemes.yaml. These are
+# translations of THAT text, so if the body changes, change these too.
+#
+# MACHINE-WRITTEN: they are shown to users only after a fluent reader has checked them and
+# you set `reviewed: true` for that language. Until then the English text is used.
+loss:
+  hi:
+    reviewed: false
+    text: >-
+      नुकसान होने के 72 घंटे के भीतर सूचना दें। आप राष्ट्रीय फसल बीमा पोर्टल (NCIP),
+      पीएमएफबीवाई मोबाइल ऐप, या सीधे बीमा कंपनी, टोल-फ्री हेल्पलाइन या स्थानीय कृषि कार्यालय को
+      सूचना दे सकते हैं।
+  ta:
+    reviewed: false
+    text: >-
+      சேதம் ஏற்பட்ட 72 மணி நேரத்திற்குள் தெரிவிக்கவும். தேசிய பயிர் காப்பீட்டு தளம் (NCIP),
+      PMFBY மொபைல் செயலி வழியாக, அல்லது நேரடியாக காப்பீட்டு நிறுவனம், கட்டணமில்லா உதவி எண்
+      அல்லது உள்ளூர் வேளாண்மை அலுவலகத்தில் தெரிவிக்கலாம்.
