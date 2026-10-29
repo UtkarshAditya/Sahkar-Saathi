@@ -1,91 +1,865 @@
 [
   {
     "id": "pmfby-loss-report-deadline",
-    "question": "By when must I report crop damage under PMFBY?",
+    "question": "By when must an insured farmer intimate individual crop damage claims under PMFBY?",
     "state": null,
     "in_scope": true,
-    "expect_doc_ids": [],
-    "TODO_owner": "Zainab",
-    "source": "backend/services/data/schemes.yaml (loss_reporting_rule)"
+    "expect_doc_ids": [
+      "SCH-PMFBY-NEW-PROVISIONS"
+    ],
+    "language": "en"
   },
   {
-    "id": "pmfby-loss-report-how",
-    "question": "How can I report crop loss under PMFBY?",
+    "id": "pmfby-delay-interest-rate",
+    "question": "What is the penalty interest rate an insurance company must pay to farmers for delay in PMFBY claim settlement beyond two months?",
     "state": null,
     "in_scope": true,
-    "expect_doc_ids": [],
-    "TODO_owner": "Zainab",
-    "source": "backend/services/data/schemes.yaml (loss_reporting_rule)"
+    "expect_doc_ids": [
+      "SCH-PMFBY-NEW-PROVISIONS"
+    ],
+    "language": "en"
   },
   {
-    "id": "pmfby-premium-kharif",
-    "question": "How much premium do I pay for kharif food grain and oilseed crops under PMFBY?",
+    "id": "pmfby-perennial-horticultural-crops",
+    "question": "Are perennial horticultural crops covered under the revised PMFBY operational guidelines?",
     "state": null,
     "in_scope": true,
-    "expect_doc_ids": [],
-    "TODO_owner": "Zainab",
-    "source": "backend/services/data/schemes.yaml (premium_shares)"
+    "expect_doc_ids": [
+      "SCH-PMFBY-NEW-PROVISIONS"
+    ],
+    "language": "en"
   },
   {
-    "id": "pmfby-tenant-eligible",
-    "question": "Can a tenant farmer or sharecropper take PMFBY crop insurance?",
+    "id": "pmfby-publicity-awareness-expenditure",
+    "question": "What percentage of gross premium per company per season is earmarked for publicity and awareness under PMFBY?",
     "state": null,
     "in_scope": true,
-    "expect_doc_ids": [],
-    "TODO_owner": "Zainab",
-    "source": "backend/services/data/schemes.yaml (eligibility)"
+    "expect_doc_ids": [
+      "SCH-PMFBY-NEW-PROVISIONS"
+    ],
+    "language": "en"
   },
   {
-    "id": "pmfby-non-loanee-enrol",
-    "question": "How can a farmer without a crop loan enrol in PMFBY?",
+    "id": "pmfby-post-harvest-hailstorms",
+    "question": "Are post-harvest crop losses due to hailstorms covered under the amended PMFBY guidelines?",
     "state": null,
     "in_scope": true,
-    "expect_doc_ids": [],
-    "TODO_owner": "Zainab",
-    "source": "backend/services/data/schemes.yaml (eligibility)"
+    "expect_doc_ids": [
+      "SCH-PMFBY-NEW-PROVISIONS"
+    ],
+    "language": "en"
   },
   {
-    "id": "pmfby-grievance-where",
-    "question": "Where can I register a complaint about my crop insurance claim?",
+    "id": "mscs-election-authority-establishment",
+    "question": "Under which section of the Multi-State Co-operative Societies Act is the Co-operative Election Authority established?",
     "state": null,
     "in_scope": true,
-    "expect_doc_ids": [],
-    "TODO_owner": "Zainab",
-    "source": "backend/services/data/forums.yaml (krph_helpline)"
+    "expect_doc_ids": [
+      "CEN-MSCS-ACT-2023",
+      "CEN-CRCS-ABOUT-CEA"
+    ],
+    "language": "en"
   },
   {
-    "id": "oos-cricket",
-    "question": "Who won the cricket match yesterday?",
+    "id": "mscs-cooperative-ombudsman-appointment",
+    "question": "Under which section of the Multi-State Co-operative Societies Act is the Co-operative Ombudsman appointed?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "CEN-MSCS-ACT-2023",
+      "GRV-CRCS-OMBUDSMAN",
+      "CEN-PIB-INITIATIVES-2026"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "mscs-financial-year-definition",
+    "question": "What is the definition of financial year for a multi-State co-operative society under the MSCS Amendment Act 2023?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "CEN-MSCS-ACT-2023"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "mscs-rehabilitation-development-fund",
+    "question": "What fund is established under section 63A of the MSCS Act for the revival of sick multi-State co-operative societies?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "CEN-MSCS-ACT-2023"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "mscs-concurrent-audit-requirement",
+    "question": "Which multi-State co-operative societies are required to carry out concurrent audit under the MSCS Amendment Act 2023?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "CEN-MSCS-ACT-2023"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "crcs-ombudsman-complaint-categories",
+    "question": "What categories of complaints regarding deposits and member rights can be filed before the CRCS Co-operative Ombudsman?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "GRV-CRCS-OMBUDSMAN"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "crcs-information-officer-appeal",
+    "question": "Can a member of a multi-State cooperative society appeal to the Ombudsman against an order of the Co-operative Information Officer?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "GRV-CRCS-OMBUDSMAN",
+      "CEN-MSCS-ACT-2023"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "crcs-faq-mscs-definition",
+    "question": "What is the meaning and definition of a multi state cooperative society under the MSCS Act?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "CEN-CRCS-FAQ"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "crcs-faq-registration-documents",
+    "question": "What documents are required for registration of a new multi-state cooperative society under the MSCS Act?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "CEN-CRCS-FAQ"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "crcs-about-cea-composition",
+    "question": "What is the composition of the Co-operative Election Authority established under Section 45 of the MSCS Act?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "CEN-CRCS-ABOUT-CEA",
+      "CEN-MSCS-ACT-2023"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "cea-info-returning-officers-proceedings",
+    "question": "What election schedules and proceedings of Returning Officers must be submitted to the Co-operative Election Authority?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "CEN-CEA-INFO-NOTE-2026-07"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "pib-bharat-organics-brand",
+    "question": "What brand of certified organic products was launched by the National Cooperative Organics Limited?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "CEN-PIB-INITIATIVES-2026"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "pib-seed-export-organic-cooperatives",
+    "question": "What new national level apex multi-state cooperative societies were established for certified seeds, organic produce, and exports?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "CEN-PIB-INITIATIVES-2026"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "pib-pacs-model-byelaws",
+    "question": "What are the model bye-laws prepared by the Ministry of Cooperation to make PACS multidimensional and transparent entities?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "CEN-PIB-INITIATIVES-2026"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "pib-pacs-computerization-project",
+    "question": "What is the centrally sponsored project for computerization of Primary Agricultural Credit Societies across the country?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "CEN-PIB-INITIATIVES-2026"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "pib-world-largest-grain-storage",
+    "question": "What is the plan for the World's Largest Grain Storage Plan in the cooperative sector launched by the Ministry of Cooperation?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "CEN-PIB-INITIATIVES-2026"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "kcc-scale-of-finance-first-year",
+    "question": "How is the short-term credit limit calculated for the first year of a Kisan Credit Card for single crop cultivation?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "SCH-KCC-REVISED-SCHEME"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "kcc-post-harvest-consumption-allowance",
+    "question": "What percentage of the crop finance limit is added for post-harvest household and consumption requirements under KCC?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "SCH-KCC-REVISED-SCHEME"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "kcc-repayment-extension-calamities",
+    "question": "What happens when a bank grants extension of repayment on KCC due to natural calamities beyond one crop season?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "SCH-KCC-REVISED-SCHEME"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "rbi-kcc-marginal-small-farmer-definition",
+    "question": "What is the landholding definition of a marginal farmer versus small farmer under the RBI KCC Directions?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "SCH-RBI-KCC-2026-CB",
+      "SCH-RBI-KCC-2026-RCB",
+      "SCH-RBI-KCC-2026-RRB",
+      "SCH-RBI-KCC-2026-SFB"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "rbi-kcc-crop-season-duration",
+    "question": "What is the standardized duration of crop season for short duration crops versus long duration crops under RBI KCC Directions?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "SCH-RBI-KCC-2026-CB",
+      "SCH-RBI-KCC-2026-RCB",
+      "SCH-RBI-KCC-2026-RRB",
+      "SCH-RBI-KCC-2026-SFB"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "rbi-kcc-collateral-waiver-limit",
+    "question": "Up to what loan limit may banks waive collateral security for KCC loans against crop hypothecation with tie-up recovery?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "SCH-RBI-KCC-2026-CB",
+      "SCH-RBI-KCC-2026-RCB",
+      "SCH-RBI-KCC-2026-RRB",
+      "SCH-RBI-KCC-2026-SFB"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "rbi-kcc-warehouse-receipt-loan",
+    "question": "How is a loan granted to a farmer against warehouse receipts adjusted with their short-term KCC loan under RBI guidelines?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "SCH-RBI-KCC-2026-CB",
+      "SCH-RBI-KCC-2026-RCB",
+      "SCH-RBI-KCC-2026-RRB",
+      "SCH-RBI-KCC-2026-SFB"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "tn-coop-board-disqualification-limit",
+    "question": "How many registered societies' boards can a person serve on before being disqualified under section 34 of the Tamil Nadu Co-operative Societies Act?",
+    "state": "TN",
+    "in_scope": true,
+    "expect_doc_ids": [
+      "TN-COOP-ACT-1983"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "tn-coop-superseded-board-ineligibility",
+    "question": "For how many years from supersession is a board member ineligible for election under the Tamil Nadu Co-operative Societies Act?",
+    "state": "TN",
+    "in_scope": true,
+    "expect_doc_ids": [
+      "TN-COOP-ACT-1983"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "tn-coop-election-equality-of-votes",
+    "question": "How is an equality of votes decided during cooperative elections or general meetings under the Tamil Nadu Co-operative Societies Act?",
+    "state": "TN",
+    "in_scope": true,
+    "expect_doc_ids": [
+      "TN-COOP-ACT-1983"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "tn-coop-appeal-surcharge-section",
+    "question": "Under which section of the Tamil Nadu Co-operative Societies Act can an appeal be filed against surcharge orders passed under section 87?",
+    "state": "TN",
+    "in_scope": true,
+    "expect_doc_ids": [
+      "TN-COOP-ACT-1983"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "tn-coop-rules-form-18-nomination",
+    "question": "Which form is used for nomination to contest election as a board member of a cooperative society under Tamil Nadu Co-operative Societies Rules?",
+    "state": "TN",
+    "in_scope": true,
+    "expect_doc_ids": [
+      "TN-COOP-RULES-1988"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "tn-citizen-sugarcane-crop-loan",
+    "question": "What is the repayment period and interest charge for crop loans on sugarcane versus other crops in Tamil Nadu PACCS?",
+    "state": "TN",
+    "in_scope": true,
+    "expect_doc_ids": [
+      "TN-CITIZEN-CHARTER-2023"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "tn-citizen-fair-price-shops-deputy-registrar",
+    "question": "Who supervises the Fair Price Shops functioning under the Public Distribution System in the districts of Tamil Nadu?",
+    "state": "TN",
+    "in_scope": true,
+    "expect_doc_ids": [
+      "TN-CITIZEN-CHARTER-2023"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "tn-rti-appellate-authority-registrar-office",
+    "question": "Who is designated as the Appellate Authority under the RTI Act in the office of the Registrar of Cooperative Societies Chennai?",
+    "state": "TN",
+    "in_scope": true,
+    "expect_doc_ids": [
+      "TN-RTI-MANUAL-2015"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "tn-rti-cooperative-diploma-qualification",
+    "question": "What is the educational qualification and course fee for the Diploma in Cooperative Management in Tamil Nadu Co-operative Training Institutes?",
+    "state": "TN",
+    "in_scope": true,
+    "expect_doc_ids": [
+      "TN-RTI-MANUAL-2015"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "tn-policy-aif-interest-subvention",
+    "question": "What interest subvention is provided under the Agriculture Infrastructure Fund for cooperative projects financed through NABARD in Tamil Nadu?",
+    "state": "TN",
+    "in_scope": true,
+    "expect_doc_ids": [
+      "TN-POLICY-NOTE-2023"
+    ],
+    "language": "en"
+  },
+  {
+    "id": "oos-maharashtra-coop-housing-election",
+    "question": "How are elections conducted for housing societies under the Maharashtra Co-operative Societies Act 1960?",
     "state": null,
     "in_scope": false,
-    "expect_doc_ids": []
+    "expect_doc_ids": [],
+    "language": "en"
   },
   {
-    "id": "oos-weather",
-    "question": "What will the weather be in Chennai tomorrow?",
+    "id": "oos-karnataka-coop-audit-director",
+    "question": "What are the audit fees and powers of the Director of Cooperative Audit under the Karnataka Co-operative Societies Act 1959?",
     "state": null,
     "in_scope": false,
-    "expect_doc_ids": []
+    "expect_doc_ids": [],
+    "language": "en"
   },
   {
-    "id": "oos-celebrity",
-    "question": "Which film actor is the richest in India?",
+    "id": "oos-kerala-coop-hospital-registration",
+    "question": "What is the procedure for registering a cooperative hospital society under the Kerala Co-operative Societies Act?",
     "state": null,
     "in_scope": false,
-    "expect_doc_ids": []
+    "expect_doc_ids": [],
+    "language": "en"
   },
   {
-    "id": "oos-election",
-    "question": "Who will win the next election?",
+    "id": "oos-up-sahkari-gram-vikas-bank",
+    "question": "How does the Uttar Pradesh Sahkari Gram Vikas Bank process rural housing loans?",
     "state": null,
     "in_scope": false,
-    "expect_doc_ids": []
+    "expect_doc_ids": [],
+    "language": "en"
   },
   {
-    "id": "oos-recipe",
-    "question": "How do I cook sambar for twenty people?",
+    "id": "oos-icici-lombard-motor-claim",
+    "question": "What is the cashless claim settlement procedure for private motor vehicle insurance through ICICI Lombard?",
     "state": null,
     "in_scope": false,
-    "expect_doc_ids": []
+    "expect_doc_ids": [],
+    "language": "en"
+  },
+  {
+    "id": "oos-lic-jeevan-labh-surrender-value",
+    "question": "What is the guaranteed surrender value and bonus calculation for LIC Jeevan Labh endowment policy?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": [],
+    "language": "en"
+  },
+  {
+    "id": "oos-hdfc-regalia-reward-points",
+    "question": "How do I redeem reward points for statement credit on an HDFC Regalia credit card?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": [],
+    "language": "en"
+  },
+  {
+    "id": "oos-sbi-home-loan-interest-rates",
+    "question": "What are the latest floating interest rates and processing fees for SBI regular home loans?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": [],
+    "language": "en"
+  },
+  {
+    "id": "oos-swift-wire-transfer-fees",
+    "question": "What SWIFT codes and intermediary bank charges apply to send international money transfers from the US to India?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": [],
+    "language": "en"
+  },
+  {
+    "id": "oos-lok-sabha-election-security-deposit",
+    "question": "How much security deposit must a candidate submit to contest the Lok Sabha parliamentary election?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": [],
+    "language": "en"
+  },
+  {
+    "id": "oos-gram-panchayat-ward-reservation",
+    "question": "How are ward reservations for women decided in Uttar Pradesh gram panchayat elections?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": [],
+    "language": "en"
+  },
+  {
+    "id": "oos-cryptocurrency-tax-section-115bbh",
+    "question": "What is the TDS rate and income tax slab for cryptocurrency trading profits in India under Section 115BBH?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": [],
+    "language": "en"
+  },
+  {
+    "id": "oos-zerodha-demat-account-opening",
+    "question": "What documents are required to open a Zerodha trading and Demat account online using DigiLocker?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": [],
+    "language": "en"
+  },
+  {
+    "id": "oos-income-tax-80c-commercial-property",
+    "question": "Can I claim Section 80C deductions for principal repayment of a commercial real estate property loan?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": [],
+    "language": "en"
+  },
+  {
+    "id": "oos-gold-jewellery-huid-hallmarking",
+    "question": "What are the mandatory 6-digit HUID hallmarking rules for selling 22-karat gold jewellery in India?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": [],
+    "language": "en"
+  },
+  {
+    "id": "oos-rbi-monetary-policy-repo-rate",
+    "question": "What was the Monetary Policy Committee's repo rate decision in the latest bi-monthly monetary policy meeting?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": [],
+    "language": "en"
+  },
+  {
+    "id": "oos-fertilizer-gst-refund-inverted-duty",
+    "question": "What is the input tax credit GST refund procedure for inverted duty structure on chemical fertilizers?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": [],
+    "language": "en"
+  },
+  {
+    "id": "oos-epfo-provident-fund-transfer-portal",
+    "question": "How do I transfer provident fund balance from an unexempted trust to EPFO through the Unified Member Portal?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": [],
+    "language": "en"
+  },
+  {
+    "id": "hi-pmfby-claim-intimation-deadline",
+    "question": "पीएमएफबीवाई के तहत बीमित किसान के लिए व्यक्तिगत फसल नुकसान की सूचना देने की समय सीमा क्या है?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "SCH-PMFBY-NEW-PROVISIONS"
+    ],
+    "language": "hi",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "hi-pmfby-delay-interest-rate",
+    "question": "दो महीने से अधिक पीएमएफबीवाई दावों के निपटान में देरी के लिए बीमा कंपनी को कितना ब्याज जुर्माना देना होगा?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "SCH-PMFBY-NEW-PROVISIONS"
+    ],
+    "language": "hi",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "hi-mscs-election-authority-section",
+    "question": "बहु-राज्य सहकारी समितियां अधिनियम की किस धारा के तहत सहकारी चुनाव प्राधिकरण की स्थापना की गई है?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "CEN-MSCS-ACT-2023",
+      "CEN-CRCS-ABOUT-CEA"
+    ],
+    "language": "hi",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "hi-mscs-cooperative-ombudsman",
+    "question": "बहु-राज्य सहकारी समितियां अधिनियम की किस धारा के तहत सहकारी लोकपाल नियुक्त किया जाता है?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "CEN-MSCS-ACT-2023",
+      "GRV-CRCS-OMBUDSMAN",
+      "CEN-PIB-INITIATIVES-2026"
+    ],
+    "language": "hi",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "hi-crcs-ombudsman-complaint-types",
+    "question": "सीआरसीएस सहकारी लोकपाल के समक्ष सदस्य किस प्रकार की शिकायतें दर्ज कर सकते हैं?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "GRV-CRCS-OMBUDSMAN"
+    ],
+    "language": "hi",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "hi-crcs-faq-mscs-definition",
+    "question": "एमएससीएस अधिनियम के तहत बहु-राज्य सहकारी समिति की क्या परिभाषा है?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "CEN-CRCS-FAQ"
+    ],
+    "language": "hi",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "hi-pib-bharat-organics-brand",
+    "question": "राष्ट्रीय सहकारी जैविक लिमिटेड द्वारा प्रमाणित जैविक उत्पादों के लिए कौन सा ब्रांड नाम शुरू किया गया?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "CEN-PIB-INITIATIVES-2026"
+    ],
+    "language": "hi",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "hi-kcc-scale-of-finance-first-year",
+    "question": "किसान क्रेडिट कार्ड के पहले वर्ष के लिए अल्पकालिक ऋण सीमा की गणना कैसे की जाती है?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "SCH-KCC-REVISED-SCHEME"
+    ],
+    "language": "hi",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "hi-rbi-kcc-collateral-waiver",
+    "question": "टाई-अप व्यवस्था के साथ फसलों के दृष्टिबंधक पर केसीसी ऋण के लिए बैंक किस सीमा तक संपार्श्विक सुरक्षा माफ कर सकते हैं?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "SCH-RBI-KCC-2026-CB",
+      "SCH-RBI-KCC-2026-RCB",
+      "SCH-RBI-KCC-2026-RRB",
+      "SCH-RBI-KCC-2026-SFB"
+    ],
+    "language": "hi",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "hi-tn-citizen-sugarcane-loan",
+    "question": "तमिलनाडु पैक्स में गन्ने और अन्य फसलों के लिए फसली ऋण की चुकौती अवधि और ब्याज दर क्या है?",
+    "state": "TN",
+    "in_scope": true,
+    "expect_doc_ids": [
+      "TN-CITIZEN-CHARTER-2023"
+    ],
+    "language": "hi",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "hi-oos-maharashtra-housing",
+    "question": "महाराष्ट्र सहकारी समिति अधिनियम 1960 के तहत हाउसिंग सोसायटियों के चुनाव कैसे होते हैं?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": [],
+    "language": "hi",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "hi-oos-car-insurance-claim",
+    "question": "आईसीआईसीआई लोम्बार्ड से निजी कार बीमा का कैशलेस क्लेम कैसे प्राप्त करें?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": [],
+    "language": "hi",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "hi-oos-hdfc-credit-card",
+    "question": "एचडीएफसी बैंक क्रेडिट कार्ड के रिवॉर्ड पॉइंट को स्टेटमेंट क्रेडिट में कैसे बदलें?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": [],
+    "language": "hi",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "hi-oos-crypto-tax-rules",
+    "question": "भारत में क्रिप्टोकरेंसी ट्रेडिंग लाभ पर आयकर और टीडीएस के क्या नियम हैं?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": [],
+    "language": "hi",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "hi-oos-gold-huid-hallmark",
+    "question": "भारत में 22 कैरेट सोने के गहनों पर एचयूआईडी हॉलमार्किंग के अनिवार्य नियम क्या हैं?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": [],
+    "language": "hi",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "ta-pmfby-claim-intimation-deadline",
+    "question": "பிரதம மந்திரி பயிர் காப்பீட்டுத் திட்டத்தின் கீழ் தனிநபர் பயிர் இழப்பைத் தெரிவிக்க விவசாயிகளுக்கு எவ்வளவு கால அவகாசம் வழங்கப்படுகிறது?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "SCH-PMFBY-NEW-PROVISIONS"
+    ],
+    "language": "ta",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "ta-pmfby-delay-interest-rate",
+    "question": "இரண்டு மாதங்களுக்கு மேல் பயிர் காப்பீட்டு இழப்பீட்டுத் தொகையை வழங்க தாமதிக்கும் காப்பீட்டு நிறுவனங்கள் எவ்வளவு வட்டி அபராதம் செலுத்த வேண்டும்?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "SCH-PMFBY-NEW-PROVISIONS"
+    ],
+    "language": "ta",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "ta-mscs-election-authority-section",
+    "question": "பல்மாநில கூட்டுறவு சங்கங்கள் சட்டத்தின் எந்தப் பிரிவின் கீழ் கூட்டுறவு தேர்தல் ஆணையம் அமைக்கப்பட்டுள்ளது?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "CEN-MSCS-ACT-2023",
+      "CEN-CRCS-ABOUT-CEA"
+    ],
+    "language": "ta",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "ta-mscs-cooperative-ombudsman",
+    "question": "பல்மாநில கூட்டுறவு சங்கங்கள் சட்டத்தின் எந்தப் பிரிவின் கீழ் கூட்டுறவு குறைதீர்ப்பாளர் நியமிக்கப்படுகிறார்?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "CEN-MSCS-ACT-2023",
+      "GRV-CRCS-OMBUDSMAN",
+      "CEN-PIB-INITIATIVES-2026"
+    ],
+    "language": "ta",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "ta-crcs-ombudsman-complaint-types",
+    "question": "மத்திய கூட்டுறவு சங்கங்களின் குறைதீர்ப்பாளரிடம் உறுப்பினர்கள் என்ன வகையான புகார்களை அளிக்கலாம்?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "GRV-CRCS-OMBUDSMAN"
+    ],
+    "language": "ta",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "ta-crcs-faq-mscs-definition",
+    "question": "பல்மாநில கூட்டுறவு சங்கம் என்பதன் சட்டப்பூர்வ வரையறை என்ன?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "CEN-CRCS-FAQ"
+    ],
+    "language": "ta",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "ta-pib-bharat-organics-brand",
+    "question": "தேசிய கூட்டுறவு இயற்கை வேளாண்மை அமைப்பு சான்றளிக்கப்பட்ட இயற்கை பொருட்களுக்காக அறிமுகப்படுத்திய பிராண்ட் பெயர் என்ன?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "CEN-PIB-INITIATIVES-2026"
+    ],
+    "language": "ta",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "ta-kcc-scale-of-finance-first-year",
+    "question": "கிசான் கிரெடிட் கார்டு திட்டத்தில் முதல் ஆண்டிற்கான குறுகிய கால கடன் வரம்பு எவ்வாறு கணக்கிடப்படுகிறது?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "SCH-KCC-REVISED-SCHEME"
+    ],
+    "language": "ta",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "ta-rbi-kcc-collateral-waiver",
+    "question": "பயிர் அடமானத்தின் பேரில் வழங்கப்படும் கிசான் கிரெடிட் கார்டு கடன்களுக்கு வங்கிகள் பிணையில்லா கடன் வரம்பாக எவ்வளவு தொகை வரை விலக்கு அளிக்கலாம்?",
+    "state": null,
+    "in_scope": true,
+    "expect_doc_ids": [
+      "SCH-RBI-KCC-2026-CB",
+      "SCH-RBI-KCC-2026-RCB",
+      "SCH-RBI-KCC-2026-RRB",
+      "SCH-RBI-KCC-2026-SFB"
+    ],
+    "language": "ta",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "ta-tn-citizen-sugarcane-loan",
+    "question": "தமிழ்நாடு தொடக்க வேளாண்மைக் கூட்டுறவுக் கடன் சங்கங்களில் கரும்பு மற்றும் பிற பயிர்களுக்கான பயிர்க் கடன் திருப்பிச் செலுத்தும் காலமும் வட்டி விகிதமும் என்ன?",
+    "state": "TN",
+    "in_scope": true,
+    "expect_doc_ids": [
+      "TN-CITIZEN-CHARTER-2023"
+    ],
+    "language": "ta",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "ta-oos-maharashtra-housing",
+    "question": "மகாராஷ்டிரா கூட்டுறவு சங்கங்கள் சட்டம் 1960-ன் கீழ் வீட்டு வசதி சங்கங்களுக்கான தேர்தல் எவ்வாறு நடத்தப்படுகிறது?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": [],
+    "language": "ta",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "ta-oos-car-insurance-claim",
+    "question": "தனியார் மோட்டார் வாகனங்களுக்கான ஐசிஐசிஐ லொம்பார்ட் பணமில்லா காப்பீட்டு இழப்பீடு பெறும் முறை என்ன?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": [],
+    "language": "ta",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "ta-oos-hdfc-credit-card",
+    "question": "ஹெச்டிஎஃப்சி கிரெடிட் கார்டு ரிவார்டு புள்ளிகளை எவ்வாறு கணக்கில் பணமாக மாற்றுவது?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": [],
+    "language": "ta",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "ta-oos-crypto-tax-rules",
+    "question": "இந்தியாவில் கிரிப்டோகரன்சி வர்த்தக லாபத்திற்கான வருமான வரி மற்றும் டிடிஎஸ் விதிகள் என்ன?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": [],
+    "language": "ta",
+    "notes": "NEEDS HUMAN REVIEW"
+  },
+  {
+    "id": "ta-oos-gold-huid-hallmark",
+    "question": "இந்தியாவில் 22 காரட் தங்க நகைகள் விற்பனை செய்வதற்கு கட்டாயமான HUID ஹால்மார்க் விதிமுறைகள் என்ன?",
+    "state": null,
+    "in_scope": false,
+    "expect_doc_ids": [],
+    "language": "ta",
+    "notes": "NEEDS HUMAN REVIEW"
   }
 ]

@@ -56,7 +56,10 @@ def _retriever(use_stub: bool) -> Retriever:
         return StubRetriever()
     from services.retrieval.qdrant_retriever import QdrantRetriever
 
-    return QdrantRetriever()
+    return QdrantRetriever(
+        score_threshold=settings.SCORE_THRESHOLD,
+        score_threshold_by_lang=settings.SCORE_THRESHOLD_BY_LANG,
+    )
 
 
 @cache
@@ -72,6 +75,7 @@ def _answer_service(use_stub: bool, use_stub_retriever: bool) -> AnswerService:
     return GroundedAnswerService(
         _retriever(use_stub_retriever),
         min_score=settings.SCORE_THRESHOLD,
+        min_score_by_lang=settings.SCORE_THRESHOLD_BY_LANG,
         top_k=settings.TOP_K,
         contact=Contact(label=settings.HELPLINE_LABEL, detail=settings.HELPLINE_DETAIL),
     )

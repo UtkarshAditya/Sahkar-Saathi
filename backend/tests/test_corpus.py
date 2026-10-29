@@ -238,7 +238,7 @@ def ingest(monkeypatch, tmp_path):
 
 
 def test_ingest_stores_clean_text_and_reports_every_problem(ingest):
-    long_text = "cooperative society rule " * 60  # about 1,500 characters: several chunks
+    long_text = "cooperative society rule " * 120  # about 3,000 characters: several chunks
     for doc_id in ("DOC-A", "DOC-B", "DOC-C"):
         make_document(doc_id)
     ingest.write_csv(
