@@ -1,6 +1,8 @@
 import csv
 import os
+import re
 import uuid
+from functools import lru_cache
 from pathlib import Path
 
 from django.conf import settings
@@ -9,13 +11,71 @@ from django.db import transaction
 
 from apps.knowledge.models import Chunk, Document
 
-# The ML packages (pdfplumber, qdrant-client, sentence-transformers) are imported inside
-# handle(), so this module, and its helpers below, import without them (CI has none).
+# The ML packages (pdfplumber, pypdf, qdrant-client, sentence-transformers) are imported
+# inside handle() or inside the functions that need them, so this module, and its helpers
+# below, import without them (CI has none).
 
 # multilingual-e5 expects this prefix on passages. It belongs on the string that is
 # embedded only; the stored text (Chunk rows and Qdrant payloads) stays clean.
 PASSAGE_PREFIX = "passage: "
 PDF_MAGIC = b"%PDF-"
+
+# Defaults for chunk_text; handle() passes the CHUNK_* settings instead.
+DEFAULT_MAX_CHARS = 900
+DEFAULT_MIN_CHARS = 80
+DEFAULT_TAIL_MERGE_CHARS = 150
+
+# A page is read again with pypdf when at least this share of its non-space characters is
+# font garbage ("(cid:12)" tokens and private-use glyphs) in what pdfplumber extracted.
+GLYPH_GARBAGE_SHARE = 0.5
+
+_CID_TOKEN = re.compile(r"\(cid:\d+\)")
+# Private-use code points (icon fonts such as Font Awesome) and the replacement character.
+_PRIVATE_USE = re.compile("[-�]")
+
+# Whole lines of web-page and footer boilerplate that PDFs printed from the CRCS and Tamil
+# Nadu RCS sites carry on every page. Each pattern must match the entire line, so ordinary
+# sentences that merely mention these words (for example "Maintenance of records") stay.
+_BOILERPLATE_LINES = [
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in (
+        r"Go to Main Content\b.*",
+        r"Government of India",
+        r"Registration of New MSCS",
+        r"Ministry of Cooperation\s+CR Login\b.*",
+        r"Central Registrar of Cooperative Societies\s+Login\b.*",
+        r"Home\s*/\s*[\w &-]{1,40}",
+        r"Last updated\s*:\s*\d{1,2}\s+\w+\s+\d{4}",
+        r"Home\s+State Registrars\b.*\bContact us",
+        r"Terms & Conditions\b.*",
+        r"©\s*Content Owned by\b.*",
+        r"Disclaimer\s+Web Information Manager.*",
+        r"OFFICE OF THE REGISTRAR OF COOPERATIVE SOCIETIES\s+USEFUL LINKS.*",
+        r"NVN Natarajan Maligai",
+        r"No\.\s*170,\s*Periyar E\.V\.R\. High Road",
+        r"Kilpauk Chennai\s*-\s*600\s*010",
+        r"Phone No\.?\s*:\s*[\d\- ]+",
+        r"Paniyaalar Naal\b.*",
+        r"Email id\s*:\s*\S+@\S+",
+        r"VERGAL Contact Us",
+        r"Copyright\s*©.*",
+        r"designed by Trophy systems",
+    )
+]
+
+# Words that end in a full stop without ending the sentence. Initialisms such as "G.O.",
+# "e.g." and "w.e.f." are recognised by their shape (see _ends_sentence).
+_ABBREVIATIONS = frozenset(
+    {
+        "no.", "nos.", "sec.", "secs.", "s.", "u/s.", "rs.", "dr.", "mr.", "mrs.", "ms.",
+        "shri.", "smt.", "art.", "cl.", "sl.", "vs.", "viz.", "etc.", "approx.", "dt.",
+        "govt.", "dept.", "ltd.", "co.", "st.",
+    }
+)  # fmt: skip
+_INITIALISM = re.compile(r"^(?:[A-Za-z]\.){2,}$")
+_SENTENCE_END = (".", "!", "?", "।")  # the last is the Devanagari danda
+_NUMBERED_HEADING = re.compile(r"^\d{1,3}[A-Z]?\.\s+[A-Z][^\n]{0,100}$")
+_NAMED_HEADING = re.compile(r"^(?:CHAPTER|PART|SCHEDULE|ARTICLE|SECTION)\s+[\dIVXLC]+\b.*$")
 
 
 def is_pdf(path: Path) -> bool:
@@ -31,27 +91,175 @@ def is_pdf(path: Path) -> bool:
         return False
 
 
-def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> list[str]:
-    """Split text into chunks by character length with overlap (~500 chars, ~50 chars overlap)."""
-    text = text.strip()
-    if not text:
-        return []
-    if len(text) <= chunk_size:
-        return [text]
+def is_mostly_glyph_garbage(text: str) -> bool:
+    """True if font garbage ("(cid:N)" tokens, icon-font glyphs) makes up most of the text.
 
-    chunks = []
-    start = 0
-    text_len = len(text)
-    step = max(1, chunk_size - overlap)
-    while start < text_len:
-        end = min(start + chunk_size, text_len)
-        chunk = text[start:end].strip()
-        if chunk:
-            chunks.append(chunk)
-        if end >= text_len:
-            break
-        start += step
-    return chunks
+    pdfplumber returns this for PDFs whose fonts have no Unicode map. A stray token in a
+    normal page does not count; that text is cleaned, not read again.
+    """
+    visible = len("".join(text.split()))
+    if visible == 0:
+        return False
+    garbage = sum(len(match.group()) for match in _CID_TOKEN.finditer(text))
+    garbage += len(_PRIVATE_USE.findall(text))
+    return garbage / visible >= GLYPH_GARBAGE_SHARE
+
+
+def clean_page_text(text: str) -> str:
+    """Remove font garbage and web-page boilerplate lines from one page of extracted text.
+
+    Spaces inside a line are left as they are, so removing "(cid:N)" never joins two words.
+    """
+    text = _PRIVATE_USE.sub("", _CID_TOKEN.sub("", text))
+    kept = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if any(pattern.fullmatch(stripped) for pattern in _BOILERPLATE_LINES):
+            continue
+        kept.append(line.rstrip())
+    return "\n".join(kept)
+
+
+@lru_cache(maxsize=2)
+def _pypdf_reader(path: str):
+    from pypdf import PdfReader  # imported here: CI has no ML packages
+
+    return PdfReader(path)
+
+
+def extract_page_pypdf(path: Path, page_index: int) -> str:
+    """The text of one page (0-based) read with pypdf, or "" if pypdf cannot read it.
+
+    The fallback for pages where pdfplumber returns font garbage. Never raises.
+    """
+    try:
+        return _pypdf_reader(str(path)).pages[page_index].extract_text() or ""
+    except Exception:  # pypdf not installed, damaged PDF, no such page
+        return ""
+
+
+def is_heading(line: str) -> bool:
+    """True for a section heading ("32. General meetings." or "CHAPTER IV: ...") or an
+    all-capitals title line. A heading is kept together with the text that follows it."""
+    line = line.strip()
+    if not line or len(line) > 120:
+        return False
+    if _NUMBERED_HEADING.match(line) or _NAMED_HEADING.match(line):
+        return True
+    return line.isupper() and len(line) <= 80
+
+
+def _ends_sentence(word: str, next_word: str) -> bool:
+    if not word.endswith(_SENTENCE_END):
+        return False
+    if word.lower() in _ABBREVIATIONS or _INITIALISM.match(word):
+        return False
+    # A sentence goes on into a lower-case word; scripts without case always start a new one.
+    return not next_word.lstrip("\"'([")[:1].islower()
+
+
+def split_sentences(text: str) -> list[tuple[str, bool]]:
+    """Split text into (unit, is_heading) pairs: one per sentence, one per heading line.
+
+    Line breaks inside a paragraph are PDF line wraps, so they do not end a sentence; a
+    heading line does. Abbreviations such as "G.O.", "No." and "e.g." do not end one either.
+    """
+    units: list[tuple[str, bool]] = []
+    paragraph: list[str] = []
+
+    def flush() -> None:
+        words = " ".join(paragraph).split()
+        paragraph.clear()
+        start = 0
+        for i, word in enumerate(words):
+            if i == len(words) - 1 or _ends_sentence(word, words[i + 1]):
+                units.append((" ".join(words[start : i + 1]), False))
+                start = i + 1
+
+    for line in text.splitlines():
+        if is_heading(line):
+            flush()
+            units.append((" ".join(line.split()), True))
+        elif line.strip():
+            paragraph.append(line.strip())
+    flush()
+    return units
+
+
+def split_long_sentence(sentence: str, max_chars: int) -> list[str]:
+    """Split a sentence longer than max_chars at word boundaries, into pieces of at most
+    max_chars. A single word longer than max_chars is cut, as a last resort."""
+    pieces: list[str] = []
+    current = ""
+    for word in sentence.split():
+        while len(word) > max_chars:
+            if current:
+                pieces.append(current)
+                current = ""
+            pieces.append(word[:max_chars])
+            word = word[max_chars:]
+        if current and len(current) + 1 + len(word) > max_chars:
+            pieces.append(current)
+            current = word
+        else:
+            current = f"{current} {word}".strip()
+    if current:
+        pieces.append(current)
+    return pieces
+
+
+def chunk_text(
+    text: str,
+    max_chars: int = DEFAULT_MAX_CHARS,
+    min_chars: int = DEFAULT_MIN_CHARS,
+    tail_merge_chars: int = DEFAULT_TAIL_MERGE_CHARS,
+) -> list[str]:
+    """Split text into chunks of whole sentences, each at most max_chars long.
+
+    - A sentence longer than max_chars is split at word boundaries; a word is never cut
+      (except one longer than max_chars).
+    - A chunk starts with the last sentence of the chunk before it, when that sentence is
+      at most half of max_chars, so a fact on a boundary appears whole in one chunk.
+    - A heading never ends a chunk; it moves on to start the next one.
+    - A last chunk whose new text is at most tail_merge_chars is merged into the one before.
+    - A chunk shorter than min_chars is dropped.
+    """
+    units: list[tuple[str, bool]] = []
+    for sentence, heading in split_sentences(text):
+        if len(sentence) > max_chars:
+            units.extend((piece, False) for piece in split_long_sentence(sentence, max_chars))
+        else:
+            units.append((sentence, heading))
+
+    def size(*parts: list[str]) -> int:
+        return len(" ".join(part for group in parts for part in group))
+
+    # Each chunk is (sentences carried over from the previous chunk, its own new sentences).
+    chunks: list[tuple[list[str], list[str]]] = []
+    overlap: list[str] = []
+    new: list[tuple[str, bool]] = []
+    for sentence, heading in units:
+        if new and size(overlap, [s for s, _ in new], [sentence]) > max_chars:
+            moved = [new.pop()] if new[-1][1] and len(new) > 1 else []
+            texts = [s for s, _ in new]
+            chunks.append((overlap, texts))
+            overlap = texts[-1:] if texts and len(texts[-1]) <= max_chars // 2 else []
+            new = moved
+            if overlap and size(overlap, [s for s, _ in new], [sentence]) > max_chars:
+                overlap = []
+        new.append((sentence, heading))
+    if new:
+        chunks.append((overlap, [s for s, _ in new]))
+
+    if len(chunks) > 1 and size(chunks[-1][1]) <= tail_merge_chars:
+        _, last_new = chunks.pop()
+        previous_overlap, previous_new = chunks[-1]
+        chunks[-1] = (previous_overlap, previous_new + last_new)
+
+    joined = (" ".join([*carried, *own]) for carried, own in chunks)
+    return [chunk for chunk in joined if len(chunk) >= min_chars]
 
 
 def embedding_input(text: str) -> str:
@@ -199,11 +407,22 @@ class Command(BaseCommand):
                 try:
                     with pdfplumber.open(pdf_file) as pdf:
                         for page_num, page in enumerate(pdf.pages, start=1):
-                            raw_text = page.extract_text()
-                            if not raw_text:
+                            raw_text = page.extract_text() or ""
+                            # Fonts without a Unicode map come out as "(cid:N)" garbage;
+                            # pypdf often reads those pages correctly.
+                            if is_mostly_glyph_garbage(raw_text):
+                                fallback = extract_page_pypdf(pdf_file, page_num - 1)
+                                if fallback and not is_mostly_glyph_garbage(fallback):
+                                    raw_text = fallback
+                            page_text = clean_page_text(raw_text)
+                            if not page_text:
                                 continue
-                            # Chunking text into ~500 character blocks with ~50 chars overlap
-                            for chunk_str in chunk_text(raw_text, chunk_size=500, overlap=50):
+                            for chunk_str in chunk_text(
+                                page_text,
+                                max_chars=settings.CHUNK_MAX_CHARS,
+                                min_chars=settings.CHUNK_MIN_CHARS,
+                                tail_merge_chars=settings.CHUNK_TAIL_MERGE_CHARS,
+                            ):
                                 pages_and_chunks.append((page_num, chunk_str))
                 except Exception as exc:  # corrupt or encrypted PDF
                     self.stdout.write(

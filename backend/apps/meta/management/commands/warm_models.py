@@ -3,8 +3,11 @@
 - USE_STUB_SPEECH=false: the Whisper model(s) for the supported languages: WHISPER_MODEL,
   or a WHISPER_MODEL_<LANG> override (for example WHISPER_MODEL_HI=medium).
 - USE_STUB_RETRIEVER=false: the embedding model set by EMBEDDING_MODEL.
+- USE_STUB_ANSWER=false, and only with --llm or WARM_ON_START=true: the language model, by
+  asking the LLM server (Ollama) to load it. Off by default because a first load can take
+  half a minute or more and the server may not be running yet.
 
-Both download into HF_HOME on first use. With every service on its stub there is nothing
+The first two download into HF_HOME on first use. With every service on its stub there is nothing
 to load.
 
 Never fails: a missing network, a missing package or a bad model name prints a warning and
@@ -40,8 +43,22 @@ def _load_embedding_model() -> str:
     return f"embedding model '{settings.EMBEDDING_MODEL}'"
 
 
+def _load_llm() -> str:
+    from services import llm, warmup
+
+    warmup.load_llm()
+    return f"language model '{llm.model_name()}'"
+
+
 class Command(BaseCommand):
     help = "Load the Whisper and embedding models when their services are not stubs."
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--llm",
+            action="store_true",
+            help="Also load the language model in the LLM server (same as WARM_ON_START=true).",
+        )
 
     def handle(self, *args, **options):
         # (what, load function, when it is first used instead)
@@ -50,6 +67,8 @@ class Command(BaseCommand):
             wanted.append(("Whisper model", _load_whisper, "the first transcription"))
         if not settings.USE_STUB_RETRIEVER:
             wanted.append(("embedding model", _load_embedding_model, "the first question"))
+        if not settings.USE_STUB_ANSWER and (options["llm"] or settings.WARM_ON_START):
+            wanted.append(("language model", _load_llm, "the first question"))
         if not wanted:
             self.stdout.write("warm_models: speech and retrieval are stubs, nothing to warm.")
             return

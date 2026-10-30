@@ -22,10 +22,14 @@ def ask(client, text=QUESTION, **body):
 
 
 @pytest.fixture
-def real_answer(settings, monkeypatch):
+def real_answer(settings, monkeypatch, tmp_path):
     """The real answer service, the stub retriever, and a scripted fake LLM."""
     settings.USE_STUB_ANSWER = False
     settings.USE_STUB_RETRIEVER = True
+    # QUESTION is about crop loss, which the scheme fast path answers from schemes.yaml
+    # without the model (tests/test_fastpath_wiring.py). An empty content dir switches the
+    # fast path off, so these tests exercise the grounded pipeline they are about.
+    settings.CONTENT_DIR = tmp_path
     monkeypatch.setenv("LLM_MODEL", "fake-model")
     services._answer_service.cache_clear()
     replies: list = []

@@ -145,6 +145,9 @@ Common changes:
 | `USE_STUB_SPEECH=false`                | Real speech-to-text with Whisper (see section 10)                 |
 | `INSTALL_ML=false`                     | A smaller, stub-only image: no PyTorch, so no real retrieval      |
 | `SCORE_THRESHOLD`                      | Default 0.82, provisional; re-tune with `eval_retrieval` (§ 12)   |
+| `SCORE_THRESHOLD_EN`, `_HI`, `_TA`     | Per question language; empty = same as `SCORE_THRESHOLD`          |
+| `CHUNK_MAX_CHARS`, `CHUNK_MIN_CHARS`, `CHUNK_TAIL_MERGE_CHARS` | `ingest_corpus` chunk sizes; empty = 900, 80, 150 |
+| `WARM_ON_START=true`                   | Also load the LLM at start-up (up to `WARM_TIMEOUT` s); default false |
 | `BHASHINI_API_KEY`, `BHASHINI_USER_ID` | Speech keys (member C)                                            |
 | `LOAD_SAMPLE_DOCUMENTS=false`          | Start the library empty instead of with 9 sample entries          |
 
@@ -234,6 +237,9 @@ Then `docker compose up --build -d --wait`.
   `warm_models: Whisper model 'small' loaded in ... s`, or a warning saying why it could
   not load.
 - Listen (text-to-speech) still plays the stub's silent audio.
+- With `USE_STUB_ANSWER=false`, `WARM_ON_START=true` also asks Ollama to load the language model at
+  start-up (the same wait limit applies). Off by default; `docker compose exec web python manage.py
+  warm_models --llm` does it on demand.
 - `docker compose down --volumes` deletes the downloaded model too.
 
 ## 11. Updating the document list

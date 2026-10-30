@@ -16,7 +16,6 @@ from services.stubs import (
     StubAnswerService,
     StubGrievanceGuide,
     StubRetriever,
-    StubSpeechProvider,
 )
 from services.types import (
     AnswerService,
@@ -56,10 +55,10 @@ def _retriever(use_stub: bool) -> Retriever:
         return StubRetriever()
     from services.retrieval.qdrant_retriever import QdrantRetriever
 
-    return QdrantRetriever(
-        score_threshold=settings.SCORE_THRESHOLD,
-        score_threshold_by_lang=settings.SCORE_THRESHOLD_BY_LANG,
-    )
+    # No score threshold here. The answer service declines below its per-language minimum,
+    # and it can only report the real best score (and eval_retrieval can only measure it) if
+    # the retriever returns weak hits too. Filtering in both places hid every low score.
+    return QdrantRetriever()
 
 
 @cache
@@ -73,26 +72,48 @@ def _answer_service(use_stub: bool, use_stub_retriever: bool) -> AnswerService:
         )
     from services.answer import GroundedAnswerService
 
-    return GroundedAnswerService(
+    grounded = GroundedAnswerService(
         _retriever(use_stub_retriever),
         min_score=settings.SCORE_THRESHOLD,
         min_score_by_lang=settings.SCORE_THRESHOLD_BY_LANG,
         top_k=settings.TOP_K,
         contact=Contact(label=settings.HELPLINE_LABEL, detail=settings.HELPLINE_DETAIL),
     )
+    return _with_fast_path(grounded)
+
+
+def _with_fast_path(grounded: AnswerService) -> AnswerService:
+    """Answer PMFBY loss-reporting questions from the verified fact in schemes.yaml, and send
+    every other question to ``grounded``. If the fast path's files cannot be read, the real
+    service is used on its own: the fast path is an optimisation, not a requirement."""
+    import yaml
+
+    from services.schemes_fastpath import FastPathAnswerService, SchemeFastPath
+
+    try:
+        fast_path = SchemeFastPath.from_files(
+            settings.CONTENT_DIR / "schemes.yaml",
+            settings.BASE_DIR / "services" / "data" / "fastpath_text.yaml",
+        )
+    except (OSError, ValueError, TypeError, AttributeError, yaml.YAMLError) as exc:
+        # missing file, bad YAML, or a layout the fast path cannot read
+        logger.error("The scheme fast path is off: schemes.yaml could not be used: %s", exc)
+        return grounded
+    return FastPathAnswerService(grounded, fast_path)
 
 
 @cache
 def _speech_provider(use_stub: bool) -> SpeechProvider:
-    if use_stub:
-        return StubSpeechProvider()
-    # faster_whisper itself is imported lazily, on the first transcription.
-    from services.speech.whisper_provider import WhisperSpeechProvider
+    # USE_STUB_SPEECH picks the provider; the factory builds it. faster_whisper itself is
+    # imported lazily, on the first transcription.
+    from services.speech.factory import build_speech_provider
 
-    logger.warning(
-        "Speech: Whisper transcribes; synthesis (Listen) is still the stub's silent audio."
-    )
-    return WhisperSpeechProvider(synthesizer=StubSpeechProvider())
+    provider = build_speech_provider("stub" if use_stub else "whisper")
+    if not use_stub:
+        logger.warning(
+            "Speech: Whisper transcribes; synthesis (Listen) is still the stub's silent audio."
+        )
+    return provider
 
 
 @cache

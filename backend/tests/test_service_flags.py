@@ -41,9 +41,11 @@ def _kinds() -> dict:
         guide = type(services.get_grievance_guide())
     except ServiceNotReady:
         guide = ServiceNotReady
+    answer = services.get_answer_service()
+    # The real answer service is wrapped by the scheme fast path; report what it wraps.
     return {
         "retriever": type(services.get_retriever()),
-        "answer": type(services.get_answer_service()),
+        "answer": type(getattr(answer, "inner", answer)),
         "speech": type(services.get_speech_provider()),
         "grievance": guide,
     }
@@ -161,7 +163,7 @@ def test_the_real_answer_service_uses_the_score_threshold(settings):
     settings.SCORE_THRESHOLD = 0.82
     services._answer_service.cache_clear()
     try:
-        assert services.get_answer_service().min_score == 0.82
+        assert services.get_answer_service().inner.min_score == 0.82
     finally:
         services._answer_service.cache_clear()
 
@@ -189,14 +191,14 @@ def test_each_flag_flips_only_its_own_service(all_stubs, flag, service, real):
 
 def test_mixed_mode_real_answer_over_the_stub_retriever(all_stubs):
     all_stubs.USE_STUB_ANSWER = False
-    answer = services.get_answer_service()
+    answer = services.get_answer_service().inner  # wrapped by the scheme fast path
     assert isinstance(answer, GroundedAnswerService)
     assert isinstance(answer.retriever, StubRetriever)
     assert answer.top_k == all_stubs.TOP_K and answer.min_score == all_stubs.SCORE_THRESHOLD
 
     # Flipping the retriever flag alone rebuilds the answer service around the real one.
     all_stubs.USE_STUB_RETRIEVER = False
-    assert isinstance(services.get_answer_service().retriever, QdrantRetriever)
+    assert isinstance(services.get_answer_service().inner.retriever, QdrantRetriever)
 
 
 def test_real_speech_keeps_stub_synthesis_and_loads_no_model(all_stubs, monkeypatch):

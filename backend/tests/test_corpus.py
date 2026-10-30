@@ -20,6 +20,10 @@ from apps.knowledge.models import Chunk, Document
 COLLECTION = "sahkar_saathi_chunks"
 
 
+# Longer than CHUNK_MIN_CHARS, or the chunker drops it.
+SENTENCE = "A multi-state cooperative society must file its annual returns within six months."
+
+
 def make_document(doc_id: str, state: str = "central") -> Document:
     return Document.objects.create(
         id=doc_id,
@@ -319,7 +323,7 @@ def test_ingest_reports_a_non_pdf_and_keeps_its_existing_chunks(ingest, tmp_path
     ingest.write_csv(
         [
             ("DOC-A", "Y", str(html)),
-            ("DOC-B", "Y", ingest.add_pdf("b.pdf", "some text")),
+            ("DOC-B", "Y", ingest.add_pdf("b.pdf", SENTENCE)),
         ]
     )
 
@@ -339,7 +343,7 @@ def test_ingest_keeps_existing_chunks_when_the_pdf_has_no_text(ingest):
     ingest.write_csv(
         [
             ("DOC-A", "Y", ingest.add_pdf("a.pdf", "")),
-            ("DOC-B", "Y", ingest.add_pdf("b.pdf", "some text")),
+            ("DOC-B", "Y", ingest.add_pdf("b.pdf", SENTENCE)),
         ]
     )
 
@@ -351,7 +355,7 @@ def test_ingest_keeps_existing_chunks_when_the_pdf_has_no_text(ingest):
 
 def test_ingest_write_failure_raises_and_keeps_the_old_chunks(ingest):
     make_chunk(make_document("DOC-A"), 1)
-    ingest.write_csv([("DOC-A", "Y", ingest.add_pdf("a.pdf", "new text"))])
+    ingest.write_csv([("DOC-A", "Y", ingest.add_pdf("a.pdf", SENTENCE))])
 
     def broken_upsert(self, collection_name, points):
         raise RuntimeError("qdrant is down")

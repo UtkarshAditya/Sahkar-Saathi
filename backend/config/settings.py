@@ -237,11 +237,17 @@ HELPLINE_DETAIL = (
 )
 BHASHINI_API_KEY = os.environ.get("BHASHINI_API_KEY", "")
 BHASHINI_USER_ID = os.environ.get("BHASHINI_USER_ID", "")
+# Opt in to warming the language model (Ollama) in `manage.py warm_models`, which the container
+# entrypoint runs before serving. Off by default: it can add up to WARM_TIMEOUT seconds to
+# start-up. Running `warm_models --llm` by hand warms it regardless.
+WARM_ON_START = env_bool("WARM_ON_START", False)
 
-# Chunking configuration (member B)
-CHUNK_MAX_CHARS = int(os.environ.get("CHUNK_MAX_CHARS", "900"))
-CHUNK_MIN_CHARS = int(os.environ.get("CHUNK_MIN_CHARS", "80"))
-CHUNK_TAIL_MERGE_CHARS = int(os.environ.get("CHUNK_TAIL_MERGE_CHARS", "150"))
+# Chunking for `manage.py ingest_corpus` (member B). Chunks are whole sentences, at most
+# CHUNK_MAX_CHARS long; a chunk shorter than CHUNK_MIN_CHARS is dropped, and a trailing piece
+# of at most CHUNK_TAIL_MERGE_CHARS is merged into the chunk before it. Empty means default.
+CHUNK_MAX_CHARS = int(env_value("CHUNK_MAX_CHARS") or "900")
+CHUNK_MIN_CHARS = int(env_value("CHUNK_MIN_CHARS") or "80")
+CHUNK_TAIL_MERGE_CHARS = int(env_value("CHUNK_TAIL_MERGE_CHARS") or "150")
 
 # Retrieval (member B). Recorded in every evaluation run.
 EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "intfloat/multilingual-e5-small")
@@ -252,6 +258,13 @@ TOP_K = int(os.environ.get("TOP_K", "4"))
 # `manage.py eval_retrieval` once real in-scope questions with expected documents exist.
 # Only the real answer service uses it; the stub's canned scores have their own scale.
 SCORE_THRESHOLD = float(env_value("SCORE_THRESHOLD") or "0.82")
+# Per question language (en, hi, ta, the codes the API uses); empty means SCORE_THRESHOLD.
+# Scores differ by language, so tune each one with `eval_retrieval` if you have questions.
+SCORE_THRESHOLD_BY_LANG = {
+    "en": float(env_value("SCORE_THRESHOLD_EN") or SCORE_THRESHOLD),
+    "hi": float(env_value("SCORE_THRESHOLD_HI") or SCORE_THRESHOLD),
+    "ta": float(env_value("SCORE_THRESHOLD_TA") or SCORE_THRESHOLD),
+}
 QDRANT_URL = os.environ.get("QDRANT_URL", "http://qdrant:6333")
 HEALTH_CHECK_TIMEOUT_SECONDS = float(os.environ.get("HEALTH_CHECK_TIMEOUT_SECONDS", "1.5"))
 

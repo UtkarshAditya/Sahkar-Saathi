@@ -55,6 +55,13 @@ def _load_llm_sync() -> None:
         connection.close()
 
 
+def load_llm() -> None:
+    """Load the model into Ollama and keep it there (blocking; raises if Ollama is down).
+
+    What `manage.py warm_models` calls; warm_up_all() runs it in a thread."""
+    _load_llm_sync()
+
+
 async def warm_up_all(languages=("en", "hi", "ta")) -> dict[str, bool]:
     """Warm up the LLM and Whisper. Never raises: a failure is logged and reported."""
     results = {}

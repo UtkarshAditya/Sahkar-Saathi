@@ -129,6 +129,7 @@ services:
       WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
       WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE:-int8}
       WARM_TIMEOUT: ${WARM_TIMEOUT:-300}
+      WARM_ON_START: ${WARM_ON_START:-false}
       HF_HOME: /models
       HELPLINE_LABEL: ${HELPLINE_LABEL:-}
       HELPLINE_DETAIL: ${HELPLINE_DETAIL:-}
@@ -139,6 +140,14 @@ services:
       TOP_K: ${TOP_K:-4}
       # Provisional (see .env.example); used by the real answer service only.
       SCORE_THRESHOLD: ${SCORE_THRESHOLD:-0.82}
+      # Per question language; empty means the same as SCORE_THRESHOLD.
+      SCORE_THRESHOLD_EN: ${SCORE_THRESHOLD_EN:-}
+      SCORE_THRESHOLD_HI: ${SCORE_THRESHOLD_HI:-}
+      SCORE_THRESHOLD_TA: ${SCORE_THRESHOLD_TA:-}
+      # ingest_corpus chunk sizes in characters; empty means 900, 80 and 150.
+      CHUNK_MAX_CHARS: ${CHUNK_MAX_CHARS:-}
+      CHUNK_MIN_CHARS: ${CHUNK_MIN_CHARS:-}
+      CHUNK_TAIL_MERGE_CHARS: ${CHUNK_TAIL_MERGE_CHARS:-}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     volumes:
       - static_files:/srv/django

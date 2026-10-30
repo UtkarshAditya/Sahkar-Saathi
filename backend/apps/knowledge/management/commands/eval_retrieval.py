@@ -123,9 +123,7 @@ class Command(BaseCommand):
             top = max((p.score for p in passages), default=None)
             score = top if top is not None else 0.0
             (
-                by_lang[lang]["in_scores"]
-                if question["in_scope"]
-                else by_lang[lang]["out_scores"]
+                by_lang[lang]["in_scores"] if question["in_scope"] else by_lang[lang]["out_scores"]
             ).append(score)
             expected = question.get("expect_doc_ids") or []
             if question["in_scope"] and expected:
