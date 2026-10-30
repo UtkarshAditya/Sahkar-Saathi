@@ -1,22 +1,30 @@
 #!/usr/bin/env python3
-"""Automated corpus expansion and ingestion for Sahkar-Saathi.
+"""Check data/raw/ against data/sources.csv, and optionally ingest the corpus.
 
-This maintenance script:
-1. Scans `data/raw/` for all PDF files.
-2. Validates magic bytes (%PDF-) to detect HTML error pages or corrupted downloads.
-3. Automatically updates `data/sources.csv`:
-   - Sets `use_in_corpus = 'Y'` for valid PDFs.
-   - Sets `use_in_corpus = 'N'` for invalid/corrupted files or missing PDFs.
-   - Fixes local_path if previously pointing to a stale extension (e.g., .html).
-   - Appends clean new rows for valid PDFs that are not yet in `sources.csv`.
-4. Synchronizes PostgreSQL metadata using `python manage.py load_sources`.
-5. Executes corpus ingestion using `docker-compose exec web python manage.py ingest_corpus`.
-6. Reports the final tally of successfully ingested documents, chunks added, and vector points upserted.
+    python scripts/expand_corpus.py                    # report only: nothing is changed
+    python scripts/expand_corpus.py --write            # also update data/sources.csv
+    python scripts/expand_corpus.py --write --demote-missing
+    python scripts/expand_corpus.py --write --skip-ingest
+    python scripts/expand_corpus.py --dry-run          # report only, never ingests
 
-Usage:
-    python scripts/expand_corpus.py
-    python scripts/expand_corpus.py --skip-ingest
-    python scripts/expand_corpus.py --dry-run
+By default the script only reports. It scans data/raw/*.pdf, checks that each file starts
+with the PDF signature (%PDF-), and compares that with sources.csv:
+
+- A use_in_corpus=Y row whose PDF is missing or invalid is only REPORTED. It is changed to N
+  only with --write --demote-missing, because a PDF missing on one machine (git ignores
+  data/raw) must not remove a document from the corpus for everyone.
+- A valid PDF with no row in sources.csv is reported, and with --write appended as a new
+  row (use_in_corpus=Y, verification=AUTO_INGESTED) for a person to complete.
+- A valid PDF whose row has a different local_path (a stale .html name, say) is reported,
+  and with --write the path is corrected. use_in_corpus is never promoted to Y here: Y,
+  Hold and N are a person's decision.
+
+Without --write or with --dry-run, sources.csv is not touched. With --write, after the
+CSV is updated, the script runs `load_sources` and `ingest_corpus` in the `web` service of
+docker-compose.yml (`docker compose exec -T web ...`), unless --skip-ingest is given, and
+reports the documents, chunks and vectors written.
+
+Standard library only.
 """
 
 from __future__ import annotations
@@ -24,26 +32,19 @@ from __future__ import annotations
 import argparse
 import csv
 import datetime
-import os
 import pathlib
 import re
-import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
-
-if sys.platform == "win32":
-    # Ensure UTF-8 console output on Windows to prevent UnicodeEncodeError/UnicodeDecodeError
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    if hasattr(sys.stderr, "reconfigure"):
-        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DEFAULT_RAW_DIR = ROOT / "data" / "raw"
 DEFAULT_SOURCES_CSV = ROOT / "data" / "sources.csv"
 
 PDF_MAGIC = b"%PDF-"
+COMPOSE_SERVICE = "web"  # the Django container in docker-compose.yml
+TN_PUBLISHER = "Co-operation, Food and Consumer Protection Department, Government of Tamil Nadu"
 
 
 @dataclass
@@ -63,8 +64,7 @@ def inspect_raw_pdfs(raw_dir: pathlib.Path) -> list[PDFInspectionResult]:
         print(f"[!] Warning: Raw directory does not exist: {raw_dir}")
         return results
 
-    pdf_files = sorted(raw_dir.glob("*.pdf"))
-    for file_path in pdf_files:
+    for file_path in sorted(raw_dir.glob("*.pdf")):
         size = file_path.stat().st_size
         header = b""
         is_valid = False
@@ -76,16 +76,12 @@ def inspect_raw_pdfs(raw_dir: pathlib.Path) -> list[PDFInspectionResult]:
             if header.startswith(PDF_MAGIC):
                 is_valid = True
             elif b"<html" in header.lower() or b"<!doctype" in header.lower():
-                is_valid = False
                 error_reason = "HTML web page saved as PDF"
             elif size == 0:
-                is_valid = False
                 error_reason = "Empty file (0 bytes)"
             else:
-                is_valid = False
                 error_reason = f"Invalid magic bytes ({header[:8]!r})"
         except OSError as exc:
-            is_valid = False
             error_reason = f"Read error: {exc}"
 
         results.append(
@@ -158,10 +154,8 @@ def generate_new_row(doc_id: str, local_path: str, filename: str) -> dict[str, s
     elif "-CIRCULAR-" in upper_id or "-DIR-" in upper_id:
         doc_type = "circular"
 
-    clean_title = doc_id.replace("-", " ").title()
-
     if state == "TN":
-        publisher = "Co-operation, Food and Consumer Protection Department, Government of Tamil Nadu"
+        publisher = TN_PUBLISHER
     elif "RBI" in upper_id:
         publisher = "Reserve Bank of India"
     else:
@@ -170,7 +164,7 @@ def generate_new_row(doc_id: str, local_path: str, filename: str) -> dict[str, s
     today_str = datetime.date.today().isoformat()
     return {
         "doc_id": doc_id,
-        "title": clean_title,
+        "title": doc_id.replace("-", " ").title(),
         "publisher": publisher,
         "doc_type": doc_type,
         "source_url": "",
@@ -195,17 +189,18 @@ def update_sources_csv(
     sources_csv_path: pathlib.Path,
     inspections: list[PDFInspectionResult],
     root_dir: pathlib.Path,
-    dry_run: bool = False,
+    write: bool = False,
+    demote_missing: bool = False,
 ) -> tuple[int, int, int]:
-    """Synchronize inspected PDFs with sources.csv.
+    """Compare the inspected PDFs with sources.csv; change the file only if ``write``.
 
-    Returns:
-        (updated_count, appended_count, unchanged_count)
+    A Y row with a missing or invalid PDF is changed to N only if ``demote_missing`` is also
+    set; otherwise it is only reported. Returns (updated, appended, unchanged).
     """
     if not sources_csv_path.is_file():
         raise FileNotFoundError(f"sources.csv not found at: {sources_csv_path}")
 
-    with open(sources_csv_path, "r", encoding="utf-8-sig", newline="") as f:
+    with open(sources_csv_path, encoding="utf-8-sig", newline="") as f:
         reader = csv.DictReader(f)
         fieldnames = list(reader.fieldnames or [])
         sources = list(reader)
@@ -214,6 +209,8 @@ def update_sources_csv(
     updated_count = 0
     appended_count = 0
     unchanged_count = 0
+    problem_count = 0
+    verb = "WOULD UPDATE" if not write else "UPDATED"
 
     print("\n" + "=" * 80)
     print("STEP 1: INSPECTION & SOURCES.CSV RECONCILIATION")
@@ -222,87 +219,87 @@ def update_sources_csv(
     for item in inspections:
         rel_path = f"data/raw/{item.filename}"
         row_idx = find_matching_row_index(item.filename, rel_path, sources)
+        label = "[VALID PDF]" if item.is_valid else f"[INVALID: {item.error_reason}]"
 
-        if row_idx is not None:
-            matched_indices.add(row_idx)
-            row = sources[row_idx]
-            doc_id = row.get("doc_id", "UNKNOWN")
-            old_use = row.get("use_in_corpus", "")
-            old_path = row.get("local_path", "")
-            target_use = "Y" if item.is_valid else "N"
-
-            needs_update = False
-            changes = []
-
-            if old_use != target_use:
-                row["use_in_corpus"] = target_use
-                needs_update = True
-                changes.append(f"use_in_corpus: '{old_use}' -> '{target_use}'")
-
-            # If it's a valid PDF and the existing path had .html or mismatched filename, fix it
-            if item.is_valid and old_path != rel_path:
-                row["local_path"] = rel_path
-                needs_update = True
-                changes.append(f"local_path: '{old_path}' -> '{rel_path}'")
-
-            if needs_update:
-                updated_count += 1
-                status_label = "[VALID PDF]" if item.is_valid else f"[INVALID: {item.error_reason}]"
-                print(f"  * UPDATED  | {doc_id:<32} {status_label:<32} | {', '.join(changes)}")
-            else:
-                unchanged_count += 1
-                status_label = "[VALID PDF]" if item.is_valid else f"[INVALID: {item.error_reason}]"
-                print(f"  - NO CHANGE| {doc_id:<32} {status_label:<32} | use_in_corpus={old_use}")
-
-        else:
+        if row_idx is None:
             # File exists in data/raw/ but is missing from sources.csv
             if item.is_valid:
                 stem = item.filename.removesuffix(".pdf")
                 new_doc_id = stem.rsplit("_", 1)[0] if "_" in stem else stem
-                new_row = generate_new_row(new_doc_id, rel_path, item.filename)
-                sources.append(new_row)
+                sources.append(generate_new_row(new_doc_id, rel_path, item.filename))
                 matched_indices.add(len(sources) - 1)
                 appended_count += 1
-                print(f"  + APPENDED | {new_doc_id:<32} [NEW VALID PDF]               | Added row with use_in_corpus='Y'")
+                print(
+                    f"  + {'ADD' if not write else 'ADDED':<12}| {new_doc_id:<32} [NEW VALID PDF]"
+                )
             else:
-                print(f"  ! SKIPPED  | {item.filename:<32} [UNMATCHED & INVALID]          | {item.error_reason}")
+                print(
+                    f"  ! SKIPPED    | {item.filename:<32} [UNMATCHED, INVALID] {item.error_reason}"
+                )
+            continue
 
-    # Also verify existing rows that were NOT in data/raw: if file is missing, ensure use_in_corpus='N'
-    for idx, row in enumerate(sources):
-        if idx not in matched_indices:
-            doc_id = row.get("doc_id", "")
-            local_path = row.get("local_path", "").strip()
-            cur_use = row.get("use_in_corpus", "")
-            full_path = root_dir / local_path if local_path else None
-            exists = full_path.is_file() if full_path else False
+        matched_indices.add(row_idx)
+        row = sources[row_idx]
+        doc_id = row.get("doc_id", "UNKNOWN")
+        old_use = row.get("use_in_corpus", "")
+        old_path = row.get("local_path", "")
+        changes = []
 
-            if not exists and cur_use == "Y":
+        # A valid PDF whose row points elsewhere (for example a stale .html name).
+        if item.is_valid and old_path != rel_path:
+            row["local_path"] = rel_path
+            changes.append(f"local_path: '{old_path}' -> '{rel_path}'")
+
+        if not item.is_valid and old_use == "Y":
+            problem_count += 1
+            if demote_missing:
                 row["use_in_corpus"] = "N"
-                updated_count += 1
-                print(f"  * UPDATED  | {doc_id:<32} [MISSING FILE]                  | use_in_corpus: 'Y' -> 'N'")
+                changes.append("use_in_corpus: 'Y' -> 'N'")
+            else:
+                print(
+                    f"  ! PROBLEM    | {doc_id:<32} {label} (still Y; --demote-missing to change)"
+                )
+        elif item.is_valid and old_use != "Y":
+            print(f"  ? SUGGEST    | {doc_id:<32} valid PDF but use_in_corpus={old_use!r}")
+
+        if changes:
+            updated_count += 1
+            print(f"  * {verb:<10} | {doc_id:<32} {label} | {', '.join(changes)}")
+        else:
+            unchanged_count += 1
+
+    # Y rows whose file is not in data/raw/ at all (git ignores data/raw, so this is common).
+    for idx, row in enumerate(sources):
+        if idx in matched_indices or row.get("use_in_corpus", "") != "Y":
+            continue
+        local_path = row.get("local_path", "").strip()
+        if local_path and (root_dir / local_path).is_file():
+            continue
+        problem_count += 1
+        doc_id = row.get("doc_id", "")
+        if demote_missing:
+            row["use_in_corpus"] = "N"
+            updated_count += 1
+            print(f"  * {verb:<10} | {doc_id:<32} [MISSING FILE] | use_in_corpus: 'Y' -> 'N'")
+        else:
+            print(f"  ! PROBLEM    | {doc_id:<32} [MISSING FILE] {local_path} (still Y)")
 
     print("-" * 80)
-    print(f"Summary: {updated_count} updated, {appended_count} newly added, {unchanged_count} unchanged.")
+    print(
+        f"Summary: {updated_count} to update, {appended_count} to add, {unchanged_count} "
+        f"unchanged, {problem_count} Y row(s) with a missing or invalid PDF."
+    )
 
-    if not dry_run and (updated_count > 0 or appended_count > 0):
+    if write and (updated_count > 0 or appended_count > 0):
         with open(sources_csv_path, "w", encoding="utf-8", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_MINIMAL)
             writer.writeheader()
             writer.writerows(sources)
         print(f"[OK] Saved updated sources to: {sources_csv_path}")
-    elif dry_run:
-        print("[i] Dry-run enabled: sources.csv was not modified.")
+    else:
+        print("[i] Report only: sources.csv was not modified (use --write to update it).")
 
     return updated_count, appended_count, unchanged_count
-
-
-def get_docker_compose_command() -> list[str]:
-    """Detect available docker compose command (prefer docker-compose if present)."""
-    if shutil.which("docker-compose"):
-        return ["docker-compose"]
-    if shutil.which("docker"):
-        return ["docker", "compose"]
-    return ["docker-compose"]
 
 
 def run_command_streaming(cmd: list[str], description: str) -> tuple[int, list[str]]:
@@ -329,122 +326,125 @@ def run_command_streaming(cmd: list[str], description: str) -> tuple[int, list[s
     return process.returncode, lines
 
 
+def tally(ingest_output: list[str]) -> tuple[list[str], int, int]:
+    """(documents, chunks, vectors) reported by ingest_corpus."""
+    docs: list[str] = []
+    chunks = 0
+    vectors = 0
+    for line in ingest_output:
+        # "Saved 157 chunks to PostgreSQL for CEN-MSCS-ACT-2023."
+        saved = re.search(r"Saved\s+(\d+)\s+chunks\s+to\s+PostgreSQL\s+for\s+([\w\-]+)", line)
+        if saved:
+            chunks += int(saved.group(1))
+            docs.append(saved.group(2))
+        upserted = re.search(r"Upserted\s+(\d+)\s+vectors\s+to\s+Qdrant", line)
+        if upserted:
+            vectors += int(upserted.group(1))
+    return docs, chunks, vectors
+
+
 def run_corpus_expansion_pipeline(
     raw_dir: pathlib.Path = DEFAULT_RAW_DIR,
     sources_csv_path: pathlib.Path = DEFAULT_SOURCES_CSV,
     skip_ingest: bool = False,
     dry_run: bool = False,
+    write: bool = False,
+    demote_missing: bool = False,
 ) -> int:
-    """Execute the full automated corpus expansion pipeline."""
+    """Report on the corpus files; with --write update sources.csv and ingest."""
     print("\n========================================================")
-    print(" Sahkar-Saathi: Corpus Expansion & Ingestion Automation")
+    print(" Sahkar-Saathi: Corpus Check & Ingestion")
     print("========================================================")
 
-    # Step 1 & 2: Scan and inspect PDFs
     inspections = inspect_raw_pdfs(raw_dir)
     valid_count = sum(1 for i in inspections if i.is_valid)
-    invalid_count = len(inspections) - valid_count
     print(f"\nFound {len(inspections)} PDF files in {raw_dir}:")
     print(f"  * Valid readable PDFs:   {valid_count}")
-    print(f"  * Corrupted / HTML error: {invalid_count}")
+    print(f"  * Corrupted / HTML error: {len(inspections) - valid_count}")
 
-    # Step 3: Update sources.csv
-    update_sources_csv(sources_csv_path, inspections, ROOT, dry_run=dry_run)
+    write = write and not dry_run
+    update_sources_csv(
+        sources_csv_path, inspections, ROOT, write=write, demote_missing=demote_missing
+    )
 
-    if skip_ingest or dry_run:
-        print("\n[i] Ingestion skipped as requested (--skip-ingest or --dry-run).")
+    if not write or skip_ingest:
+        print("\n[i] Ingestion skipped (it runs only with --write, and not with --skip-ingest).")
         return 0
 
-    compose_cmd = get_docker_compose_command()
+    compose = ["docker", "compose", "exec", "-T", COMPOSE_SERVICE, "python", "manage.py"]
 
-    # Step 4a: Synchronize PostgreSQL documents metadata
     print("\n" + "=" * 80)
     print("STEP 2: SYNC POSTGRESQL DOCUMENT METADATA (load_sources)")
     print("=" * 80)
-    load_cmd = compose_cmd + ["exec", "-T", "web", "python", "manage.py", "load_sources"]
-    rc_load, _ = run_command_streaming(load_cmd, "Syncing metadata with load_sources")
+    rc_load, _ = run_command_streaming(compose + ["load_sources"], "Syncing with load_sources")
     if rc_load != 0:
         print(f"[!] Warning: load_sources exited with return code {rc_load}.")
 
-    # Step 4b: Execute corpus ingestion
     print("\n" + "=" * 80)
     print("STEP 3: EXECUTE CORPUS INGESTION (ingest_corpus)")
     print("=" * 80)
-    ingest_cmd = compose_cmd + ["exec", "-T", "web", "python", "manage.py", "ingest_corpus"]
-    rc_ingest, ingest_output = run_command_streaming(ingest_cmd, "Ingesting corpus and seeding Qdrant vectors")
+    rc_ingest, ingest_output = run_command_streaming(
+        compose + ["ingest_corpus"], "Ingesting corpus and seeding Qdrant vectors"
+    )
 
-    # Step 5: Report final tally
     print("\n" + "=" * 80)
-    print("STEP 4: FINAL CORPUS EXPANSION TALLY")
+    print("STEP 4: FINAL CORPUS TALLY")
     print("=" * 80)
-
-    ingested_docs: list[str] = []
-    total_chunks = 0
-    total_vectors = 0
-
-    for line in ingest_output:
-        # Match chunks saved: "Saved 157 chunks to PostgreSQL for CEN-MSCS-ACT-2023."
-        chunk_match = re.search(r"Saved\s+(\d+)\s+chunks\s+to\s+PostgreSQL\s+for\s+([A-Za-z0-9\-_]+)", line)
-        if chunk_match:
-            chunks = int(chunk_match.group(1))
-            doc_id = chunk_match.group(2)
-            ingested_docs.append(doc_id)
-            total_chunks += chunks
-
-        vec_match = re.search(r"Upserted\s+(\d+)\s+vectors\s+to\s+Qdrant", line)
-        if vec_match:
-            total_vectors += int(vec_match.group(1))
-
-    print(f"Documents Ingested:        {len(ingested_docs)}")
+    docs, total_chunks, total_vectors = tally(ingest_output)
+    status = "SUCCESS (Exit code 0)" if rc_ingest == 0 else f"FAILED (Exit code {rc_ingest})"
+    print(f"Documents Ingested:        {len(docs)}")
     print(f"Total Chunks Saved to DB:  {total_chunks}")
     print(f"Total Vectors in Qdrant:   {total_vectors}")
-    print(f"Ingest Command Status:     {'SUCCESS (Exit code 0)' if rc_ingest == 0 else f'FAILED (Exit code {rc_ingest})'}")
-
-    if ingested_docs:
-        print("\nBreakdown of Ingested Documents:")
-        for idx, doc_id in enumerate(ingested_docs, 1):
-            print(f"  {idx:02d}. {doc_id}")
-
+    print(f"Ingest Command Status:     {status}")
+    for idx, doc_id in enumerate(docs, 1):
+        print(f"  {idx:02d}. {doc_id}")
     print("=" * 80 + "\n")
     return rc_ingest
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> int:
+    if sys.platform == "win32":
+        # UTF-8 console output on Windows, so non-ASCII text cannot raise UnicodeEncodeError.
+        for stream in (sys.stdout, sys.stderr):
+            if hasattr(stream, "reconfigure"):
+                stream.reconfigure(encoding="utf-8", errors="replace")
+
     parser = argparse.ArgumentParser(
-        description="Automate Sahkar-Saathi corpus expansion and ingestion."
+        description="Check data/raw/ against sources.csv (report only unless --write)."
+    )
+    parser.add_argument("--raw-dir", type=pathlib.Path, default=DEFAULT_RAW_DIR)
+    parser.add_argument("--sources-csv", type=pathlib.Path, default=DEFAULT_SOURCES_CSV)
+    parser.add_argument(
+        "--write",
+        action="store_true",
+        help="Update sources.csv (path fixes, new rows), then run load_sources and ingest_corpus",
     )
     parser.add_argument(
-        "--raw-dir",
-        type=pathlib.Path,
-        default=DEFAULT_RAW_DIR,
-        help="Path to data/raw/ directory",
-    )
-    parser.add_argument(
-        "--sources-csv",
-        type=pathlib.Path,
-        default=DEFAULT_SOURCES_CSV,
-        help="Path to data/sources.csv",
+        "--demote-missing",
+        action="store_true",
+        help="With --write, set use_in_corpus Y -> N for rows whose PDF is missing or invalid",
     )
     parser.add_argument(
         "--skip-ingest",
         action="store_true",
-        help="Only update sources.csv, skip Docker ingestion command",
+        help="With --write, only update sources.csv; do not run the Docker commands",
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Inspect files and report updates without modifying sources.csv or running ingestion",
+        help="Report only, even with --write: change nothing and ingest nothing",
     )
 
-    args = parser.parse_args()
-    rc = run_corpus_expansion_pipeline(
+    args = parser.parse_args(argv)
+    return run_corpus_expansion_pipeline(
         raw_dir=args.raw_dir,
         sources_csv_path=args.sources_csv,
         skip_ingest=args.skip_ingest,
         dry_run=args.dry_run,
+        write=args.write,
+        demote_missing=args.demote_missing,
     )
-    sys.exit(rc)
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -13,6 +13,7 @@ from apps.knowledge.management.commands.ingest_corpus import (
     PASSAGE_PREFIX,
     build_chunk_payload,
     embedding_input,
+    is_pdf,
 )
 from apps.knowledge.models import Chunk, Document
 
@@ -290,3 +291,76 @@ def test_ingest_explains_missing_ml_packages(monkeypatch):
     monkeypatch.setitem(sys.modules, "pdfplumber", None)  # the import fails
     with pytest.raises(CommandError, match="INSTALL_ML=true"):
         run("ingest_corpus")
+
+
+# --- the %PDF- header check and the write order ---------------------------------------
+
+
+def test_is_pdf_checks_the_header(tmp_path):
+    real = tmp_path / "real.pdf"
+    real.write_bytes(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n")
+    html = tmp_path / "page.pdf"
+    html.write_bytes(b"<!DOCTYPE html><html><body>404 Not Found</body></html>")
+    empty = tmp_path / "empty.pdf"
+    empty.write_bytes(b"")
+
+    assert is_pdf(real)
+    assert not is_pdf(html)
+    assert not is_pdf(empty)
+    assert not is_pdf(tmp_path / "missing.pdf")
+
+
+def test_ingest_reports_a_non_pdf_and_keeps_its_existing_chunks(ingest, tmp_path):
+    keep = make_document("DOC-A")
+    make_chunk(keep, 1)
+    make_document("DOC-B")
+    html = tmp_path / "a.pdf"
+    html.write_bytes(b"<html>error page</html>")
+    ingest.write_csv(
+        [
+            ("DOC-A", "Y", str(html)),
+            ("DOC-B", "Y", ingest.add_pdf("b.pdf", "some text")),
+        ]
+    )
+
+    out = run("ingest_corpus")
+
+    assert "DOC-A: not a PDF" in out
+    assert list(Chunk.objects.filter(document_id="DOC-A").values_list("text", flat=True)) == [
+        "chunk 1"
+    ]
+    assert Chunk.objects.filter(document_id="DOC-B").count() == 1
+    assert ingest.deleted == [COLLECTION]  # only DOC-B's points were replaced
+
+
+def test_ingest_keeps_existing_chunks_when_the_pdf_has_no_text(ingest):
+    make_chunk(make_document("DOC-A"), 1)
+    make_document("DOC-B")
+    ingest.write_csv(
+        [
+            ("DOC-A", "Y", ingest.add_pdf("a.pdf", "")),
+            ("DOC-B", "Y", ingest.add_pdf("b.pdf", "some text")),
+        ]
+    )
+
+    out = run("ingest_corpus")
+
+    assert "DOC-A: PDF yielded zero chunks" in out
+    assert Chunk.objects.filter(document_id="DOC-A", text="chunk 1").exists()
+
+
+def test_ingest_write_failure_raises_and_keeps_the_old_chunks(ingest):
+    make_chunk(make_document("DOC-A"), 1)
+    ingest.write_csv([("DOC-A", "Y", ingest.add_pdf("a.pdf", "new text"))])
+
+    def broken_upsert(self, collection_name, points):
+        raise RuntimeError("qdrant is down")
+
+    sys.modules["qdrant_client"].QdrantClient.upsert = broken_upsert
+
+    with pytest.raises(RuntimeError, match="qdrant is down"):
+        run("ingest_corpus")
+
+    assert list(Chunk.objects.filter(document_id="DOC-A").values_list("text", flat=True)) == [
+        "chunk 1"
+    ]

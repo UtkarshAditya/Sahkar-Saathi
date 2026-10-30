@@ -5,13 +5,34 @@ from pathlib import Path
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
+from django.db import transaction
 
 from apps.knowledge.models import Chunk, Document
 
+# The ML packages (pdfplumber, qdrant-client, sentence-transformers) are imported inside
+# handle(), so this module, and its helpers below, import without them (CI has none).
+
+# multilingual-e5 expects this prefix on passages. It belongs on the string that is
+# embedded only; the stored text (Chunk rows and Qdrant payloads) stays clean.
 PASSAGE_PREFIX = "passage: "
+PDF_MAGIC = b"%PDF-"
+
+
+def is_pdf(path: Path) -> bool:
+    """True if the file exists and starts with the PDF signature.
+
+    Catches HTML error pages and other files saved with a .pdf name, which the PDF reader
+    would otherwise choke on. A missing or unreadable file is simply "not a PDF".
+    """
+    try:
+        with open(path, "rb") as handle:
+            return handle.read(len(PDF_MAGIC)) == PDF_MAGIC
+    except OSError:
+        return False
 
 
 def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> list[str]:
+    """Split text into chunks by character length with overlap (~500 chars, ~50 chars overlap)."""
     text = text.strip()
     if not text:
         return []
@@ -34,6 +55,7 @@ def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> list[str]
 
 
 def embedding_input(text: str) -> str:
+    """The string to embed for a stored chunk text (adds the e5 "passage: " prefix)."""
     return f"{PASSAGE_PREFIX}{text}"
 
 
@@ -42,6 +64,11 @@ def build_chunk_payload(
     page: int | None,
     text: str,
 ) -> dict:
+    """Build standardized chunk payload dictionary for Qdrant storage.
+
+    ``text`` is the clean chunk text. It is stored without the "passage: " prefix, so a
+    retrieved Passage.text never starts with it and matches the Chunk row exactly.
+    """
     return {
         "doc_id": document.id,
         "document_title": document.title,
@@ -88,6 +115,7 @@ class Command(BaseCommand):
         qdrant_url = getattr(settings, "QDRANT_URL", "http://localhost:6333")
         client = QdrantClient(url=qdrant_url)
 
+        # Ensure Qdrant collection exists
         collections = client.get_collections().collections
         exists = any(c.name == collection_name for c in collections)
         vector_size = model.get_embedding_dimension()
@@ -121,6 +149,7 @@ class Command(BaseCommand):
         documents_processed = 0
         chunks_written = 0
         vectors_upserted = 0
+        # use_in_corpus=Y documents that produced nothing: (doc_id, why)
         problems: list[tuple[str, str]] = []
 
         with open(csv_path, encoding="utf-8-sig") as f:
@@ -143,6 +172,8 @@ class Command(BaseCommand):
                     problems.append((doc_id, "no Document row (run load_sources; row skipped?)"))
                     continue
 
+                # local_path is relative to backend/ (/app in the container); on a dev
+                # machine it is usually relative to the repository root.
                 pdf_file = settings.BASE_DIR / local_path if local_path else None
                 if pdf_file is None or not pdf_file.is_file():
                     pdf_file = Path(settings.BASE_DIR).parent / local_path if local_path else None
@@ -153,64 +184,81 @@ class Command(BaseCommand):
                     problems.append((doc_id, f"PDF not found ({local_path or 'no local_path'})"))
                     continue
 
+                if not is_pdf(pdf_file):
+                    self.stdout.write(
+                        self.style.WARNING(f"Skipping {doc_id}: {pdf_file.name} is not a PDF")
+                    )
+                    problems.append((doc_id, f"not a PDF (no %PDF- header): {local_path}"))
+                    continue
+
                 self.stdout.write(f"Processing PDF for document: {doc_id}...")
 
+                # Read the whole PDF first, so an unreadable file changes nothing. Only the
+                # read is guarded: a failure while writing below must raise, not be swallowed.
+                pages_and_chunks: list[tuple[int, str]] = []
                 try:
-                    # Explicit magic-byte header validation to prevent non-PDF/HTML error pages from crashing parser
-                    with open(pdf_file, "rb") as header_file:
-                        file_header = header_file.read(5)
-                    if not file_header.startswith(b"%PDF-"):
-                        self.stdout.write(
-                            self.style.WARNING(f"Skipping non-PDF file for {doc_id} (header: {file_header!r})")
-                        )
-                        problems.append((doc_id, f"Not a valid PDF (invalid header {file_header!r})"))
-                        continue
-
-                    pages_and_chunks: list[tuple[int, str]] = []
                     with pdfplumber.open(pdf_file) as pdf:
                         for page_num, page in enumerate(pdf.pages, start=1):
                             raw_text = page.extract_text()
                             if not raw_text:
                                 continue
+                            # Chunking text into ~500 character blocks with ~50 chars overlap
                             for chunk_str in chunk_text(raw_text, chunk_size=500, overlap=50):
                                 pages_and_chunks.append((page_num, chunk_str))
+                except Exception as exc:  # corrupt or encrypted PDF
+                    self.stdout.write(
+                        self.style.WARNING(f"Could not read the PDF for {doc_id}: {exc}")
+                    )
+                    problems.append((doc_id, f"PDF could not be read ({exc.__class__.__name__})"))
+                    continue
 
-                    documents_processed += 1
-                    if not pages_and_chunks:
-                        problems.append((doc_id, "PDF yielded zero chunks (scanned, no text?)"))
-                        continue
+                documents_processed += 1
+                if not pages_and_chunks:
+                    # Nothing to write: keep whatever this document already has.
+                    problems.append((doc_id, "PDF yielded zero chunks (scanned, no text?)"))
+                    continue
 
-                    Chunk.objects.filter(document=document).delete()
+                chunk_records = []
+                qdrant_points = []
 
-                    chunk_records = []
-                    qdrant_points = []
+                for page_num, chunk_str in pages_and_chunks:
+                    vector_id = str(uuid.uuid4())
+                    embedding = model.encode(embedding_input(chunk_str)).tolist()
 
-                    for page_num, chunk_str in pages_and_chunks:
-                        vector_id = str(uuid.uuid4())
-                        embedding = model.encode(embedding_input(chunk_str)).tolist()
-
-                        chunk_records.append(
-                            Chunk(
+                    chunk_records.append(
+                        Chunk(
+                            document=document,
+                            text=chunk_str,
+                            page=page_num,
+                            state=document.state,
+                            language=document.language,
+                            vector_id=vector_id,
+                        )
+                    )
+                    qdrant_points.append(
+                        qdrant_models.PointStruct(
+                            id=vector_id,
+                            vector=embedding,
+                            payload=build_chunk_payload(
                                 document=document,
-                                text=chunk_str,
                                 page=page_num,
-                                state=document.state,
-                                language=document.language,
-                                vector_id=vector_id,
-                            )
+                                text=chunk_str,
+                            ),
                         )
-                        qdrant_points.append(
-                            qdrant_models.PointStruct(
-                                id=vector_id,
-                                vector=embedding,
-                                payload=build_chunk_payload(
-                                    document=document,
-                                    page=page_num,
-                                    text=chunk_str,
-                                ),
-                            )
-                        )
+                    )
 
+                # Everything is read and embedded; only now replace the old chunks. The
+                # PostgreSQL part is one transaction, so a failed write keeps the old rows.
+                with transaction.atomic():
+                    # Clear existing chunks for this doc to prevent duplication on re-runs
+                    Chunk.objects.filter(document=document).delete()
+                    Chunk.objects.bulk_create(chunk_records)
+                    chunks_written += len(chunk_records)
+                    self.stdout.write(
+                        f"Saved {len(chunk_records)} chunks to PostgreSQL for {doc_id}."
+                    )
+
+                    # Clear existing points for this document from Qdrant before upserting
                     client.delete(
                         collection_name=collection_name,
                         points_selector=qdrant_models.FilterSelector(
@@ -224,32 +272,16 @@ class Command(BaseCommand):
                             )
                         ),
                     )
-
-                    if chunk_records:
-                        Chunk.objects.bulk_create(chunk_records)
-                        chunks_written += len(chunk_records)
-                        self.stdout.write(
-                            f"Saved {len(chunk_records)} chunks to PostgreSQL for {doc_id}."
-                        )
-
-                    if qdrant_points:
-                        client.upsert(
-                            collection_name=collection_name,
-                            points=qdrant_points,
-                        )
-                        vectors_upserted += len(qdrant_points)
-                        self.stdout.write(
-                            self.style.SUCCESS(
-                                f"Upserted {len(qdrant_points)} vectors to Qdrant for {doc_id}."
-                            )
-                        )
-
-                except Exception as exc:
-                    self.stdout.write(
-                        self.style.WARNING(f"Skipping corrupt or invalid PDF for {doc_id}: {exc}")
+                    client.upsert(
+                        collection_name=collection_name,
+                        points=qdrant_points,
                     )
-                    problems.append((doc_id, f"PDF could not be read ({exc.__class__.__name__})"))
-                    continue
+                    vectors_upserted += len(qdrant_points)
+                    self.stdout.write(
+                        self.style.SUCCESS(
+                            f"Upserted {len(qdrant_points)} vectors to Qdrant for {doc_id}."
+                        )
+                    )
 
         self.stdout.write(
             f"\nIngest summary: documents processed {documents_processed}, "
