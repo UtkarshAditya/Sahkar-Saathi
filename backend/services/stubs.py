@@ -100,11 +100,12 @@ class StubRetriever:
         language: str | None,
         top_k: int = 4,
         document_id: str | None = None,
+        score_threshold: float | None = None,
     ) -> list[Passage]:
         q = query.lower()
         if _looks_like_gibberish(q):
-            return [_with_score(_CANNED[0], 0.12)]  # below any sensible threshold
-        if _contains(q, _PMFBY_WORDS):
+            hits = [_with_score(_CANNED[0], 0.12)]  # below any sensible threshold
+        elif _contains(q, _PMFBY_WORDS):
             hits = [_CANNED[0]]
         elif _contains(q, _LAW_WORDS):
             hits = [p for p in _CANNED[1:] if p.state in (None, state)]
@@ -112,6 +113,8 @@ class StubRetriever:
             hits = [_with_score(_CANNED[2], 0.2)]
         if document_id:
             hits = [p for p in hits if p.document_id == document_id] or hits
+        if score_threshold is not None:
+            hits = [p for p in hits if p.score >= score_threshold]
         return hits[:top_k]
 
 

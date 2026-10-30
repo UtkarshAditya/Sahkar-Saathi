@@ -17,6 +17,7 @@ npm-debug.log*
 # Personal tooling
 powershell.bat
 **/powershell.bat
+powershell.exe
 
 # Editor / OS
 .vscode/*

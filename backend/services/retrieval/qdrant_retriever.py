@@ -59,10 +59,14 @@ class QdrantRetriever:
         collection_name: str = "sahkar_saathi_chunks",
         model: SentenceTransformer | None = None,
         client: QdrantClient | None = None,
+        score_threshold: float | None = None,
+        score_threshold_by_lang: dict[str, float] | None = None,
     ):
         self.collection_name = collection_name
         self._model = model
         self._client = client
+        self.score_threshold = score_threshold
+        self.score_threshold_by_lang = score_threshold_by_lang or {}
 
     @property
     def model(self) -> SentenceTransformer:
@@ -102,6 +106,7 @@ class QdrantRetriever:
         language: str | None = None,
         top_k: int = 4,
         document_id: str | None = None,
+        score_threshold: float | None = None,
     ) -> list[Passage]:
         # 1. Prefix query with "query: " for multilingual-e5
         formatted_query = f"query: {query}"
@@ -152,14 +157,32 @@ class QdrantRetriever:
 
         query_filter = qdrant_models.Filter(must=must_conditions) if must_conditions else None
 
+        # Determine threshold by language if configured
+        effective_threshold = score_threshold
+        if effective_threshold is None and language and self.score_threshold_by_lang:
+            effective_threshold = self.score_threshold_by_lang.get(language, self.score_threshold)
+        elif effective_threshold is None:
+            effective_threshold = self.score_threshold
+
+        query_kwargs = {
+            "collection_name": self.collection_name,
+            "query": query_vector,
+            "query_filter": query_filter,
+            "limit": top_k,
+        }
+        if effective_threshold is not None:
+            query_kwargs["score_threshold"] = effective_threshold
+
         # 3. Perform similarity search in Qdrant using query_points (offload I/O call to thread)
-        response = await asyncio.to_thread(
-            self.client.query_points,
-            collection_name=self.collection_name,
-            query=query_vector,
-            query_filter=query_filter,
-            limit=top_k,
-        )
+        try:
+            response = await asyncio.to_thread(
+                self.client.query_points,
+                **query_kwargs,
+            )
+        except Exception as exc:
+            raise ServiceNotReady(
+                "The retriever is unavailable. Start Qdrant or set USE_STUB_RETRIEVER=true."
+            ) from exc
         search_results = response.points
 
         # 4. Map Qdrant hits into Passage objects

@@ -17,6 +17,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from .answer_checks import repeats_question, unsupported_numbers
 from .llm import generate, model_name
 from .stubs import DEFAULT_CONTACT
 from .types import Answer, Contact, Passage, Retriever
@@ -99,18 +100,24 @@ class GroundedAnswerService:
         self,
         retriever: Retriever,
         min_score: float = 0.0,
+        min_score_by_lang: dict[str, float] | None = None,
         retries: int = 1,
         top_k: int = 4,
         contact: Contact | None = None,
+        fast_path=None,
     ) -> None:
         # min_score depends on the embedding model's score scale, so re-tune it
         # whenever B changes the embedding model.
         self.retriever = retriever
         self.min_score = min_score
+        self.min_score_by_lang = min_score_by_lang or {}
         self.retries = retries
         self.top_k = top_k
         # Who a declined answer points to; the API wiring passes HELPLINE_LABEL/DETAIL.
         self.contact = contact or DEFAULT_CONTACT
+        # Optional: answers questions covered by a verified fact in schemes.yaml straight from
+        # that fact (services/schemes_fastpath.py). None means every question goes to the model.
+        self.fast_path = fast_path
 
     async def ask(
         self,
@@ -120,6 +127,11 @@ class GroundedAnswerService:
         state: str | None,
         document_id: str | None = None,
     ) -> Answer:
+        # "Ask about this document" must stay limited to that document, so skip the fast path.
+        if self.fast_path is not None and document_id is None:
+            fast = self.fast_path.answer(text, language)
+            if fast is not None:
+                return fast
         # TODO Sprint 2: if the question needs a state and state is None, return
         # Answer(needs_state=True, ...) before searching.
         passages = await self.retriever.search(
@@ -128,7 +140,12 @@ class GroundedAnswerService:
         top_score = max((p.score for p in passages), default=None)
 
         # Check 1: is the evidence strong enough to even try?
-        if top_score is None or top_score < self.min_score:
+        effective_min_score = (
+            self.min_score_by_lang.get(language, self.min_score)
+            if self.min_score_by_lang
+            else self.min_score
+        )
+        if top_score is None or top_score < effective_min_score:
             return self._declined(language, top_score, "low_score")
 
         user = build_user_prompt(text, passages, language)
@@ -142,8 +159,15 @@ class GroundedAnswerService:
                 continue
             if out.status == "declined":
                 return self._declined(language, top_score, "model_declined")
+            if repeats_question(text, out.answer_text):
+                logger.info("answer repeats the question; retrying")
+                continue
             if out.cited_ids and all(1 <= i <= len(passages) for i in out.cited_ids):
                 cited = [passages[i - 1] for i in dict.fromkeys(out.cited_ids)]
+                invented = unsupported_numbers(out.answer_text, [p.text for p in cited], text)
+                if invented:
+                    logger.info("answer has numbers not in its sources: %s", sorted(invented))
+                    continue
                 return Answer(
                     text=out.answer_text,
                     status="answered",
