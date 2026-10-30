@@ -1,8 +1,7 @@
 {
   "app": {
     "name": "Sahkar Saathi",
-    "tagline": "Cooperative guidance in your language",
-    "demoBadge": "Demo build · sample data"
+    "tagline": "Cooperative guidance in your language"
   },
   "nav": {
     "primary": "Main navigation",
@@ -184,7 +183,6 @@
     "thanks": "Thank you for your rating. It helps improve the answers."
   },
   "common": {
-    "sample": "Sample data",
     "demo": "Demo",
     "source": "Source",
     "asOf": "As of",

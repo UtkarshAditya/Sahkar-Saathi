@@ -70,15 +70,10 @@ export default function LawLibraryPage() {
         title={t('pages.library.title')}
         description={t('pages.library.description')}
         icon={<BookOpen className="size-6" aria-hidden />}
-        badges={
-          <Badge tone="saffron">{t('common.sample')}: metadata and links to be verified</Badge>
-        }
       />
 
       <Notice tone="info" className="mb-6">
-        These entries are sample metadata only. Real titles, dates, versions and links will be
-        filled in by the ingestion pipeline. “Ask about this document” limits your next question to
-        that document.
+        “Ask about this document” limits your next question to that document.
       </Notice>
 
       <Card padding="sm" className="mb-6">

@@ -19,7 +19,6 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Badge } from '@/components/common/Badge';
 import { Button } from '@/components/common/Button';
 import { ErrorState, LoadingState } from '@/components/common/EmptyState';
 import { Notice } from '@/components/common/Notice';
@@ -426,7 +425,6 @@ function RouteStep({ guide, stateCode, onBack, onStartOver }: RouteStepProps) {
       <div className="-mt-2 flex flex-wrap items-center gap-2 text-sm text-ink-soft">
         <span className="text-ink-muted">{t('grievance.problemLabel')}:</span>
         <span className="font-semibold text-ink">{guide.category.label}</span>
-        {USE_MOCKS && guide.is_demo && <Badge tone="saffron">{t('common.sample')}</Badge>}
       </div>
 
       {noRoute ? (

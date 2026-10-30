@@ -17,12 +17,10 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
-import { Badge } from '@/components/common/Badge';
 import { Button, ButtonLink } from '@/components/common/Button';
 import { Card, CardTitle } from '@/components/common/Card';
 import { Notice } from '@/components/common/Notice';
 import { PageHeader } from '@/components/common/PageHeader';
-import { MOCK_DOCUMENTS } from '@/data/mockDocuments';
 import { LANGUAGES } from '@/i18n';
 import { api, ApiError, USE_MOCKS } from '@/services/api';
 
@@ -75,7 +73,6 @@ const FEEDBACK_TYPES = [
 
 export default function AboutPage() {
   const { t } = useTranslation();
-  const activeDocs = MOCK_DOCUMENTS.filter((d) => d.status === 'active').length;
 
   return (
     <>
@@ -194,17 +191,12 @@ export default function AboutPage() {
           <CardTitle
             icon={<Eye className="size-5" aria-hidden />}
             title={<span id="sources">Source transparency</span>}
-            action={<Badge tone="saffron">{t('common.sample')}</Badge>}
           />
           <p className="text-ink-soft">
             The assistant searches a small set of public documents: the Multi-State Co-operative
             Societies Act, model by-laws, one state’s Act and rules, and scheme guidelines. Each has
             a recorded publisher, date and version, and outdated versions are retired, not silently
             replaced.
-          </p>
-          <p className="mt-2 text-sm text-ink-muted">
-            The library currently lists {activeDocs} active sample entries. Real metadata will
-            replace them after ingestion.
           </p>
           <ButtonLink
             to="/library"
