@@ -6,7 +6,6 @@ import {
   FileText,
   GraduationCap,
   Info,
-  Landmark,
   Languages,
   Lock,
   MessageSquareText,
@@ -52,8 +51,7 @@ const HOW_IT_WORKS = [
 
 const ASSISTANCE = [
   { icon: BookOpen, title: 'Cooperative law and by-laws', to: '/library' },
-  { icon: Sprout, title: 'Crop insurance (PMFBY)', to: '/crop-insurance' },
-  { icon: Landmark, title: 'Schemes and services', to: '/schemes' },
+  { icon: Sprout, title: 'Crop insurance (PMFBY)', to: '/' },
   { icon: Scale, title: 'Grievance guidance', to: '/grievance' },
   { icon: GraduationCap, title: 'Financial literacy basics', to: '/learn' },
   { icon: MessageSquareText, title: 'General questions', to: '/' },

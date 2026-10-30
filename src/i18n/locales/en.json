@@ -19,8 +19,6 @@
     "ask": "Ask",
     "grievance": "Grievance redressal",
     "about": "About & help",
-    "cropInsurance": "Crop insurance",
-    "schemes": "Schemes & services",
     "library": "Law library",
     "learn": "Financial literacy",
     "quality": "Quality dashboard",
@@ -56,14 +54,6 @@
     "about": {
       "title": "About & help",
       "description": "How Sahkar Saathi works, what it cannot do, which sources it uses and how your privacy is protected."
-    },
-    "cropInsurance": {
-      "title": "Crop insurance guide",
-      "description": "Pradhan Mantri Fasal Bima Yojana (PMFBY), step by step: who can enrol, how, and what to do after crop loss."
-    },
-    "schemes": {
-      "title": "Schemes & services",
-      "description": "Browse schemes and services for cooperatives and their members. Each card shows its source and date."
     },
     "library": {
       "title": "Law & by-laws library",
@@ -196,7 +186,6 @@
   "common": {
     "sample": "Sample data",
     "demo": "Demo",
-    "placeholder": "Placeholder",
     "source": "Source",
     "asOf": "As of",
     "page": "Page",
@@ -204,8 +193,6 @@
     "datePending": "Date pending",
     "dateNotStated": "Date not stated",
     "linkPending": "Link pending",
-    "askAboutThis": "Ask about this",
-    "viewDetails": "View details",
     "close": "Close",
     "search": "Search",
     "all": "All",

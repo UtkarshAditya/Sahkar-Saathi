@@ -3,11 +3,9 @@ import {
   ChartColumn,
   GraduationCap,
   Info,
-  Landmark,
   MessageSquareText,
   Scale,
   Settings,
-  Sprout,
   type LucideIcon,
 } from 'lucide-react';
 import { USE_MOCKS } from '@/services/api';
@@ -48,14 +46,6 @@ export const NAV_ITEMS: NavItem[] = [
     primaryOnMobile: true,
   },
   { to: '/library', labelKey: 'nav.library', pageKey: 'library', icon: BookOpen, group: 'library' },
-  { to: '/schemes', labelKey: 'nav.schemes', pageKey: 'schemes', icon: Landmark, group: 'library' },
-  {
-    to: '/crop-insurance',
-    labelKey: 'nav.cropInsurance',
-    pageKey: 'cropInsurance',
-    icon: Sprout,
-    group: 'library',
-  },
   { to: '/learn', labelKey: 'nav.learn', pageKey: 'learn', icon: GraduationCap, group: 'library' },
   { to: '/about', labelKey: 'nav.about', pageKey: 'about', icon: Info, group: 'help' },
   {

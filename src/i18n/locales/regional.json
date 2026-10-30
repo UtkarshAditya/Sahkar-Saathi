@@ -58,7 +58,20 @@
     "grievance.copySummary": "English placeholder. Needs a translation by a native speaker; do not ship as final.",
     "grievance.print": "English placeholder. Needs a translation by a native speaker; do not ship as final.",
     "grievance.startOver": "English placeholder. Needs a translation by a native speaker; do not ship as final.",
-    "grievance.disclaimer": "English placeholder. Needs a translation by a native speaker; do not ship as final."
+    "grievance.disclaimer": "English placeholder. Needs a translation by a native speaker; do not ship as final.",
+    "chat.noSources": "English placeholder. Needs a translation by a native speaker; do not ship as final.",
+    "chat.contactInstead": "English placeholder. Needs a translation by a native speaker; do not ship as final.",
+    "chat.stateNeededBody": "English placeholder. Needs a translation by a native speaker; do not ship as final.",
+    "chat.limitedTo": "English placeholder. Needs a translation by a native speaker; do not ship as final.",
+    "chat.removeLimit": "English placeholder. Needs a translation by a native speaker; do not ship as final.",
+    "chat.errorTitle": "English placeholder. Needs a translation by a native speaker; do not ship as final.",
+    "chat.errorBody": "English placeholder. Needs a translation by a native speaker; do not ship as final.",
+    "feedback.reasonPrompt": "English placeholder. Needs a translation by a native speaker; do not ship as final.",
+    "common.sourcePending": "English placeholder. Needs a translation by a native speaker; do not ship as final.",
+    "common.datePending": "English placeholder. Needs a translation by a native speaker; do not ship as final.",
+    "common.linkPending": "English placeholder. Needs a translation by a native speaker; do not ship as final.",
+    "common.noResults": "English placeholder. Needs a translation by a native speaker; do not ship as final.",
+    "common.clearFilters": "English placeholder. Needs a translation by a native speaker; do not ship as final."
   },
   "app": {
     "name": "Sahkar Saathi",
@@ -80,8 +93,6 @@
     "ask": "கேள்வி கேளுங்கள்",
     "grievance": "குறைதீர் உதவி",
     "about": "அறிமுகம் & உதவி",
-    "cropInsurance": "பயிர் காப்பீடு",
-    "schemes": "திட்டங்கள் & சேவைகள்",
     "library": "சட்ட நூலகம்",
     "learn": "நிதி அறிவு",
     "quality": "தர டாஷ்போர்டு",
@@ -117,14 +128,6 @@
     "about": {
       "title": "அறிமுகம் & உதவி",
       "description": "Sahkar Saathi எப்படிச் செயல்படுகிறது, அது என்ன செய்ய முடியாது, எந்த மூலங்களைப் பயன்படுத்துகிறது, உங்கள் தனியுரிமை எப்படிப் பாதுகாக்கப்படுகிறது."
-    },
-    "cropInsurance": {
-      "title": "பயிர் காப்பீட்டு வழிகாட்டி",
-      "description": "பிரதமரின் பயிர் காப்பீட்டுத் திட்டம் (PMFBY), படிப்படியாக: யார் சேரலாம், எப்படி, பயிர் இழப்புக்குப் பிறகு என்ன செய்ய வேண்டும்."
-    },
-    "schemes": {
-      "title": "திட்டங்கள் & சேவைகள்",
-      "description": "கூட்டுறவுச் சங்கங்கள் மற்றும் உறுப்பினர்களுக்கான திட்டங்களையும் சேவைகளையும் பாருங்கள். ஒவ்வோர் அட்டையும் அதன் மூலத்தையும் தேதியையும் காட்டும்."
     },
     "library": {
       "title": "சட்டம் & துணைவிதி நூலகம்",
@@ -238,13 +241,21 @@
       "q2": "Can a member of a cooperative society see the society's accounts and the audit report?",
       "q3": "What should I do if my insured crop is damaged under PMFBY?",
       "q4": "Where can a member of a multi-State cooperative society complain about a deposit that is not returned?"
-    }
+    },
+    "noSources": "Select an answer to see the documents it is based on.",
+    "contactInstead": "Who to contact instead",
+    "stateNeededBody": "Cooperative law differs by state. Choose your state and I will answer for it.",
+    "limitedTo": "Next question limited to",
+    "removeLimit": "Remove document limit",
+    "errorTitle": "Something went wrong",
+    "errorBody": "The assistant did not respond. Please try again."
   },
   "feedback": {
     "question": "இது உதவியாக இருந்ததா?",
     "helpful": "உதவியாக இருந்தது",
     "notHelpful": "உதவியாக இல்லை",
-    "thanks": "உங்கள் மதிப்பீட்டிற்கு நன்றி. இது பதில்களை மேம்படுத்த உதவுகிறது."
+    "thanks": "உங்கள் மதிப்பீட்டிற்கு நன்றி. இது பதில்களை மேம்படுத்த உதவுகிறது.",
+    "reasonPrompt": "What went wrong?"
   },
   "common": {
     "sample": "மாதிரி தரவு",
@@ -252,8 +263,6 @@
     "source": "மூலம்",
     "asOf": "தேதி",
     "page": "பக்கம்",
-    "askAboutThis": "இதைப் பற்றிக் கேளுங்கள்",
-    "viewDetails": "விவரங்களைப் பார்க்க",
     "close": "மூடு",
     "search": "தேடு",
     "all": "அனைத்தும்",
@@ -262,7 +271,13 @@
     "copy": "நகலெடு",
     "copied": "நகலெடுக்கப்பட்டது",
     "download": "பதிவிறக்கு",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "sourcePending": "Source pending verification",
+    "datePending": "Date pending",
+    "dateNotStated": "Date not stated",
+    "linkPending": "Link pending",
+    "noResults": "No results",
+    "clearFilters": "Clear filters"
   },
   "grievance": {
     "neverFiles": "Sahkar Saathi never files a complaint for you. It only shows where to go; you decide whether to send anything.",
