@@ -237,6 +237,9 @@ Then `docker compose up --build -d --wait`.
   `warm_models: Whisper model 'small' loaded in ... s`, or a warning saying why it could
   not load.
 - Listen (text-to-speech) still plays the stub's silent audio.
+- `WHISPER_DETECT_LANGUAGE=1` (default) detects English, Hindi or Tamil from the audio itself
+  and uses that instead of the UI language, because otherwise someone speaking Hindi while the
+  UI is in English would be forced to English text. Set it to `0` to trust the UI language only.
 - With `USE_STUB_ANSWER=false`, `WARM_ON_START=true` also asks Ollama to load the language model at
   start-up (the same wait limit applies). Off by default; `docker compose exec web python manage.py
   warm_models --llm` does it on demand.

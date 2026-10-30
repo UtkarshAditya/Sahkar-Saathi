@@ -10,6 +10,8 @@ Settings (environment variables, all optional):
     WHISPER_DEVICE        default "cpu"
     WHISPER_COMPUTE_TYPE  default "int8" (small and fast on CPU)
     WHISPER_BEAM_SIZE     default 5
+    WHISPER_DETECT_LANGUAGE  default 1. Detect en/hi/ta from the audio (with WHISPER_MODEL)
+                          instead of forcing the UI language. 0 = use the hint only.
     WHISPER_USE_PROMPT    default 0. Set to 1 to give Whisper a short list of domain words
                           for the language. Measure with eval_stt before switching it on.
 
@@ -45,6 +47,12 @@ DOMAIN_PROMPTS = {
     "ta": "பயிர் காப்பீடு, பிரதம மந்திரி பயிர் காப்பீட்டுத் திட்டம், கூட்டுறவு சங்கம், புகார்.",
 }
 
+# Languages the product supports. Spoken-language detection chooses among these only;
+# add a code here (and a hint/prompt if needed) to extend it.
+DETECT_LANGUAGES = ("en", "hi", "ta")
+# A detected language at least this likely (after renormalising) beats the UI hint.
+DETECT_MIN_PROBABILITY = 0.6
+
 _models: dict[str, object] = {}
 _lock = threading.Lock()
 
@@ -75,8 +83,55 @@ def _is_decode_error(exc: Exception) -> bool:
     return type(exc).__module__.split(".")[0] == "av"
 
 
+def choose_language(probabilities, hint: str | None) -> tuple[str | None, float]:
+    """Pick the spoken language from Whisper's (code, probability) pairs.
+
+    Only DETECT_LANGUAGES count; their probabilities are renormalised. A confident best
+    language wins over the hint, a doubtful one yields to the hint. Returns (code, its
+    renormalised probability), or (None, 0.0) when no allowed language has any probability.
+    """
+    allowed = {code: p for code, p in probabilities if code in DETECT_LANGUAGES}
+    total = sum(allowed.values())
+    if total <= 0:
+        return None, 0.0
+    best = max(allowed, key=allowed.get)
+    best_p = allowed[best] / total
+    if best_p >= DETECT_MIN_PROBABILITY:
+        return best, best_p
+    if hint in DETECT_LANGUAGES:
+        return hint, allowed[hint] / total
+    return best, best_p
+
+
+def _detect_language(audio: bytes, hint: str | None) -> str | None:
+    """Detect the spoken language with the base model. None means "could not decide"."""
+    try:
+        from faster_whisper import decode_audio
+
+        samples = decode_audio(io.BytesIO(audio), sampling_rate=16000)
+        model = _get_model(_model_name_for(None))
+        _, _, probabilities = model.detect_language(samples)
+        chosen, probability = choose_language(probabilities, hint)
+    except Exception as exc:
+        if _is_decode_error(exc):
+            raise  # transcribe() converts the audio with ffmpeg and retries
+        logger.warning("Language detection failed (%s); using hint=%s", exc, hint)
+        return None
+    logger.info("Detected language=%s probability=%.2f hint=%s", chosen, probability, hint)
+    return chosen
+
+
 def _transcribe_sync(audio: bytes, language: str | None) -> tuple[str, str, float]:
-    """Blocking work. Always run through asyncio.to_thread, never directly in a handler."""
+    """Blocking work. Always run through asyncio.to_thread, never directly in a handler.
+
+    `language` is the caller's hint. With WHISPER_DETECT_LANGUAGE on, the spoken language
+    is detected first and overrides it when detection is confident.
+    """
+    chosen = None
+    if os.getenv("WHISPER_DETECT_LANGUAGE", "1") == "1":
+        # Detection could not decide: the hint (or Whisper's own guess) is what we report.
+        chosen = _detect_language(audio, language) or language
+        language = chosen
     model = _get_model(_model_name_for(language))
     options = {
         "language": language,
@@ -99,7 +154,7 @@ def _transcribe_sync(audio: bytes, language: str | None) -> tuple[str, str, floa
     # Whisper has no true confidence score. exp(mean log-probability) is a common
     # proxy in 0..1. Treat it as a rough signal, not a measured accuracy.
     confidence = math.exp(sum(logprobs) / len(logprobs)) if logprobs else 0.0
-    return text, info.language, max(0.0, min(1.0, confidence))
+    return text, chosen or info.language, max(0.0, min(1.0, confidence))
 
 
 async def warm_up(languages=("en", "hi", "ta")) -> None:

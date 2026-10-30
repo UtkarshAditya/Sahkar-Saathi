@@ -156,6 +156,113 @@ def test_domain_prompt_can_be_switched_on(fake_whisper, monkeypatch):
     assert "initial_prompt" not in fake_whisper.calls[-1]
 
 
+@pytest.fixture
+def detecting_whisper(monkeypatch):
+    """A fake model whose detect_language returns whatever `script.probs` says."""
+    for name in (
+        "WHISPER_MODEL",
+        "WHISPER_MODEL_HI",
+        "WHISPER_MODEL_TA",
+        "WHISPER_DETECT_LANGUAGE",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    script = types.SimpleNamespace(probs=[], error=None, calls=[], detect_calls=0, loaded=[])
+
+    class FakeModel:
+        def __init__(self, name, **kwargs):
+            script.loaded.append(name)
+
+        def detect_language(self, audio, **kwargs):
+            script.detect_calls += 1
+            if script.error:
+                raise script.error
+            best = max(script.probs, key=lambda pair: pair[1])
+            return best[0], best[1], script.probs
+
+        def transcribe(self, audio_file, **kwargs):
+            script.calls.append(kwargs)
+            segment = types.SimpleNamespace(text="text", avg_logprob=-0.1)
+            return iter([segment]), types.SimpleNamespace(language="auto")
+
+    module = types.ModuleType("faster_whisper")
+    module.WhisperModel = FakeModel
+    module.decode_audio = lambda file, sampling_rate=16000: [0.0]
+    monkeypatch.setitem(sys.modules, "faster_whisper", module)
+    monkeypatch.setattr(whisper_provider, "_models", {})
+    return script
+
+
+def test_detected_hindi_overrides_english_hint(detecting_whisper):
+    detecting_whisper.probs = [("hi", 0.9), ("en", 0.1)]
+    result = _transcribe(hint="en")
+    assert detecting_whisper.calls[-1]["language"] == "hi"
+    assert result.language == "hi"
+
+
+def test_detected_english_overrides_hindi_hint(detecting_whisper):
+    detecting_whisper.probs = [("en", 0.9), ("hi", 0.1)]
+    result = _transcribe(hint="hi")
+    assert detecting_whisper.calls[-1]["language"] == "en"
+    assert result.language == "en"
+
+
+def test_doubtful_detection_uses_the_hint(detecting_whisper):
+    detecting_whisper.probs = [("hi", 0.5), ("en", 0.4), ("ta", 0.1)]
+    result = _transcribe(hint="ta")
+    assert detecting_whisper.calls[-1]["language"] == "ta"
+    assert result.language == "ta"
+
+
+def test_doubtful_detection_without_a_usable_hint_uses_the_best_allowed(detecting_whisper):
+    detecting_whisper.probs = [("hi", 0.5), ("en", 0.4), ("ta", 0.1)]
+    assert _transcribe(hint="xx").language == "hi"
+
+
+def test_languages_outside_the_allowed_set_are_ignored(detecting_whisper):
+    # French is the top raw guess, but among en/hi/ta Hindi has 0.12 / 0.15 = 0.8.
+    detecting_whisper.probs = [("fr", 0.8), ("hi", 0.12), ("en", 0.03)]
+    result = _transcribe(hint="en")
+    assert detecting_whisper.calls[-1]["language"] == "hi"
+    assert result.language == "hi"
+
+
+def test_detection_uses_the_base_model_and_transcription_the_language_model(
+    detecting_whisper, monkeypatch
+):
+    monkeypatch.setenv("WHISPER_MODEL_HI", "medium")
+    detecting_whisper.probs = [("hi", 0.9), ("en", 0.1)]
+    _transcribe(hint="en")
+    assert detecting_whisper.loaded == ["small", "medium"]
+
+
+def test_detection_switched_off_keeps_the_hint_call_exactly(detecting_whisper, monkeypatch):
+    monkeypatch.setenv("WHISPER_DETECT_LANGUAGE", "0")
+    detecting_whisper.probs = [("hi", 0.9), ("en", 0.1)]
+    result = _transcribe(hint="en")
+    assert detecting_whisper.detect_calls == 0
+    assert detecting_whisper.calls[-1] == {
+        "language": "en",
+        "beam_size": 5,
+        "vad_filter": True,
+        "condition_on_previous_text": False,
+    }
+    assert result.language == "auto"  # whatever Whisper reported, as before
+
+
+def test_detection_failure_falls_back_to_the_hint(detecting_whisper):
+    detecting_whisper.error = RuntimeError("no detector")
+    result = _transcribe(hint="ta")
+    assert detecting_whisper.calls[-1]["language"] == "ta"
+    assert result.language == "ta"
+
+
+def test_detection_failure_without_a_hint_falls_back_to_auto_detect(detecting_whisper):
+    detecting_whisper.error = RuntimeError("no detector")
+    result = _transcribe(hint=None)
+    assert detecting_whisper.calls[-1]["language"] is None
+    assert result.language == "auto"
+
+
 def test_synthesize_without_a_synthesizer_is_not_ready():
     with pytest.raises(ServiceNotReady):
         asyncio.run(WhisperSpeechProvider().synthesize("hello", language="en"))
