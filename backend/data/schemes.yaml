@@ -114,13 +114,14 @@ schemes:
         kind: loss-reporting
         title: Reporting crop loss
         body: >-
-          Report a loss as early as possible to the insurance company, your bank or the
-          agriculture office, with crop, area and cause. The exact reporting time limit will
-          be quoted from the guidelines, not estimated.
-        source_label: "Pending: schemes.yaml (PMFBY)"
-        source_url: null
-        as_of: null
-        is_placeholder: true
+          Report the loss within 72 hours of a localized calamity or damage to your
+          insured crop. You can report it through the National Crop Insurance Portal
+          (NCIP), the PMFBY mobile app, or directly to the insurance company, the
+          toll-free helpline or the local agriculture office.
+        source_label: Revised Operational Guidelines of PMFBY (sections 21.4 and 21.5, CHECK)
+        source_url: "https://pmfby.gov.in/pdf/Revised_Operational_Guidelines.pdf"
+        as_of: 2026-10-29  # CHANGE to the day you actually check the PDF
+        is_placeholder: false
       - id: official
         kind: official-info
         title: Official information and helpline

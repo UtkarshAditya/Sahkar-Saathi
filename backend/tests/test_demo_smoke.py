@@ -78,6 +78,7 @@ def test_everything_passes_and_the_table_lists_every_screen(demo, capsys):
     assert len(chat) == 6, "five conversations, six turns"
     assert "RESULT" in out and "TIME" in out and "DETAIL" in out
     assert "checks:" in out and "0 failed." in out
+    assert out.count("[demo answer, not live]") == 6, "cached answers are labelled as such"
 
 
 def test_the_front_end_check_fails_when_nothing_serves_the_app(demo, capsys):

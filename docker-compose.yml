@@ -137,7 +137,8 @@ services:
       BHASHINI_USER_ID: ${BHASHINI_USER_ID:-}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-intfloat/multilingual-e5-small}
       TOP_K: ${TOP_K:-4}
-      SCORE_THRESHOLD: ${SCORE_THRESHOLD:-0.5}
+      # Provisional (see .env.example); used by the real answer service only.
+      SCORE_THRESHOLD: ${SCORE_THRESHOLD:-0.82}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     volumes:
       - static_files:/srv/django
@@ -146,7 +147,8 @@ services:
       - models:/models
       # The document list; edit it on the host, then run `manage.py load_sources`.
       - ./data/sources.csv:/app/data/sources.csv:ro
-      # The source PDFs (gitignored; from the team Drive) read by `manage.py ingest_corpus`.
+      # The source PDFs read by `manage.py ingest_corpus` (some are tracked in git; new ones
+      # need `git add -f` because data/raw/* is ignored).
       - ./data/raw:/app/data/raw:ro
       # Retrieval questions for `manage.py eval_retrieval`.
       - ./data/eval:/app/data/eval:ro
@@ -176,9 +178,6 @@ services:
       - static_files:/srv/django:ro
       - caddy_data:/data
       - caddy_config:/config
-      - ./data:/app/data:ro 
-
-     
     read_only: true
     tmpfs:
       - /tmp

@@ -18,7 +18,7 @@
   {
     "id": "pmfby-loss-hi-ta",
     "title": "The same PMFBY question in Hindi, then Tamil",
-    "note": "Question wording: Hindi is the one in StubSpeechProvider; Tamil is machine-written and needs review by a fluent speaker. Whether the answers are really in Hindi and Tamil is checked by eye, not by the script.",
+    "note": "Question wording: Hindi is the one in StubSpeechProvider; Tamil is machine-written and needs review by a fluent speaker. The Tamil turn is checked for Tamil script and for echoing the question (answer_script); the Hindi answer's language is still checked by eye.",
     "turns": [
       {
         "text": "अगर पीएमएफबीवाई के तहत मेरी बीमित फसल खराब हो जाए तो मुझे क्या करना चाहिए?",
@@ -34,7 +34,8 @@
         "status": "answered",
         "citations": true,
         "contact_when_declined": true,
-        "answer_language_note": "Should be Tamil."
+        "answer_script": "Tamil",
+        "answer_language_note": "Should be Tamil, and must not repeat the question. Fluency needs a human reader."
       }
     ]
   },
@@ -59,16 +60,15 @@
   {
     "id": "grievance-deposit",
     "title": "Grievance: a society refuses to return a deposit",
+    "note": "Expectation set from the ingested text (searched 28 Oct 2026): no provision says when or how a Tamil Nadu society must return a member's DEPOSIT, so a clean decline is expected and any answer that states a rule or a time limit is wrong. Nearest provisions, none of which answers it: TN Co-operative Societies Act 1983 s.29 (PDF p.37) restricts refund of a member's SHARE OR INTEREST IN CAPITAL (not refunded unless held two years and refunded under the by-laws), and s.90 (p.89) refers disputes between a member and the society to the Registrar without mentioning deposits. The central Ombudsman route for complaints about deposits (MSCS Act s.85A, Amendment Act 2023 p.14) covers multi-State societies only. A question about share capital, or about a multi-State society, could be answered from these and would be a separate turn.",
     "turns": [
       {
         "text": "My cooperative society is refusing to return my deposit. What can I do?",
         "language": "en",
         "state": "TN",
-        "status": null,
-        "citations": null,
+        "status": "declined",
+        "citations": false,
         "contact_when_declined": true,
-        "TODO_owner": "Varsha",
-        "TODO": "Decide the exact expectation (answered with the grievance route, or a clean decline) and set status and citations.",
         "answer_language_note": "English."
       }
     ]

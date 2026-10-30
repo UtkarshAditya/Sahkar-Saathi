@@ -65,9 +65,10 @@ def _retriever(use_stub: bool) -> Retriever:
 @cache
 def _answer_service(use_stub: bool, use_stub_retriever: bool) -> AnswerService:
     if use_stub:
+        # The stub keeps its own threshold: its canned scores (0.12 to 0.82) are on a different
+        # scale from the real embedding scores, which SCORE_THRESHOLD is tuned for.
         return StubAnswerService(
             StubRetriever(),
-            score_threshold=settings.SCORE_THRESHOLD,
             covered_state=settings.COVERED_STATE_CODE,
         )
     from services.answer import GroundedAnswerService

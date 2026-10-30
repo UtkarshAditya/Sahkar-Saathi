@@ -62,6 +62,9 @@ jobs:
         with:
           python-version: '3.13'
       - name: Build and start the stack
+        # The smoke test runs on the stubs, so skip PyTorch and the other ML packages.
+        env:
+          INSTALL_ML: 'false'
         run: docker compose up --build --detach --wait --wait-timeout 300
       - name: Smoke test
         run: python scripts/smoke_test.py http://localhost

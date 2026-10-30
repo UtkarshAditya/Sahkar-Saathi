@@ -246,12 +246,12 @@ CHUNK_TAIL_MERGE_CHARS = int(os.environ.get("CHUNK_TAIL_MERGE_CHARS", "150"))
 # Retrieval (member B). Recorded in every evaluation run.
 EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "intfloat/multilingual-e5-small")
 TOP_K = int(os.environ.get("TOP_K", "4"))
-SCORE_THRESHOLD = float(os.environ.get("SCORE_THRESHOLD", "0.5"))
-SCORE_THRESHOLD_BY_LANG = {
-    "en": float(os.environ.get("SCORE_THRESHOLD_EN", str(SCORE_THRESHOLD))),
-    "hi": float(os.environ.get("SCORE_THRESHOLD_HI", str(SCORE_THRESHOLD))),
-    "ta": float(os.environ.get("SCORE_THRESHOLD_TA", str(SCORE_THRESHOLD))),
-}
+# The real answer service declines when the best retrieval score is below this. PROVISIONAL:
+# 0.82 comes from the first live run with six PMFBY-only evaluation questions (off-topic
+# questions peaked at 0.813, the lowest answerable one scored 0.8298). Re-tune it with
+# `manage.py eval_retrieval` once real in-scope questions with expected documents exist.
+# Only the real answer service uses it; the stub's canned scores have their own scale.
+SCORE_THRESHOLD = float(env_value("SCORE_THRESHOLD") or "0.82")
 QDRANT_URL = os.environ.get("QDRANT_URL", "http://qdrant:6333")
 HEALTH_CHECK_TIMEOUT_SECONDS = float(os.environ.get("HEALTH_CHECK_TIMEOUT_SECONDS", "1.5"))
 

@@ -144,7 +144,7 @@ Common changes:
 | `USE_STUB_RETRIEVER=false`             | Real retrieval over the ingested documents (see section 12)       |
 | `USE_STUB_SPEECH=false`                | Real speech-to-text with Whisper (see section 10)                 |
 | `INSTALL_ML=false`                     | A smaller, stub-only image: no PyTorch, so no real retrieval      |
-| `SCORE_THRESHOLD`                      | Set from `eval_retrieval`, not by guessing (see section 12)       |
+| `SCORE_THRESHOLD`                      | Default 0.82, provisional; re-tune with `eval_retrieval` (§ 12)   |
 | `BHASHINI_API_KEY`, `BHASHINI_USER_ID` | Speech keys (member C)                                            |
 | `LOAD_SAMPLE_DOCUMENTS=false`          | Start the library empty instead of with 9 sample entries          |
 
@@ -260,13 +260,18 @@ Rows that are invalid are skipped, never guessed or fixed. Documents not in the 
 The real pipeline answers from documents that have been read into PostgreSQL (the text
 chunks) and Qdrant (their vectors). Do these steps in order:
 
-1. **Put the PDFs in `data/raw/`**, taken from the team Drive. The folder is git-ignored and
-   is mounted read-only into the API container. The file names must match the `local_path`
-   column of `data/sources.csv`. Optionally fetch the ones with direct links first:
+1. **Put the PDFs in `data/raw/`**, taken from the team Drive. The folder is mounted
+   read-only into the API container. The file names must match the `local_path` column of
+   `data/sources.csv`. Optionally fetch the ones with direct links first:
 
    ```bash
    python scripts/download_pdfs.py     # certificates are verified; --insecure is a last resort
    ```
+
+   > **PDFs and git.** Some PDFs are already tracked in the repository (they were added
+   > with `git add -f`). The pattern `data/raw/*` is still in `.gitignore`, so a new PDF is
+   > ignored unless it is added with `git add -f data/raw/<file>.pdf`. A PDF that is only on
+   > your machine is not shared with the team until someone does that or puts it on the Drive.
 
 2. **Start the stack.** The first build installs PyTorch and the other ML packages, which
    takes several minutes and makes the image much larger (`INSTALL_ML=false` in `.env`
@@ -314,10 +319,15 @@ chunks) and Qdrant (their vectors). Do these steps in order:
 
    ```bash
    docker compose exec web python manage.py eval_retrieval
-   # edit .env: SCORE_THRESHOLD=<the suggested value>
+   # edit .env: SCORE_THRESHOLD=<the suggested value>, and DEMO_CACHE=false
    docker compose up -d
    python scripts/acceptance.py
    ```
+
+   `acceptance.py` tells live answers from demo answers. With `DEMO_CACHE=true`, or with
+   any stub still on, the answers are `is_demo=true`: the lines read `DEMO` and the run
+   fails, because a pass on saved answers says nothing about the live pipeline. Check the
+   live pipeline with `DEMO_CACHE=false`; `--allow-demo` is only for rehearsing the demo.
 
    To show a run on the Quality dashboard, add `--record` once the real retriever is on
    (it refuses to record the stub's scores). The dashboard needs all three metrics: the
@@ -406,6 +416,34 @@ script.
 **On the day:** keep ports 80 and 443 for a public host (the certificate needs them), do
 not run `docker compose down --volumes` on it (that discards the certificate and the
 admin password), and run the demo check from a second device on the same network.
+
+## 15. Known limits of the live run
+
+What the first end-to-end run with Ollama and `llama3.1:8b` showed (details in
+`data/eval/last_live_run.md`). Treat the live pipeline as a rehearsal, not a finished system.
+
+- **Tamil is weak and slow.** The Tamil answers took 79 to 88 s, against 5 to 25 s for
+  English, and the Tamil PMFBY answer repeated the question back instead of answering. The
+  acceptance test now fails an answer that is not in Tamil script or that repeats the
+  question (`answer_script` in `data/eval/README.md`). A fluent speaker must read the Hindi
+  and Tamil answers.
+- **The score threshold is provisional.** `SCORE_THRESHOLD` defaults to 0.82. It comes from
+  six PMFBY-only evaluation questions: off-topic questions scored up to 0.813 and the lowest
+  answerable one 0.8298. Scores are lower in Hindi and Tamil than in English, and no
+  threshold can stop an on-topic question that the corpus does not cover. Re-tune it with
+  `eval_retrieval` once real in-scope questions with expected documents are added.
+- **About half of the corpus is ingested.** 13 of the 26 documents marked `use_in_corpus=Y`
+  have a file; the rest could not be downloaded (see section 12). The PMFBY documents are
+  among the missing ones, so the "72 hours" question is correctly declined and the first
+  PMFBY acceptance turns fail until those PDFs are added and ingested.
+- **An answer can misapply a passage it cites.** The prompt now forbids using a passage about
+  a different procedure or kind of case, but nothing checks it automatically. Read the
+  cited passage next to every answer you show.
+- **Low host memory makes Ollama very slow.** On the test machine only 0.3 GB of 15.7 GB
+  was free, and 42% of the model fitted in the 4 GB graphics memory; the rest ran on the CPU.
+  Close other programs, keep a single model loaded (`ollama ps`), let the first question
+  after a model switch take a while, and raise `LLM_TIMEOUT` (150 s in the test) if you
+  see 502 errors.
 
 ## What is running
 
