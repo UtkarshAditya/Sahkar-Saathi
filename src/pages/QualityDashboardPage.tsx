@@ -53,7 +53,6 @@ export default function QualityDashboardPage() {
         title={t('pages.quality.title')}
         description={t('pages.quality.description')}
         icon={<ChartColumn className="size-6" aria-hidden />}
-        breadcrumbs={[{ label: t('nav.groups.staff') }]}
         badges={
           <>
             {data?.is_sample && <Badge tone="saffron">Sample metrics, not real test results</Badge>}

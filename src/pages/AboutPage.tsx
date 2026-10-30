@@ -85,7 +85,6 @@ export default function AboutPage() {
         title={t('pages.about.title')}
         description={t('pages.about.description')}
         icon={<Info className="size-6" aria-hidden />}
-        breadcrumbs={[]}
       />
 
       <div className="grid gap-6 lg:grid-cols-3">

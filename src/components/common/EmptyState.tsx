@@ -12,7 +12,7 @@ interface EmptyStateProps {
 
 export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center rounded-2xl border border-dashed border-line bg-surface px-6 py-10 text-center">
+    <div className="flex flex-col items-center rounded-2xl border border-line/80 bg-surface px-6 py-12 text-center">
       <span className="mb-3 flex size-12 items-center justify-center rounded-full bg-brand-50 text-brand-700">
         {icon ?? <Inbox className="size-6" aria-hidden />}
       </span>
@@ -28,7 +28,7 @@ export function LoadingState({ label }: { label?: string }) {
   return (
     <div
       role="status"
-      className="flex items-center justify-center gap-2 rounded-2xl border border-line bg-surface px-6 py-10 text-ink-muted"
+      className="flex items-center justify-center gap-2 rounded-2xl border border-line/80 bg-surface px-6 py-12 text-ink-muted"
     >
       <LoaderCircle className="size-5 animate-spin" aria-hidden />
       {label ?? t('common.loading')}

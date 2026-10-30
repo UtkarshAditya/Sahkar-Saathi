@@ -32,7 +32,7 @@ export function SuggestedQuestions({
 
   return (
     <div>
-      <p className="mb-2 text-sm font-semibold text-ink-soft">{title}</p>
+      <p className="mb-2 text-sm font-medium text-ink-muted">{title}</p>
       <ul
         className={cn(variant === 'chips' ? 'flex flex-wrap gap-2' : 'grid gap-2 sm:grid-cols-2')}
       >
@@ -47,8 +47,8 @@ export function SuggestedQuestions({
                 className={cn(
                   'flex w-full items-start gap-2 text-left text-sm font-medium transition-colors disabled:opacity-50',
                   variant === 'chips'
-                    ? 'rounded-full border border-brand-200 bg-surface px-3 py-1.5 text-brand-800 hover:bg-brand-50'
-                    : 'h-full rounded-xl border border-line bg-surface px-3 py-2.5 text-ink hover:border-brand-300 hover:bg-brand-50',
+                    ? 'min-h-11 items-center rounded-full border border-line bg-surface px-3.5 py-1.5 text-ink-soft hover:border-brand-300 hover:text-brand-800 lg:min-h-9'
+                    : 'h-full min-h-11 rounded-xl border border-line bg-surface px-4 py-3 text-ink hover:border-brand-300 hover:bg-brand-50/60',
                 )}
               >
                 <Icon

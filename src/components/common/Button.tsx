@@ -10,14 +10,14 @@ const VARIANTS: Record<ButtonVariant, string> = {
   primary:
     'bg-brand-800 text-white hover:bg-brand-900 active:bg-brand-950 disabled:bg-brand-800/50',
   secondary:
-    'border border-line bg-surface text-ink hover:border-brand-300 hover:bg-brand-50 disabled:text-ink-muted',
+    'border border-line bg-surface text-ink hover:border-ink-muted/40 hover:bg-subtle disabled:text-ink-muted',
   subtle: 'bg-brand-50 text-brand-800 hover:bg-brand-100 disabled:text-ink-muted',
-  ghost: 'text-ink-soft hover:bg-brand-50 hover:text-brand-800 disabled:text-ink-muted',
+  ghost: 'text-ink-soft hover:bg-subtle hover:text-ink disabled:text-ink-muted',
   danger: 'bg-red-700 text-white hover:bg-red-800',
 };
 
 const SIZES: Record<ButtonSize, string> = {
-  sm: 'min-h-9 px-3 text-sm gap-1.5',
+  sm: 'min-h-11 px-3 text-sm gap-1.5 lg:min-h-9',
   md: 'min-h-11 px-4 text-base gap-2',
   lg: 'min-h-12 px-5 text-lg gap-2',
 };

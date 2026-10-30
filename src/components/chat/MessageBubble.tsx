@@ -1,28 +1,70 @@
-import { useState } from 'react';
-import { BookOpen, CircleAlert, MapPin, Phone } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { Check, CircleCheck, CircleDot, Copy, MapPin, Phone, SearchX } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge, type BadgeTone } from '@/components/common/Badge';
 import { Button } from '@/components/common/Button';
 import { StateSelector } from '@/components/common/StateSelector';
 import { FeedbackButtons } from '@/components/feedback/FeedbackButtons';
 import { ListenButton } from '@/components/chat/ListenButton';
+import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 import type { SpeechPlaybackController } from '@/hooks/useSpeechPlayback';
-import { cn } from '@/lib/format';
 import type { AnswerStatus, ChatMessage, LanguageCode } from '@/types';
-import { CitationList } from './CitationPanel';
+import { SourceList } from './SourceList';
 import { SuggestedQuestions } from './SuggestedQuestions';
+import { TOOLBAR_BUTTON } from './toolbar';
 
-const STATUS: Record<AnswerStatus, { label: string; tone: BadgeTone }> = {
-  answered: { label: 'Answered', tone: 'brand' },
-  partial: { label: 'Partial answer', tone: 'blue' },
-  declined: { label: 'Not found', tone: 'red' },
+/** Status is shown with an icon and a word, never by colour alone. */
+const STATUS: Record<AnswerStatus, { labelKey: string; tone: BadgeTone; icon: ReactNode }> = {
+  answered: {
+    labelKey: 'chat.status.answered',
+    tone: 'brand',
+    icon: <CircleCheck className="size-3.5" aria-hidden />,
+  },
+  partial: {
+    labelKey: 'chat.status.partial',
+    tone: 'blue',
+    icon: <CircleDot className="size-3.5" aria-hidden />,
+  },
+  declined: {
+    labelKey: 'chat.status.declined',
+    tone: 'neutral',
+    icon: <SearchX className="size-3.5" aria-hidden />,
+  },
 };
+
+function CopyButton({ text }: { text: string }) {
+  const { t } = useTranslation();
+  const { copied, error, copy } = useCopyToClipboard();
+  return (
+    <>
+      <button
+        type="button"
+        className={TOOLBAR_BUTTON}
+        onClick={() => void copy(text)}
+        aria-label={copied ? t('common.copied') : t('common.copy')}
+        title={t('common.copy')}
+      >
+        {copied ? (
+          <Check className="size-4 text-brand-700" aria-hidden />
+        ) : (
+          <Copy className="size-4" aria-hidden />
+        )}
+      </button>
+      <span className="sr-only" role="status">
+        {copied ? t('common.copied') : ''}
+      </span>
+      {error && (
+        <p role="alert" className="basis-full px-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+    </>
+  );
+}
 
 interface MessageBubbleProps {
   message: ChatMessage;
-  selected?: boolean;
   disabled?: boolean;
-  onViewSources?: (messageId: string) => void;
   onFollowup?: (text: string) => void;
   onChooseState?: (messageId: string, stateCode: string) => void;
   speech: SpeechPlaybackController;
@@ -31,9 +73,7 @@ interface MessageBubbleProps {
 
 export function MessageBubble({
   message,
-  selected,
   disabled,
-  onViewSources,
   onFollowup,
   onChooseState,
   speech,
@@ -45,7 +85,7 @@ export function MessageBubble({
   if (message.role === 'user') {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-2xl rounded-br-md bg-brand-800 px-4 py-2.5 text-white">
+        <div className="max-w-[85%] rounded-2xl rounded-br-md bg-brand-50 px-4 py-2.5 text-ink ring-1 ring-brand-100">
           <p className="sr-only">{t('chat.you')}:</p>
           <p className="whitespace-pre-wrap">{message.text}</p>
         </div>
@@ -55,43 +95,44 @@ export function MessageBubble({
 
   const response = message.response;
   if (!response) return null;
+  const declined = response.status === 'declined';
   const status = STATUS[response.status];
   const asksForState = response.needs_state && Boolean(message.pendingQuestion);
 
   return (
-    <article
-      aria-label={t('chat.assistant')}
-      className={cn(
-        'max-w-[95%] rounded-2xl rounded-bl-md border bg-surface px-4 py-3 sm:max-w-[85%]',
-        selected ? 'border-brand-400 ring-2 ring-brand-100' : 'border-line',
-      )}
-    >
-      <header className="mb-2 flex flex-wrap items-center gap-2">
-        <span className="font-semibold text-brand-900">{t('chat.assistant')}</span>
+    <article aria-label={t('chat.assistant')} className="min-w-0">
+      <header className="mb-1.5 flex flex-wrap items-center gap-2">
+        <span className="text-sm font-semibold text-ink">{t('chat.assistant')}</span>
         {response.needs_state ? (
-          <Badge tone="saffron" icon={<MapPin className="size-3" aria-hidden />}>
+          <Badge tone="saffron" icon={<MapPin className="size-3.5" aria-hidden />}>
             {t('chat.stateNeeded')}
           </Badge>
         ) : (
-          <Badge tone={status.tone}>{status.label}</Badge>
+          !declined && (
+            <Badge tone={status.tone} icon={status.icon}>
+              {t(status.labelKey)}
+            </Badge>
+          )
         )}
       </header>
 
-      {response.status === 'declined' && (
-        <p className="mb-1 flex items-center gap-1.5 font-semibold text-red-800">
-          <CircleAlert className="size-4" aria-hidden />
+      {declined && (
+        <p className="mb-1 flex items-center gap-1.5 font-semibold text-ink">
+          <SearchX className="size-4 text-ink-muted" aria-hidden />
           {t('chat.declinedTitle')}
         </p>
       )}
 
-      <p className="whitespace-pre-wrap">{response.answer_text}</p>
+      <p className={declined ? 'whitespace-pre-wrap text-ink-soft' : 'whitespace-pre-wrap'}>
+        {response.answer_text}
+      </p>
 
       {response.is_demo && !response.needs_state && (
-        <p className="mt-2 text-xs font-semibold text-saffron-700">{t('chat.demoAnswer')}</p>
+        <p className="mt-2 text-xs font-medium text-saffron-700">{t('chat.demoAnswer')}</p>
       )}
 
       {asksForState && onChooseState && (
-        <div className="mt-3 rounded-xl border border-saffron-200 bg-saffron-50 p-3">
+        <div className="mt-3 rounded-xl border border-line bg-subtle p-3">
           <p className="mb-2 text-sm text-ink-soft">{t('chat.stateNeededBody')}</p>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
             <StateSelector
@@ -111,20 +152,22 @@ export function MessageBubble({
       )}
 
       {response.contact && (
-        <div className="mt-3 rounded-xl border border-line bg-canvas p-3 text-sm">
-          <p className="flex items-center gap-1.5 font-semibold">
-            <Phone className="size-4 text-brand-700" aria-hidden />
-            {t('chat.contactInstead')}
-          </p>
-          <p className="mt-1 font-medium">{response.contact.label}</p>
-          <p className="text-ink-muted">{response.contact.detail}</p>
-        </div>
+        <p className="mt-3 flex gap-2 text-sm text-ink-soft">
+          <Phone className="mt-0.5 size-4 shrink-0 text-ink-muted" aria-hidden />
+          <span>
+            <span className="font-semibold text-ink">{t('chat.contactInstead')}:</span>{' '}
+            {response.contact.label}
+            {response.contact.detail && (
+              <span className="text-ink-muted"> · {response.contact.detail}</span>
+            )}
+          </span>
+        </p>
       )}
 
-      <CitationList citations={response.citations} />
+      <SourceList citations={response.citations} />
 
       {response.followups.length > 0 && onFollowup && (
-        <div className="mt-3">
+        <div className="mt-4">
           <SuggestedQuestions
             title={t('chat.followups')}
             questions={response.followups}
@@ -136,34 +179,19 @@ export function MessageBubble({
       )}
 
       {!response.needs_state && (
-        <footer className="mt-3 flex flex-col gap-3 border-t border-line pt-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex flex-wrap gap-2">
-            {response.status !== 'declined' && response.answer_text.trim() && (
-              <ListenButton
-                messageId={message.id}
-                text={response.answer_text}
-                language={message.speechLanguage ?? language}
-                speech={speech}
-                autoPlay={message.autoPlaySpeech}
-              />
-            )}
-            {response.citations.length > 0 && onViewSources && (
-              // Desktop only: the side panel. Phones see the inline source list above.
-              <span className="hidden lg:contents">
-                <Button
-                  variant={selected ? 'subtle' : 'secondary'}
-                  size="sm"
-                  aria-pressed={selected}
-                  onClick={() => onViewSources(message.id)}
-                  icon={<BookOpen className="size-4" aria-hidden />}
-                >
-                  {t('chat.viewSources')}
-                </Button>
-              </span>
-            )}
-          </div>
+        <div className="mt-2 -ml-2 flex flex-wrap items-center">
+          {response.answer_text.trim() && <CopyButton text={response.answer_text} />}
+          {!declined && response.answer_text.trim() && (
+            <ListenButton
+              messageId={message.id}
+              text={response.answer_text}
+              language={message.speechLanguage ?? language}
+              speech={speech}
+              autoPlay={message.autoPlaySpeech}
+            />
+          )}
           <FeedbackButtons messageId={response.message_id} localOnly={message.isExample} />
-        </footer>
+        </div>
       )}
     </article>
   );

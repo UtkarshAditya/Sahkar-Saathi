@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/common/Button';
+import { TOOLBAR_BUTTON } from '@/components/chat/toolbar';
 import { cn } from '@/lib/format';
 import { api } from '@/services/api';
 import type { FeedbackRating } from '@/types';
@@ -56,22 +57,17 @@ export function FeedbackButtons({ messageId, localOnly = false }: FeedbackButton
   }
 
   const toggle = (active: boolean) =>
-    cn(
-      'flex size-10 items-center justify-center rounded-lg border transition-colors disabled:cursor-default',
-      active
-        ? 'border-brand-700 bg-brand-800 text-white'
-        : 'border-line bg-surface text-ink-soft hover:bg-brand-50 hover:text-brand-800',
-    );
+    cn(TOOLBAR_BUTTON, active && 'bg-brand-50 text-brand-800 disabled:opacity-100');
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-ink-muted">{t('feedback.question')}</span>
+    <>
+      <div role="group" aria-label={t('feedback.question')} className="flex">
         <button
           type="button"
           className={toggle(rating === 'up')}
           aria-pressed={rating === 'up'}
           aria-label={t('feedback.helpful')}
+          title={t('feedback.helpful')}
           disabled={sent || sending}
           onClick={() => choose('up')}
         >
@@ -82,6 +78,7 @@ export function FeedbackButtons({ messageId, localOnly = false }: FeedbackButton
           className={toggle(rating === 'down')}
           aria-pressed={rating === 'down'}
           aria-label={t('feedback.notHelpful')}
+          title={t('feedback.notHelpful')}
           disabled={sent || sending}
           onClick={() => choose('down')}
         >
@@ -90,7 +87,7 @@ export function FeedbackButtons({ messageId, localOnly = false }: FeedbackButton
       </div>
 
       {rating === 'down' && !sent && (
-        <fieldset className="rounded-xl border border-line bg-canvas p-3">
+        <fieldset className="mt-1 ml-2 basis-full rounded-xl border border-line bg-surface p-3">
           <legend className="px-1 text-sm font-semibold">{t('feedback.reasonPrompt')}</legend>
           <div className="flex flex-wrap gap-2">
             {REASONS.map((r) => (
@@ -100,10 +97,10 @@ export function FeedbackButtons({ messageId, localOnly = false }: FeedbackButton
                 aria-pressed={reason === r}
                 onClick={() => setReason(r)}
                 className={cn(
-                  'rounded-full border px-3 py-1 text-sm',
+                  'min-h-11 rounded-full border px-3 py-1 text-sm lg:min-h-9',
                   reason === r
                     ? 'border-brand-700 bg-brand-800 text-white'
-                    : 'border-line bg-surface hover:bg-brand-50',
+                    : 'border-line bg-surface hover:bg-subtle',
                 )}
               >
                 {r}
@@ -123,11 +120,14 @@ export function FeedbackButtons({ messageId, localOnly = false }: FeedbackButton
       )}
 
       {error && (
-        <p role="alert" className="flex flex-wrap items-center gap-2 text-sm text-red-700">
+        <p
+          role="alert"
+          className="flex basis-full flex-wrap items-center gap-2 px-2 text-sm text-red-700"
+        >
           Could not send your rating.
           <button
             type="button"
-            className="font-semibold underline"
+            className="min-h-11 font-semibold underline lg:min-h-0"
             onClick={() => rating && void submit(rating, reason)}
           >
             {t('common.retry')}
@@ -136,10 +136,10 @@ export function FeedbackButtons({ messageId, localOnly = false }: FeedbackButton
       )}
 
       {sent && (
-        <p role="status" className="text-sm text-brand-800">
+        <p role="status" className="px-2 text-sm text-ink-muted">
           {t('feedback.thanks')}
         </p>
       )}
-    </div>
+    </>
   );
 }

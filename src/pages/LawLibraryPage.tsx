@@ -70,7 +70,6 @@ export default function LawLibraryPage() {
         title={t('pages.library.title')}
         description={t('pages.library.description')}
         icon={<BookOpen className="size-6" aria-hidden />}
-        breadcrumbs={[{ label: t('nav.groups.guides') }]}
         badges={
           <Badge tone="saffron">{t('common.sample')}: metadata and links to be verified</Badge>
         }

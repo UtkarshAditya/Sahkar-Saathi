@@ -13,17 +13,20 @@
     "groups": {
       "core": "Get help",
       "guides": "Guides and library",
-      "staff": "Staff only"
+      "staff": "Staff only",
+      "library": "Library"
     },
     "ask": "Ask",
-    "grievance": "Grievance helper",
+    "grievance": "Grievance redressal",
     "about": "About & help",
     "cropInsurance": "Crop insurance",
     "schemes": "Schemes & services",
     "library": "Law library",
     "learn": "Financial literacy",
     "quality": "Quality dashboard",
-    "admin": "Admin"
+    "admin": "Admin",
+    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand sidebar"
   },
   "settings": {
     "title": "Your choices",
@@ -47,7 +50,7 @@
       "description": "Ask about cooperative law, by-laws, crop insurance, schemes or grievances. Every answer shows its source."
     },
     "grievance": {
-      "title": "Grievance helper",
+      "title": "Grievance redressal",
       "description": "Describe your problem. We suggest where to complain, the steps, the documents you need and a draft you can edit."
     },
     "about": {
@@ -158,7 +161,30 @@
     "errorTitle": "Something went wrong",
     "errorBody": "The assistant did not respond. Please try again.",
     "you": "You",
-    "assistant": "Sahkar Saathi"
+    "assistant": "Sahkar Saathi",
+    "status": {
+      "answered": "Answered",
+      "partial": "Partial answer",
+      "declined": "Not found"
+    },
+    "sourceCount_one": "{{count}} source",
+    "sourceCount_other": "{{count}} sources",
+    "openSource": "Open source",
+    "opensInNewTab": "opens in a new tab",
+    "speak": "Speak",
+    "statusSearching": "Searching the verified documents…",
+    "statusWriting": "Writing an answer…",
+    "elapsed": "{{seconds}} seconds so far. Answers can take up to a minute.",
+    "offlineBody": "You seem to be offline. Check your connection and try again.",
+    "newChat": "New chat",
+    "newChatConfirmTitle": "Start a new chat?",
+    "newChatConfirmBody": "This clears the current conversation from this screen.",
+    "examples": {
+      "q1": "As a member of a cooperative society, can I attend the general body meeting?",
+      "q2": "Can a member of a cooperative society see the society's accounts and the audit report?",
+      "q3": "What should I do if my insured crop is damaged under PMFBY?",
+      "q4": "Where can a member of a multi-State cooperative society complain about a deposit that is not returned?"
+    }
   },
   "feedback": {
     "question": "Was this helpful?",
@@ -189,6 +215,44 @@
     "copied": "Copied",
     "download": "Download",
     "noResults": "No results",
-    "clearFilters": "Clear filters"
+    "clearFilters": "Clear filters",
+    "cancel": "Cancel"
+  },
+  "grievance": {
+    "neverFiles": "Sahkar Saathi never files a complaint for you. It only shows where to go; you decide whether to send anything.",
+    "progress": "Progress",
+    "stepOf": "Step {{current}} of {{total}}",
+    "step1Title": "What is the problem?",
+    "step1Hint": "Choose the closest match.",
+    "notSure": "Not sure",
+    "notSureBody": "We will work it out from your description.",
+    "categoriesError": "The list of problems could not be loaded.",
+    "step2Title": "A few details",
+    "problemLabel": "Problem",
+    "describeLabel": "What happened?",
+    "describeHint": "Do not include phone numbers, Aadhaar or account numbers.",
+    "describePlaceholder": "Example: I closed my fixed deposit with our society in March, but the money has not been returned even after two written requests.",
+    "tooShort": "Please write at least {{min}} characters so we can guide you.",
+    "charCount_one": "{{count}} character",
+    "charCount_other": "{{count}} characters",
+    "guideError": "Could not prepare guidance. Please try again.",
+    "back": "Back",
+    "showRoute": "Show where to go",
+    "step3Title": "Where to go",
+    "startHere": "Start here",
+    "noRouteTitle": "No verified route found",
+    "noRouteBody": "Our data does not yet record where this kind of complaint goes.",
+    "contactInstead": "Ask here instead",
+    "stepsTitle": "Steps to follow",
+    "checklistTitle": "What to keep ready",
+    "checklistProgress": "{{done}} of {{total}} ready. Ticks are not saved.",
+    "draftTitle": "Draft letter (optional)",
+    "draftHint": "Replace everything in [square brackets]. Your edits stay in this browser tab only.",
+    "copyDraft": "Copy draft",
+    "restoreDraft": "Restore original draft",
+    "copySummary": "Copy summary",
+    "print": "Print",
+    "startOver": "Start over",
+    "disclaimer": "This is general guidance, not legal advice."
   }
 }

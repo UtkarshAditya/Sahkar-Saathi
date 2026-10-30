@@ -47,7 +47,6 @@ export default function SchemesPage() {
         title={t('pages.schemes.title')}
         description={t('pages.schemes.description')}
         icon={<Landmark className="size-6" aria-hidden />}
-        breadcrumbs={[{ label: t('nav.groups.guides') }]}
         badges={<Badge tone="saffron">{t('common.sample')}: details not yet verified</Badge>}
       />
 

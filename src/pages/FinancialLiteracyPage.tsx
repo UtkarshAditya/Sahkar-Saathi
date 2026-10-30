@@ -42,7 +42,6 @@ export default function FinancialLiteracyPage() {
         title={t('pages.learn.title')}
         description={t('pages.learn.description')}
         icon={<GraduationCap className="size-6" aria-hidden />}
-        breadcrumbs={[{ label: t('nav.groups.guides') }]}
         badges={<Badge tone="blue">Introductory learning material</Badge>}
       />
 

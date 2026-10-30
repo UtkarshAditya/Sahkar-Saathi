@@ -73,7 +73,6 @@ export default function AdminPage() {
         title={t('pages.admin.title')}
         description={t('pages.admin.description')}
         icon={<Settings className="size-6" aria-hidden />}
-        breadcrumbs={[{ label: t('nav.groups.staff') }]}
         badges={USE_MOCKS ? <Badge tone="neutral">Placeholder</Badge> : undefined}
       />
 

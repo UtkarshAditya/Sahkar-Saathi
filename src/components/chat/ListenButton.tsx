@@ -3,7 +3,9 @@ import { LoaderCircle, Square, Volume2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/common/Button';
 import type { SpeechPlaybackController } from '@/hooks/useSpeechPlayback';
+import { cn } from '@/lib/format';
 import type { LanguageCode } from '@/types';
+import { TOOLBAR_BUTTON } from './toolbar';
 
 interface ListenButtonProps {
   messageId: string;
@@ -67,57 +69,50 @@ export function ListenButton({
     }
   };
 
+  const label =
+    status === 'loading'
+      ? t('chat.listenLoading')
+      : status === 'playing'
+        ? t('chat.stopListening')
+        : t('chat.listen');
+
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <>
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {announcement}
       </div>
-      <Button
-        variant={status === 'playing' ? 'primary' : 'secondary'}
-        size="md"
-        className="min-h-12"
+      <button
+        type="button"
+        className={cn(TOOLBAR_BUTTON, status === 'playing' && 'bg-brand-50 text-brand-800')}
         disabled={status === 'loading'}
-        loading={status === 'loading'}
-        aria-label={
-          status === 'loading'
-            ? t('chat.listenLoading')
-            : status === 'playing'
-              ? t('chat.stopListening')
-              : t('chat.listen')
-        }
+        aria-busy={status === 'loading' || undefined}
+        aria-label={label}
+        title={label}
         aria-pressed={status === 'playing'}
         onClick={handleClick}
-        icon={
-          status === 'playing' ? (
-            <Square className="size-5" aria-hidden />
-          ) : status === 'loading' ? (
-            <LoaderCircle className="size-5 animate-spin" aria-hidden />
-          ) : (
-            <Volume2 className="size-5" aria-hidden />
-          )
-        }
       >
-        {status === 'loading'
-          ? t('chat.listenLoading')
-          : status === 'playing'
-            ? t('chat.stopListening')
-            : t('chat.listen')}
-      </Button>
+        {status === 'playing' ? (
+          <Square className="size-4" aria-hidden />
+        ) : status === 'loading' ? (
+          <LoaderCircle className="size-4 animate-spin" aria-hidden />
+        ) : (
+          <Volume2 className="size-4" aria-hidden />
+        )}
+      </button>
       {speech.error && isActive && (
-        <>
-          <p className="basis-full text-sm font-medium text-red-800" role="alert">
+        <div className="flex basis-full flex-wrap items-center gap-2 px-2 pb-1">
+          <p className="text-sm font-medium text-red-800" role="alert">
             {t(`chat.listenErrors.${speech.error.code}`)}
           </p>
           <Button
             variant="secondary"
-            size="md"
-            className="min-h-12"
+            size="sm"
             onClick={() => play(messageId, spokenText, language)}
           >
             {t('chat.retryListen')}
           </Button>
-        </>
+        </div>
       )}
-    </div>
+    </>
   );
 }

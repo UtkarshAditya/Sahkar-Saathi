@@ -2,13 +2,13 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
-  type CSSProperties,
   type FormEvent,
   type KeyboardEvent,
 } from 'react';
-import { Mic, Send, Square, X } from 'lucide-react';
+import { ArrowUp, LoaderCircle, Mic, Square, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/common/Button';
 import { Notice } from '@/components/common/Notice';
@@ -17,6 +17,7 @@ import {
   useSpeechRecognition,
   type SpeechRecognitionErrorCode,
 } from '@/hooks/useSpeechRecognition';
+import { cn } from '@/lib/format';
 import { api } from '@/services/api';
 import type { LanguageCode } from '@/types';
 
@@ -26,6 +27,8 @@ interface ChatInputProps {
   onSubmit: (text: string, fromVoice: boolean) => void;
   loading: boolean;
   language: LanguageCode;
+  /** Larger mic button with a visible label, for the empty conversation. */
+  prominentMic?: boolean;
 }
 
 type SttProvider = 'auto' | 'backend' | 'browser';
@@ -64,7 +67,14 @@ function combineTranscript(draft: string, spokenText: string): string {
   return `${draft}${draft && !/\s$/.test(draft) ? ' ' : ''}${spokenText}`;
 }
 
-export function ChatInput({ value, onChange, onSubmit, loading, language }: ChatInputProps) {
+export function ChatInput({
+  value,
+  onChange,
+  onSubmit,
+  loading,
+  language,
+  prominentMic = false,
+}: ChatInputProps) {
   const { t } = useTranslation();
   const id = useId();
   const [transcribing, setTranscribing] = useState(false);
@@ -75,6 +85,7 @@ export function ChatInput({ value, onChange, onSubmit, loading, language }: Chat
   const [activeProvider, setActiveProvider] = useState<ActiveProvider>(null);
   const [voiceInputError, setVoiceInputError] = useState<VoiceInputErrorCode | null>(null);
   const originalDraft = useRef('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previousLanguage = useRef(language);
   const transcriptionRequestId = useRef(0);
   const recognition = useSpeechRecognition();
@@ -158,6 +169,15 @@ export function ChatInput({ value, onChange, onSubmit, loading, language }: Chat
     recognition.interimText,
     recognition.status,
   ]);
+
+  // Grow with the text, up to about five lines (max-h-36), then scroll.
+  useLayoutEffect(() => {
+    const area = textareaRef.current;
+    if (!area) return;
+    area.style.height = 'auto';
+    area.style.height = `${area.scrollHeight}px`;
+    area.style.overflowY = area.scrollHeight > area.clientHeight ? 'auto' : 'hidden';
+  }, [value]);
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -354,40 +374,58 @@ export function ChatInput({ value, onChange, onSubmit, loading, language }: Chat
       <label htmlFor={id} className="sr-only">
         {t('chat.inputLabel')}
       </label>
-      <div className="flex items-end gap-2 rounded-2xl border border-line bg-surface p-2 focus-within:border-brand-600 focus-within:ring-2 focus-within:ring-brand-200">
+      <div className="flex items-end gap-1.5 rounded-2xl border border-line bg-surface p-1.5 shadow-sm focus-within:border-brand-600 focus-within:ring-2 focus-within:ring-brand-100">
         <button
           type="button"
           onClick={startRecording}
           disabled={micDisabled}
           aria-pressed={isListening}
           aria-label={t('chat.mic')}
-          className="flex min-h-12 min-w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl bg-saffron-50 px-2 py-1 text-xs font-semibold text-saffron-800 ring-1 ring-saffron-200 hover:bg-saffron-100 disabled:cursor-not-allowed disabled:opacity-50"
+          title={t('chat.mic')}
+          className={cn(
+            'flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+            prominentMic
+              ? 'w-11 bg-brand-800 text-sm text-white hover:bg-brand-900 sm:w-auto sm:px-3.5'
+              : 'w-11 text-ink-muted hover:bg-subtle hover:text-ink',
+          )}
         >
           <Mic className="size-5" aria-hidden />
-          <span>{t('chat.micButton')}</span>
+          {prominentMic && (
+            <span className="hidden sm:inline" aria-hidden>
+              {t('chat.speak')}
+            </span>
+          )}
         </button>
         <textarea
+          ref={textareaRef}
           id={id}
           rows={1}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={t('chat.placeholder')}
-          className="max-h-40 min-h-12 min-w-0 flex-1 resize-none bg-transparent px-2 py-2.5 text-base outline-none placeholder:text-ink-muted"
-          style={{ fieldSizing: 'content' } as CSSProperties}
+          aria-describedby={`${id}-hint`}
+          className="max-h-36 min-h-11 min-w-0 flex-1 resize-none overflow-y-hidden bg-transparent px-2 py-2.5 text-base leading-6 outline-none placeholder:text-ink-muted"
         />
-        <Button
+        <button
           type="submit"
           disabled={!canSend}
-          loading={loading}
-          icon={<Send className="size-5" aria-hidden />}
-          className="min-h-12 shrink-0 rounded-xl px-3"
-          aria-label={t('chat.send')}
+          aria-busy={loading || undefined}
+          aria-label={loading ? t('chat.sending') : t('chat.send')}
+          title={t('chat.send')}
+          className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand-800 text-white transition-colors hover:bg-brand-900 disabled:cursor-not-allowed disabled:bg-subtle disabled:text-ink-muted"
         >
-          {t('chat.send')}
-        </Button>
+          {loading ? (
+            <LoaderCircle className="size-5 animate-spin" aria-hidden />
+          ) : (
+            <ArrowUp className="size-5" aria-hidden />
+          )}
+        </button>
       </div>
-      <p className="px-1 text-xs text-ink-muted">{t('chat.keyboardHint')}</p>
+      <p id={`${id}-hint`} className="px-1 text-center text-xs text-ink-muted">
+        <span className="hidden sm:inline">{t('chat.keyboardHint')} </span>
+        {t('notice.sidebar')}
+      </p>
     </form>
   );
 }

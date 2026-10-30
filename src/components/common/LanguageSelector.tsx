@@ -1,12 +1,12 @@
 import { useId } from 'react';
-import { Languages } from 'lucide-react';
+import { ChevronDown, Languages } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useSettings } from '@/hooks/useSettings';
 import { LANGUAGES } from '@/i18n';
 import { cn } from '@/lib/format';
 
 interface LanguageSelectorProps {
-  /** "full" shows a visible label (sidebar), "compact" is for the phone header. */
+  /** "full" shows a visible label and a button group; "compact" is the top bar select. */
   variant?: 'full' | 'compact';
   className?: string;
 }
@@ -23,14 +23,14 @@ export function LanguageSelector({ variant = 'full', className }: LanguageSelect
           {t('settings.language')}
         </label>
         <Languages
-          className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-brand-800"
+          className="pointer-events-none absolute top-1/2 left-2.5 hidden size-4 -translate-y-1/2 text-ink-muted sm:block"
           aria-hidden
         />
         <select
           id={id}
           value={language}
           onChange={(e) => setLanguage(e.target.value)}
-          className="min-h-10 appearance-none rounded-lg border border-line bg-surface py-1.5 pr-3 pl-8 text-sm font-semibold text-ink"
+          className="min-h-11 max-w-[6.5rem] sm:max-w-[9rem] appearance-none truncate rounded-lg border border-line bg-surface py-1.5 pr-7 pl-3 text-sm sm:pl-8 font-medium text-ink hover:border-ink-muted/40"
         >
           {LANGUAGES.map((lang) => (
             <option key={lang.code} value={lang.code}>
@@ -38,6 +38,10 @@ export function LanguageSelector({ variant = 'full', className }: LanguageSelect
             </option>
           ))}
         </select>
+        <ChevronDown
+          className="pointer-events-none absolute top-1/2 right-2 size-4 -translate-y-1/2 text-ink-muted"
+          aria-hidden
+        />
       </div>
     );
   }

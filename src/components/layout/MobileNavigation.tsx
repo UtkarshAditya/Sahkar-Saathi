@@ -13,7 +13,10 @@ interface MobileNavigationProps {
   onClose: () => void;
 }
 
-/** Phone and tablet navigation: a bottom bar for the main pages and a full menu drawer. */
+const BAR_ITEM =
+  'flex min-h-16 w-full flex-col items-center justify-center gap-0.5 px-1 text-xs font-semibold';
+
+/** Phone and tablet navigation: a bottom bar for Ask and Grievance, and a full menu drawer. */
 export function MobileNavigation({ open, onOpen, onClose }: MobileNavigationProps) {
   const { t } = useTranslation();
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -34,15 +37,15 @@ export function MobileNavigation({ open, onOpen, onClose }: MobileNavigationProp
           if (e.target === dialogRef.current) onClose();
         }}
         aria-label={t('nav.primary')}
-        className="m-0 h-dvh max-h-dvh w-[min(20rem,88vw)] max-w-none border-r border-line bg-surface p-0 text-ink backdrop:bg-brand-950/40 lg:hidden"
+        className="m-0 h-dvh max-h-dvh w-[min(18rem,85vw)] max-w-none border-r border-line bg-surface p-0 text-ink backdrop:bg-ink/30 lg:hidden"
       >
         <div className="flex h-full flex-col">
-          <div className="flex items-center justify-between border-b border-line px-4 py-3">
-            <Brand compact />
+          <div className="flex h-16 items-center justify-between px-4">
+            <Brand />
             <button
               type="button"
               onClick={onClose}
-              className="flex size-10 items-center justify-center rounded-lg text-ink-muted hover:bg-canvas hover:text-ink"
+              className="flex size-11 items-center justify-center rounded-lg text-ink-muted hover:bg-subtle hover:text-ink"
               aria-label={t('nav.closeMenu')}
             >
               <X className="size-5" aria-hidden />
@@ -54,9 +57,9 @@ export function MobileNavigation({ open, onOpen, onClose }: MobileNavigationProp
 
       <nav
         aria-label={t('nav.primary')}
-        className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden print:hidden"
       >
-        <ul className="mx-auto grid max-w-lg grid-cols-4">
+        <ul className="mx-auto grid max-w-md grid-cols-3">
           {NAV_ITEMS.filter((item) => item.primaryOnMobile).map((item) => (
             <li key={item.to}>
               <NavLink
@@ -64,10 +67,7 @@ export function MobileNavigation({ open, onOpen, onClose }: MobileNavigationProp
                 reloadDocument={item.reloadDocument}
                 end={item.to === '/'}
                 className={({ isActive }) =>
-                  cn(
-                    'flex min-h-16 flex-col items-center justify-center gap-0.5 px-1 text-xs font-semibold',
-                    isActive ? 'text-brand-800' : 'text-ink-muted hover:text-brand-800',
-                  )
+                  cn(BAR_ITEM, isActive ? 'text-brand-800' : 'text-ink-muted hover:text-ink')
                 }
               >
                 {({ isActive }) => (
@@ -80,7 +80,7 @@ export function MobileNavigation({ open, onOpen, onClose }: MobileNavigationProp
                     >
                       <item.icon className="size-5" aria-hidden />
                     </span>
-                    <span className="truncate">{t(item.labelKey)}</span>
+                    <span className="max-w-full truncate">{t(item.labelKey)}</span>
                   </>
                 )}
               </NavLink>
@@ -90,7 +90,8 @@ export function MobileNavigation({ open, onOpen, onClose }: MobileNavigationProp
             <button
               type="button"
               onClick={onOpen}
-              className="flex min-h-16 w-full flex-col items-center justify-center gap-0.5 px-1 text-xs font-semibold text-ink-muted hover:text-brand-800"
+              aria-haspopup="dialog"
+              className={cn(BAR_ITEM, 'text-ink-muted hover:text-ink')}
             >
               <span className="flex h-7 w-12 items-center justify-center rounded-full">
                 <Ellipsis className="size-5" aria-hidden />

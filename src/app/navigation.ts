@@ -12,7 +12,8 @@ import {
 } from 'lucide-react';
 import { USE_MOCKS } from '@/services/api';
 
-export type NavGroup = 'core' | 'guides' | 'staff';
+/** core: Ask and Grievance; library: reference pages; help: About; staff: collapsed group. */
+export type NavGroup = 'core' | 'library' | 'help' | 'staff';
 
 export interface NavItem {
   to: string;
@@ -28,7 +29,7 @@ export interface NavItem {
   reloadDocument?: boolean;
 }
 
-/** One source of truth for the sidebar, mobile menu, breadcrumbs and bottom bar. */
+/** One source of truth for the sidebar, mobile menu, header title and bottom bar. */
 export const NAV_ITEMS: NavItem[] = [
   {
     to: '/',
@@ -46,18 +47,17 @@ export const NAV_ITEMS: NavItem[] = [
     group: 'core',
     primaryOnMobile: true,
   },
-  { to: '/about', labelKey: 'nav.about', pageKey: 'about', icon: Info, group: 'core' },
+  { to: '/library', labelKey: 'nav.library', pageKey: 'library', icon: BookOpen, group: 'library' },
+  { to: '/schemes', labelKey: 'nav.schemes', pageKey: 'schemes', icon: Landmark, group: 'library' },
   {
     to: '/crop-insurance',
     labelKey: 'nav.cropInsurance',
     pageKey: 'cropInsurance',
     icon: Sprout,
-    group: 'guides',
-    primaryOnMobile: true,
+    group: 'library',
   },
-  { to: '/schemes', labelKey: 'nav.schemes', pageKey: 'schemes', icon: Landmark, group: 'guides' },
-  { to: '/library', labelKey: 'nav.library', pageKey: 'library', icon: BookOpen, group: 'guides' },
-  { to: '/learn', labelKey: 'nav.learn', pageKey: 'learn', icon: GraduationCap, group: 'guides' },
+  { to: '/learn', labelKey: 'nav.learn', pageKey: 'learn', icon: GraduationCap, group: 'library' },
+  { to: '/about', labelKey: 'nav.about', pageKey: 'about', icon: Info, group: 'help' },
   {
     to: '/staff/quality',
     labelKey: 'nav.quality',
@@ -77,7 +77,7 @@ export const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-export const NAV_GROUPS: NavGroup[] = ['core', 'guides', 'staff'];
+export const NAV_GROUPS: NavGroup[] = ['core', 'library', 'help', 'staff'];
 
 export function findNavItem(pathname: string): NavItem | undefined {
   return NAV_ITEMS.find((item) =>

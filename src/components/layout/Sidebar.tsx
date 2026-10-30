@@ -1,87 +1,177 @@
-import { NavLink } from 'react-router';
-import { ShieldAlert } from 'lucide-react';
+import { useId, useState } from 'react';
+import { NavLink, useLocation } from 'react-router';
+import { ChevronDown, PanelLeftClose, PanelLeftOpen, ShieldCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { NAV_GROUPS, NAV_ITEMS } from '@/app/navigation';
-import { LanguageSelector } from '@/components/common/LanguageSelector';
-import { StateSelector } from '@/components/common/StateSelector';
+import { findNavItem, NAV_ITEMS, type NavGroup, type NavItem } from '@/app/navigation';
 import { cn } from '@/lib/format';
 import { Brand } from './Brand';
 
-/** Navigation, language and state selectors, and the safety notice. Shared with the mobile drawer. */
-export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+function itemsIn(group: NavGroup): NavItem[] {
+  return NAV_ITEMS.filter((item) => item.group === group);
+}
+
+interface NavRowProps {
+  item: NavItem;
+  collapsed: boolean;
+  onNavigate?: () => void;
+}
+
+function NavRow({ item, collapsed, onNavigate }: NavRowProps) {
   const { t } = useTranslation();
-
+  const label = t(item.labelKey);
   return (
-    <div className="flex h-full flex-col gap-6 overflow-y-auto px-4 py-5">
-      <nav aria-label={t('nav.primary')} className="flex flex-col gap-5">
-        {NAV_GROUPS.map((group) => (
-          <div key={group}>
-            <p className="mb-1.5 px-3 text-xs font-semibold tracking-wide text-ink-muted uppercase">
-              {t(`nav.groups.${group}`)}
-            </p>
-            <ul className="flex flex-col gap-0.5">
-              {NAV_ITEMS.filter((item) => item.group === group).map((item) => (
-                <li key={item.to}>
-                  <NavLink
-                    to={item.to}
-                    reloadDocument={item.reloadDocument}
-                    end={item.to === '/'}
-                    onClick={onNavigate}
-                    className={({ isActive }) =>
-                      cn(
-                        'relative flex min-h-11 items-center gap-3 rounded-lg px-3 font-medium transition-colors',
-                        isActive
-                          ? 'bg-brand-800 text-white'
-                          : 'text-ink-soft hover:bg-brand-50 hover:text-brand-900',
-                      )
-                    }
-                  >
-                    {({ isActive }) => (
-                      <>
-                        <item.icon
-                          className={cn(
-                            'size-5 shrink-0',
-                            isActive ? 'text-saffron-300' : 'text-brand-700',
-                          )}
-                          aria-hidden
-                        />
-                        <span>{t(item.labelKey)}</span>
-                      </>
-                    )}
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </nav>
-
-      <section
-        aria-labelledby="settings-heading"
-        className="flex flex-col gap-4 border-t border-line pt-5"
+    <li>
+      <NavLink
+        to={item.to}
+        reloadDocument={item.reloadDocument}
+        end={item.to === '/'}
+        onClick={onNavigate}
+        title={collapsed ? label : undefined}
+        className={({ isActive }) =>
+          cn(
+            'flex min-h-11 items-center gap-3 rounded-lg text-[0.9375rem] transition-colors',
+            collapsed ? 'justify-center px-0' : 'px-3',
+            isActive
+              ? 'bg-brand-100 font-semibold text-brand-900'
+              : 'font-medium text-ink-soft hover:bg-subtle hover:text-ink',
+          )
+        }
       >
-        <h2 id="settings-heading" className="sr-only">
-          {t('settings.title')}
-        </h2>
-        <LanguageSelector />
-        <StateSelector showHint />
-      </section>
-
-      <p className="mt-auto flex gap-2 rounded-xl bg-saffron-50 px-3 py-2.5 text-xs leading-relaxed text-saffron-800 ring-1 ring-saffron-200">
-        <ShieldAlert className="size-4 shrink-0" aria-hidden />
-        {t('notice.sidebar')}
-      </p>
-    </div>
+        {({ isActive }) => (
+          <>
+            <item.icon
+              className={cn('size-5 shrink-0', isActive ? 'text-brand-700' : 'text-ink-muted')}
+              aria-hidden
+            />
+            <span className={cn('truncate', collapsed && 'sr-only')}>{label}</span>
+          </>
+        )}
+      </NavLink>
+    </li>
   );
 }
 
-export function Sidebar() {
+interface SidebarContentProps {
+  /** Icons only (desktop). */
+  collapsed?: boolean;
+  onNavigate?: () => void;
+}
+
+/** Grouped navigation. Shared by the desktop sidebar and the mobile drawer. */
+export function SidebarContent({ collapsed = false, onNavigate }: SidebarContentProps) {
+  const { t } = useTranslation();
+  const { pathname } = useLocation();
+  const staffId = useId();
+  const onStaffPage = findNavItem(pathname)?.group === 'staff';
+  const [staffOpen, setStaffOpen] = useState(onStaffPage);
+  const showStaff = staffOpen || onStaffPage;
+
+  const groupHeading = (label: string) =>
+    collapsed ? (
+      <div className="mx-3 my-2 border-t border-line" role="presentation" />
+    ) : (
+      <p className="mt-4 mb-1 px-3 text-xs font-semibold text-ink-muted">{label}</p>
+    );
+
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 flex-col border-r border-line bg-surface lg:flex">
-      <div className="border-b border-line px-5 py-4">
-        <Brand />
+    <nav
+      aria-label={t('nav.primary')}
+      className={cn('flex flex-1 flex-col overflow-y-auto py-4', collapsed ? 'px-2' : 'px-3')}
+    >
+      <ul className="flex flex-col gap-0.5">
+        {itemsIn('core').map((item) => (
+          <NavRow key={item.to} item={item} collapsed={collapsed} onNavigate={onNavigate} />
+        ))}
+      </ul>
+
+      {groupHeading(t('nav.groups.library'))}
+      <ul className="flex flex-col gap-0.5" aria-label={t('nav.groups.library')}>
+        {itemsIn('library').map((item) => (
+          <NavRow key={item.to} item={item} collapsed={collapsed} onNavigate={onNavigate} />
+        ))}
+      </ul>
+
+      <div className={collapsed ? 'mx-3 my-2 border-t border-line' : 'my-2'} role="presentation" />
+      <ul className="flex flex-col gap-0.5">
+        {itemsIn('help').map((item) => (
+          <NavRow key={item.to} item={item} collapsed={collapsed} onNavigate={onNavigate} />
+        ))}
+      </ul>
+
+      <div className="mt-auto pt-4">
+        <button
+          type="button"
+          aria-expanded={showStaff}
+          aria-controls={staffId}
+          onClick={() => setStaffOpen((open) => !open)}
+          title={collapsed ? t('nav.groups.staff') : undefined}
+          className={cn(
+            'flex min-h-11 w-full items-center gap-3 rounded-lg text-sm font-medium text-ink-muted hover:bg-subtle hover:text-ink',
+            collapsed ? 'justify-center' : 'px-3',
+          )}
+        >
+          <ShieldCheck className="size-5 shrink-0" aria-hidden />
+          <span className={cn('flex-1 text-left', collapsed && 'sr-only')}>
+            {t('nav.groups.staff')}
+          </span>
+          <ChevronDown
+            className={cn(
+              'size-4 shrink-0 transition-transform',
+              showStaff && 'rotate-180',
+              collapsed && 'hidden',
+            )}
+            aria-hidden
+          />
+        </button>
+        <ul id={staffId} hidden={!showStaff} className="mt-0.5 flex flex-col gap-0.5">
+          {itemsIn('staff').map((item) => (
+            <NavRow key={item.to} item={item} collapsed={collapsed} onNavigate={onNavigate} />
+          ))}
+        </ul>
       </div>
-      <SidebarContent />
+    </nav>
+  );
+}
+
+interface SidebarProps {
+  collapsed: boolean;
+  onToggle: () => void;
+}
+
+export function Sidebar({ collapsed, onToggle }: SidebarProps) {
+  const { t } = useTranslation();
+  return (
+    <aside
+      className={cn(
+        'fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-line bg-surface lg:flex print:hidden',
+        collapsed ? 'w-[4.5rem]' : 'w-64',
+      )}
+    >
+      <div className={cn('flex h-16 items-center', collapsed ? 'justify-center' : 'px-5')}>
+        <Brand iconOnly={collapsed} />
+      </div>
+      <SidebarContent collapsed={collapsed} />
+      <div className={cn('border-t border-line py-2', collapsed ? 'px-2' : 'px-3')}>
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={collapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')}
+          title={collapsed ? t('nav.expandSidebar') : undefined}
+          className={cn(
+            'flex min-h-11 w-full items-center gap-3 rounded-lg text-sm font-medium text-ink-muted hover:bg-subtle hover:text-ink',
+            collapsed ? 'justify-center' : 'px-3',
+          )}
+        >
+          {collapsed ? (
+            <PanelLeftOpen className="size-5" aria-hidden />
+          ) : (
+            <>
+              <PanelLeftClose className="size-5" aria-hidden />
+              <span>{t('nav.collapseSidebar')}</span>
+            </>
+          )}
+        </button>
+      </div>
     </aside>
   );
 }

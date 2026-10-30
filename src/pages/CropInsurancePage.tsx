@@ -54,7 +54,6 @@ export default function CropInsurancePage() {
         title={t('pages.cropInsurance.title')}
         description={t('pages.cropInsurance.description')}
         icon={<Sprout className="size-6" aria-hidden />}
-        breadcrumbs={[{ label: t('nav.groups.guides') }]}
         badges={<Badge tone="saffron">{t('common.placeholder')}: figures not yet verified</Badge>}
         actions={
           <Button onClick={askFollowUp} icon={<MessageSquareText className="size-5" aria-hidden />}>

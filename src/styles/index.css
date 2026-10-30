@@ -1,59 +1,63 @@
 @import 'tailwindcss';
 
 /*
- * Design tokens. Deep green is the primary colour, saffron a restrained accent.
- * Use them through Tailwind utilities, e.g. bg-brand-800, text-saffron-700, border-line.
+ * Design tokens. Deep teal is the one accent (brand-*); a muted amber (saffron-*) is kept
+ * for warnings and highlights only. Neutrals are a warm off-white canvas, white surfaces
+ * and near-black ink. Use them through Tailwind utilities, e.g. bg-brand-800, border-line.
+ *
+ * Contrast (WCAG AA): white on brand-600 and darker is at least 5.5:1; brand-700 and
+ * saffron-700 text on white and on the canvas are at least 6.5:1.
  */
 @theme {
   --font-sans:
     'Noto Sans', 'Noto Sans Devanagari', 'Noto Sans Tamil', 'Nirmala UI', 'Segoe UI', system-ui,
     -apple-system, Roboto, Arial, sans-serif;
 
-  --color-brand-50: #f0f7f2;
-  --color-brand-100: #dcede1;
-  --color-brand-200: #b9dbc4;
-  --color-brand-300: #8cc29f;
-  --color-brand-400: #5aa276;
-  --color-brand-500: #388659;
-  --color-brand-600: #276b46;
-  --color-brand-700: #1f5639;
-  --color-brand-800: #1a452f;
-  --color-brand-900: #143826;
-  --color-brand-950: #0b2016;
+  --color-brand-50: #eff8f6;
+  --color-brand-100: #d7eeea;
+  --color-brand-200: #afdcd4;
+  --color-brand-300: #7cc3b8;
+  --color-brand-400: #47a598;
+  --color-brand-500: #2a897d;
+  --color-brand-600: #1f6f66;
+  --color-brand-700: #1c5a54;
+  --color-brand-800: #1a4945;
+  --color-brand-900: #163c39;
+  --color-brand-950: #0a2422;
 
-  --color-saffron-50: #fff8ec;
-  --color-saffron-100: #ffeccc;
-  --color-saffron-200: #fed594;
-  --color-saffron-300: #fdb956;
-  --color-saffron-400: #f99d26;
-  --color-saffron-500: #e5800c;
-  --color-saffron-600: #c46207;
-  --color-saffron-700: #9c460a;
-  --color-saffron-800: #7f3910;
+  --color-saffron-50: #fcf7ee;
+  --color-saffron-100: #f8ecd3;
+  --color-saffron-200: #f0d8a6;
+  --color-saffron-300: #e5bd70;
+  --color-saffron-400: #d89f43;
+  --color-saffron-500: #c0822a;
+  --color-saffron-600: #a1661e;
+  --color-saffron-700: #80501b;
+  --color-saffron-800: #68411a;
 
-  --color-canvas: #f7f6f1;
+  --color-canvas: #f8f7f4;
   --color-surface: #ffffff;
-  --color-line: #e3e1d8;
-  --color-ink: #1c2420;
-  --color-ink-soft: #4a554f;
-  --color-ink-muted: #646d68;
+  --color-subtle: #f1f0ec;
+  --color-line: #e6e4de;
+  --color-ink: #1b1d1c;
+  --color-ink-soft: #454a47;
+  --color-ink-muted: #5d625f;
 }
 
 @layer base {
   html {
-    /* Slightly larger base size for readability on phones and for rural users. */
-    font-size: 17px;
+    font-size: 16px;
     -webkit-text-size-adjust: 100%;
   }
 
   body {
     @apply bg-canvas font-sans text-ink antialiased;
-    line-height: 1.55;
+    line-height: 1.6;
   }
 
   /* Visible, consistent keyboard focus everywhere. */
   :focus-visible {
-    outline: 3px solid var(--color-saffron-400);
+    outline: 2px solid var(--color-brand-600);
     outline-offset: 2px;
   }
 
@@ -61,6 +65,7 @@
   h2,
   h3 {
     line-height: 1.25;
+    letter-spacing: -0.01em;
   }
 
   button:not(:disabled),
@@ -75,7 +80,7 @@
   }
 
   .field-input {
-    @apply block w-full rounded-lg border border-line bg-surface px-3 py-2.5 text-base text-ink placeholder:text-ink-muted focus:border-brand-600 focus:ring-2 focus:ring-brand-200 focus:outline-none disabled:cursor-not-allowed disabled:bg-canvas;
+    @apply block min-h-11 w-full rounded-lg border border-line bg-surface px-3 py-2.5 text-base text-ink placeholder:text-ink-muted focus:border-brand-600 focus:ring-2 focus:ring-brand-100 focus:outline-none disabled:cursor-not-allowed disabled:bg-canvas;
   }
 
   .field-hint {
@@ -92,6 +97,22 @@
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Print only the page content: navigation and buttons carry print:hidden. */
+@media print {
+  body {
+    background: #fff;
+    font-size: 11pt;
+  }
+
+  a[href^='http']::after {
+    content: ' (' attr(href) ')';
+    font-size: 0.85em;
+    word-break: break-all;
   }
 }
