@@ -1,12 +1,18 @@
 """Answer common PMFBY questions straight from verified facts (role C).
 
-Plain Python, no Django imports. It reads schemes.yaml (see data/schemes.pmfby.draft.yaml
-for the layout) and answers only from facts marked `verified: true` that have a real
-source URL and date. A question it cannot match goes on to the normal answer service.
+Plain Python, no Django imports. It reads backend/data/schemes.yaml and answers only from
+the PMFBY fact whose id is "loss" when that fact is no longer a placeholder: is_placeholder
+is false and it has a real source_url and as_of date, the same rule apps/schemes enforces.
+A question it cannot match, or a fact that is still a placeholder, goes on to the normal
+answer service.
+
+English comes from the fact's own `body`. Hindi and Tamil come from
+services/data/fastpath_text.yaml and are shown only once a fluent reader has set
+`reviewed: true`; until then the English text is used.
 
 Use it by wrapping the real service where the services are created:
 
-    service = FastPathAnswerService(GroundedAnswerService(...), SchemeFastPath.from_file(path))
+    service = FastPathAnswerService(GroundedAnswerService(...), SchemeFastPath.from_files(...))
 """
 
 import logging
@@ -39,87 +45,91 @@ _REPORT = (
     "தெரிவி", "எப்போது", "புகார்", "என்ன செய்ய",
 )  # fmt: skip
 
-FACT_ID = "loss-report-window"
+SCHEME_SLUG = "pmfby"
+FACT_ID = "loss"
 
 
 def _usable(value) -> bool:
-    return value is not None and str(value).strip() not in ("", "TODO")
+    return value is not None and str(value).strip() not in ("", "TODO", "None")
 
 
-def load_verified_facts(path: str | Path) -> list[dict]:
-    """Return the verified, sourced facts from schemes.yaml, each with its scheme attached."""
-    data = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or []
+def load_verified_fact(path: str | Path, slug: str = SCHEME_SLUG, fact_id: str = FACT_ID):
+    """Return the fact (with its scheme under "_scheme"), or None if it is not verified."""
+    data = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
     entries = data.get("schemes", []) if isinstance(data, dict) else data
-    facts = []
     for entry in entries:
+        if entry.get("slug") != slug and entry.get("id") != slug:
+            continue
         for fact in entry.get("facts") or []:
+            if fact.get("id") != fact_id:
+                continue
             if (
-                fact.get("verified") is True
+                fact.get("is_placeholder") is False
                 and _usable(fact.get("source_url"))
                 and _usable(fact.get("as_of"))
+                and _usable(fact.get("body"))
             ):
-                facts.append({**fact, "_scheme": entry})
-            else:
-                logger.info("Fast path skips unverified fact %s", fact.get("id"))
-    return facts
+                return {**fact, "_scheme": entry}
+            logger.info("Fast path off: fact %s is still a placeholder or has no source", fact_id)
+    return None
+
+
+def load_translations(path: str | Path | None) -> dict:
+    """Read fastpath_text.yaml: {fact id: {language: {text, reviewed}}}. Missing file is fine."""
+    if path is None or not Path(path).exists():
+        return {}
+    return yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
 
 
 class SchemeFastPath:
-    """Matches a question to a verified fact and builds the answer from it."""
+    """Matches a question to the verified fact and builds the answer from it."""
 
-    def __init__(self, facts: list[dict], fallback_to_english: bool = True) -> None:
-        self.facts = {f["id"]: f for f in facts}
-        # If there is no reviewed text in the user's language, answer in English
-        # (a verified English fact beats a decline). Set False to fall through instead.
-        self.fallback_to_english = fallback_to_english
+    def __init__(self, fact: dict | None, translations: dict | None = None) -> None:
+        self.fact = fact
+        self.translations = translations or {}
 
     @classmethod
-    def from_file(cls, path: str | Path, **kwargs) -> "SchemeFastPath":
-        return cls(load_verified_facts(path), **kwargs)
+    def from_files(cls, schemes_path, translations_path=None) -> "SchemeFastPath":
+        return cls(load_verified_fact(schemes_path), load_translations(translations_path))
+
+    @property
+    def active(self) -> bool:
+        return self.fact is not None
 
     @staticmethod
     def matches(question: str) -> bool:
         q = normalize_text(question)
-        return all(
-            any(word in q for word in group) for group in (_CROP_OR_INSURANCE, _LOSS, _REPORT)
-        )
+        groups = (_CROP_OR_INSURANCE, _LOSS, _REPORT)
+        return all(any(word in q for word in group) for group in groups)
 
-    def _text_for(self, fact: dict, language: str) -> tuple[str, str] | None:
-        """Return (text, language of that text), or None if there is nothing safe to say."""
-        texts = fact.get("answer") or {}
-        reviewed = fact.get("answer_reviewed") or {}
-        if language == "en" and texts.get("en"):
-            return texts["en"], "en"
-        if language != "en" and texts.get(language) and reviewed.get(language) is True:
-            return texts[language], language
-        if self.fallback_to_english and texts.get("en"):
-            return texts["en"], "en"
-        return None
+    def _text_for(self, language: str) -> tuple[str, str]:
+        """The text to show and its language: reviewed translation, else the English body."""
+        if language != "en":
+            entry = (self.translations.get(FACT_ID) or {}).get(language) or {}
+            if entry.get("reviewed") is True and _usable(entry.get("text")):
+                return str(entry["text"]).strip(), language
+        return " ".join(str(self.fact["body"]).split()), "en"
 
     def answer(self, question: str, language: str) -> Answer | None:
-        fact = self.facts.get(FACT_ID)
-        if fact is None or not self.matches(question):
+        if self.fact is None or not self.matches(question):
             return None
-        chosen = self._text_for(fact, language)
-        if chosen is None:
-            return None
-        text, text_language = chosen
-        scheme = fact["_scheme"]
+        text, text_language = self._text_for(language)
+        scheme = self.fact["_scheme"]
+        slug = scheme.get("slug") or scheme.get("id") or SCHEME_SLUG
         source = Passage(
-            chunk_id=f"schemes:{scheme.get('slug', 'scheme')}:{fact['id']}",
-            text=str(fact.get("value", "")).strip(),
-            document_id=f"schemes.yaml:{scheme.get('slug', 'scheme')}",
+            chunk_id=f"schemes:{slug}:{self.fact['id']}",
+            text=" ".join(str(self.fact["body"]).split()),
+            document_id=f"schemes.yaml:{slug}",
             document_title=f"{scheme.get('title', 'Scheme')} (verified fact)",
-            publisher=str(fact.get("publisher", "Government of India")),
-            source_url=str(fact["source_url"]),
-            published_date=str(fact["as_of"]),
-            page=fact.get("page") if isinstance(fact.get("page"), int) else None,
+            publisher=str(self.fact.get("source_label") or "Government of India"),
+            source_url=str(self.fact["source_url"]),
+            published_date=str(self.fact["as_of"]),
+            page=None,
             score=1.0,
             state=None,
-            section=fact["id"],
         )
         return Answer(
-            text=text.strip(),
+            text=text,
             status="answered",
             language=text_language,
             citations=[source],

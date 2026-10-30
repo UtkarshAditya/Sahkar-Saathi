@@ -32,7 +32,11 @@ def test_pmfby_has_guide_facts(client):
     body = client.get("/api/v1/schemes/pmfby").json()
     kinds = {f["kind"] for f in body["facts"]}
     assert kinds == {"eligibility", "premium", "enrolment", "loss-reporting", "official-info"}
-    assert all(f["is_placeholder"] for f in body["facts"]), "no unverified figures"
+    # A fact may be verified only if it carries a source and a date; the rest stay placeholders.
+    for fact in body["facts"]:
+        assert fact["is_placeholder"] or (fact["source_url"] and fact["as_of"]), (
+            f"fact {fact['id']} is marked verified but has no source or date"
+        )
 
 
 def test_unknown_scheme_is_404(client):
