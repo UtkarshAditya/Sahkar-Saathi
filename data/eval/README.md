@@ -54,6 +54,43 @@ The dashboard shows only a run with all three metrics, so a run without faithful
 Until a complete run exists it shows clearly labelled sample numbers. A run recorded with
 the stub retriever (`--allow-stub`) is always marked as a sample and never shown as real.
 
+## `tamil_questions.csv`: do the Tamil answers hold up?
+
+Used by `python scripts/tamil_eval.py [BASE_URL] [--state TN] [--allow-demo] [--csv-out PATH]`
+against a running stack (default `http://localhost`). Each `question_ta` is asked on its own,
+in Tamil, for Tamil Nadu. Columns: `id`, `language`, `question_ta`, `question_en`,
+`expected_answer_ta`, `expected_answer_en`, `source`, `status`. The expected answers are
+**notes, not ground truth**: only a `CHECKED` row is trusted.
+
+| `status`       | Meaning                                                                                              | What the runner does                                                  |
+| -------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `CHECKED`      | A person verified the expected answer against the PMFBY operational guidelines.                      | Invariants **and** content: the key numbers must appear.              |
+| `CHECK`        | Needs verification against the source.                                                               | Invariants only; the answer is shown for a person to read.            |
+| `CONFLICT`     | Two sources disagree (T08: `schemes.yaml` says compulsory, the 2020 guidelines may say voluntary).   | Invariants only; warns if the answer says "compulsory" or "voluntary". |
+| `NEEDS SOURCE` | The answer must come from the corpus; there is no expected answer yet.                               | Invariants only; the answer is shown for a person to read.            |
+
+Text after a comma (`CHECKED, list incomplete`) is a note; the first word is the status.
+
+**Invariants, on every row** (a failure is `FAIL`): the request succeeded; the answer is not
+empty; an answered row is in Tamil script (half of its letters, so acronyms such as PMFBY are
+fine); the answer does not repeat the question; an answered row has a citation; the answer is
+not a demo answer (`is_demo=true`) unless `--allow-demo` is given, as in `acceptance.py`.
+
+**Content, on `CHECKED` rows only:** the answer must not be declined, and it must contain
+every number in `expected_answer_en`, read from the sentence itself (T01 and T13: 72, T14:
+48), not from a list in the script. Tamil digits count. A `CHECKED` row with no number in its
+expected answer has no content check.
+
+Every other row prints `REVIEW` and its answer cut to 200 characters, labelled
+`UNVERIFIED, read by a person`. It never passes or fails on content: matching the expected
+text would prove nothing when the expectation itself is unchecked. Nothing prints or stores a
+full answer, and no file is written unless you pass `--csv-out` (the table, without answers).
+
+**Only a person can promote a row from `CHECK` to `CHECKED`:** read the cited passage in the
+guideline, confirm the expected answer, then change `status` in the CSV. Do not do it because
+the system's answer matched. A `CONFLICT` row stays until someone reads the guideline and
+decides, and the expected answer is then written down.
+
 ## `conversations.json`: does the whole chat behave?
 
 Used by `python scripts/acceptance.py [BASE_URL]` against a running stack (default

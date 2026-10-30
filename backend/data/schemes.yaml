@@ -82,56 +82,79 @@ schemes:
         kind: eligibility
         title: Who can enrol
         body: >-
-          Farmers growing notified crops in notified areas, including sharecroppers and
-          tenant farmers, can generally enrol. The exact conditions will be quoted from the
-          verified guidelines.
-        source_label: "Pending: schemes.yaml (PMFBY)"
-        source_url: null
-        as_of: null
-        is_placeholder: true
+          All farmers including sharecroppers and tenant farmers growing the notified crops in the
+          notified areas are eligible for coverage. However, farmers should have insurable interest
+          for the insured crops and lands. The scheme is optional for all farmers including farmers
+          who have been sanctioned short-term Seasonal Agricultural Operations (SAO) loans/Kisan
+          Credit Card (KCC) for the notified crops. Existing Loanee farmers who do not want to get
+          covered under the scheme have the option of opting-out from the Schemes by submitting
+          requisite declaration to loan sanctioning bank branches any time during the year but at
+          least seven days prior to the cut-off date for enrolment of farmers for the respective
+          season. All those farmers who do not submit the declaration would be essentially covered.
+        source_label: "Revamped Operational Guidelines of PMFBY (effective from Kharif 2020), paras 3.1, 3.1.1.1 and 3.1.2 (printed page 4)"
+        source_url: "https://pmfby.gov.in/pdf/Revamped%20Operational%20Guidelines_17th%20August%202020.pdf"
+        as_of: 2026-10-30
+        is_placeholder: false
       - id: premium
         kind: premium
         title: Your premium share
         body: >-
-          The farmer's premium share for your season and crop type will appear here from the
-          verified source. No figure is shown until it is verified.
-        source_label: "Pending: schemes.yaml (PMFBY)"
-        source_url: null
-        as_of: null
-        is_placeholder: true
+          Maximum premium rate payable by the farmer (% of Sum Insured). Kharif, all food grain and
+          oilseeds crops (all cereals, millets, pulses and oilseeds crops): 2.0% of Sum Insured (SI)
+          or Actuarial rate, whichever is less. Rabi, all food grain and oilseeds crops: 1.5% of SI
+          or Actuarial rate, whichever is less. Kharif and Rabi, annual commercial/annual
+          horticultural crops: 5% of SI or Actuarial rate, whichever is less. Perennial horticultural
+          / commercial crops (pilot basis): 5% of SI or Actuarial rate, whichever is less. Premium
+          paid by non loanee farmers should be rounded off to nearest Rupee.
+        source_label: "Revamped Operational Guidelines of PMFBY (effective from Kharif 2020), para 13.1, Table 1 (printed page 24)"
+        source_url: "https://pmfby.gov.in/pdf/Revamped%20Operational%20Guidelines_17th%20August%202020.pdf"
+        as_of: 2026-10-30
+        is_placeholder: false
       - id: enrolment
         kind: enrolment
         title: How and where to enrol
         body: >-
-          Farmers usually enrol through their bank, PACS, a common service centre or the
-          insurance company. The enrolment window for this season will be added from the
-          verified source.
-        source_label: "Pending: schemes.yaml (PMFBY)"
-        source_url: null
-        as_of: null
-        is_placeholder: true
+          The scheme will work on the "Opt-out" mode for the existing loanee farmers. Declaration
+          for both "Opting in" and for "Opting out" will have to be submitted by the farmer in the
+          same bank where they have their KCC/SAO Loan account. All non-loanee farmers desirous of
+          availing crop insurance shall fill up the application form of the Scheme and submit the
+          same to nearest bank branch/CSCs or authorized channel partner or insurance intermediary
+          of insurance company. Non-loanee farmer may submit insurance proposals personally to
+          Insurance Company. Non-loanee farmer can also submit application forms for getting
+          insurance coverage through NCIP / Crop Insurance App. It is mandatory that Non-Loanee
+          farmers, personally submitting proposals to Insurance Company or through NCIP, should have
+          insurable interest and submit necessary documentary evidence as proof as decided by SLCCCI
+          along with Aadhaar Number or Aadhaar Enrolment Number.
+        source_label: "Revamped Operational Guidelines of PMFBY (effective from Kharif 2020), paras 17.5.11, 17.5.14, 17.6.1, 17.7.1 to 17.7.3 (printed pages 36 to 38)"
+        source_url: "https://pmfby.gov.in/pdf/Revamped%20Operational%20Guidelines_17th%20August%202020.pdf"
+        as_of: 2026-10-30
+        is_placeholder: false
       - id: loss
         kind: loss-reporting
         title: Reporting crop loss
         body: >-
-          Report the loss within 72 hours of a localized calamity or damage to your
-          insured crop. You can report it through the National Crop Insurance Portal
-          (NCIP), the PMFBY mobile app, or directly to the insurance company, the
-          toll-free helpline or the local agriculture office.
-        source_label: Revised Operational Guidelines of PMFBY (sections 21.4 and 21.5, CHECK)
-        source_url: "https://pmfby.gov.in/pdf/Revised_Operational_Guidelines.pdf"
-        as_of: 2026-10-29  # CHANGE to the day you actually check the PDF
+          Report the loss within 72 hours of a localized calamity or post-harvest damage to your
+          insured crop. Intimation may be given within 72 hours by the farmer either directly
+          through the "Crop Insurance App" or dedicated toll-free number, Centralized Call Centre
+          number of concerned Insurance Company. The intimation may also be forwarded through the
+          concerned bank branch, local agriculture department Government/district officials or
+          through the toll free number. Lodging of intimation for claims by insured farmers /
+          designated agencies for wide-spread calamities is not essential.
+        source_label: "Revamped Operational Guidelines of PMFBY (effective from Kharif 2020), paras 21.5.4.1, 21.5.4.2, 21.6.3.1, 21.6.3.2 and 5.5 (printed pages 6, 72 and 79 to 80)"
+        source_url: "https://pmfby.gov.in/pdf/Revamped%20Operational%20Guidelines_17th%20August%202020.pdf"
+        as_of: 2026-10-30
         is_placeholder: false
       - id: official
         kind: official-info
         title: Official information and helpline
         body: >-
-          The official PMFBY portal and helpline number will be listed here once verified.
-          Until then, ask your bank branch, PACS or district agriculture office.
-        source_label: "Pending: schemes.yaml (PMFBY)"
-        source_url: null
-        as_of: null
-        is_placeholder: true
+          The official PMFBY portal is the National Crop Insurance Portal (NCIP), www.pmfby.gov.in.
+          The helpline number will be listed here once verified. Until then, ask your bank branch,
+          PACS or district agriculture office.
+        source_label: "Revamped Operational Guidelines of PMFBY (effective from Kharif 2020), para 17.7.2 (printed page 38): portal address only; no helpline number is stated"
+        source_url: "https://pmfby.gov.in/pdf/Revamped%20Operational%20Guidelines_17th%20August%202020.pdf"
+        as_of: 2026-10-30
+        is_placeholder: false
 
   - slug: model-bylaws-pacs
     title: Model by-laws for multipurpose PACS

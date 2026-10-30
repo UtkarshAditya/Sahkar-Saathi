@@ -389,6 +389,29 @@ question goes through the normal service, and a failure there is still an error.
 answers are in `backend/data/demo_answers.yaml`; two of them are labelled placeholders
 until the owners supply sourced text.
 
+**Run the preflight first**, on the machine that will give the demo. It answers one question:
+is the real pipeline ready? It prints a PASS, WARN or FAIL line per check, ends with `READY` or
+`NOT READY`, and exits 1 on any FAIL (a WARN does not fail it):
+
+```bash
+python scripts/demo_preflight.py --docker       # http://localhost
+python scripts/demo_preflight.py https://demo.example.org --llm-model llama3.1:8b
+```
+
+| Check     | What it does                                                                                                                           |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| health    | `GET /api/v1/health` is `ok`: database up, and Qdrant up when retrieval is real.                                                       |
+| flags     | FAIL if any service is still a stub. The API does not expose each `USE_STUB_*` flag or `DEMO_CACHE`, so it also WARNs: check `.env`.   |
+| ollama    | `LLM_BASE_URL` answers and `LLM_MODEL` is installed (taken from the options, the environment, `.env`, then the defaults).              |
+| corpus    | With `--docker`: documents with chunks and chunk rows from `corpus_status` (FAIL if none, WARN below 10 documents). Without it: WARN.  |
+| chat      | One English, one Hindi and one Tamil question from `data/eval/conversations.json` must meet that turn's expectations. WARN if slower than 30 s or a demo answer (`is_demo`). |
+| memory    | Free RAM on this machine, WARN below 3 GB (`--min-free-gb`).                                                                           |
+
+It cannot tell whether an answer is right or fluent, or which individual flags are set: a
+person still reads the three answers. A demo answer in the chat check means `DEMO_CACHE` or a
+stub is on, which is fine for rehearsing the demo but is not the live pipeline. Run the preflight
+after `docker compose up -d --wait` and again after any change to `.env`.
+
 **Run the demo check** after `docker compose up -d --wait`. It visits every screen's
 endpoint in demo order, plays the five scripted conversations, and prints a PASS or FAIL
 table (exit code 1 if anything fails):
