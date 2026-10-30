@@ -108,6 +108,45 @@ class Command(BaseCommand):
 
         self.stdout.write("")
         self._summary(in_scores, out_scores, hits, evaluated, top_k)
+
+        # Per-language report for en, hi, ta
+        by_lang: dict[str, dict] = {}
+        for question, passages in results:
+            lang = question.get("language") or "en"
+            if lang not in by_lang:
+                by_lang[lang] = {
+                    "in_scores": [],
+                    "out_scores": [],
+                    "hits": 0,
+                    "evaluated": 0,
+                }
+            top = max((p.score for p in passages), default=None)
+            score = top if top is not None else 0.0
+            (
+                by_lang[lang]["in_scores"]
+                if question["in_scope"]
+                else by_lang[lang]["out_scores"]
+            ).append(score)
+            expected = question.get("expect_doc_ids") or []
+            if question["in_scope"] and expected:
+                by_lang[lang]["evaluated"] += 1
+                if any(p.document_id in expected for p in passages):
+                    by_lang[lang]["hits"] += 1
+
+        for lang in ("en", "hi", "ta"):
+            if lang not in by_lang:
+                continue
+            data = by_lang[lang]
+            self.stdout.write(f"\n--- Language: {lang} ---")
+            self._summary(
+                data["in_scores"],
+                data["out_scores"],
+                data["hits"],
+                data["evaluated"],
+                top_k,
+                lang=lang,
+            )
+
         if record:
             self._record(outcomes, options, top_k)
 
@@ -168,7 +207,7 @@ class Command(BaseCommand):
                     passages = await retriever.search(
                         question["question"],
                         state=question.get("state"),
-                        language="en",
+                        language=question.get("language", "en"),
                         top_k=top_k,
                     )
                 except Exception as exc:  # service not ready, Qdrant down, model missing
@@ -182,58 +221,82 @@ class Command(BaseCommand):
 
         return asyncio.run(run())
 
-    def _summary(self, in_scores, out_scores, hits, evaluated, top_k):
+    def _summary(self, in_scores, out_scores, hits, evaluated, top_k, lang: str | None = None):
         write = self.stdout.write
+        title_suffix = f" ({lang})" if lang else ""
         if evaluated:
-            write(f"Hit rate (expected document in the top {top_k}): {hits}/{evaluated}")
+            write(
+                f"Hit rate (expected document in the top {top_k}){title_suffix}: {hits}/{evaluated}"
+            )
         else:
-            write("Hit rate: n/a (no in-scope question lists expect_doc_ids yet)")
+            write(f"Hit rate{title_suffix}: n/a (no in-scope question lists expect_doc_ids yet)")
         for label, scores in (("In-scope", in_scores), ("Out-of-scope", out_scores)):
             if scores:
                 write(
-                    f"{label} top scores ({len(scores)}): mean "
+                    f"{label} top scores ({len(scores)}){title_suffix}: mean "
                     f"{sum(scores) / len(scores):.3f}, min {min(scores):.3f}, "
                     f"max {max(scores):.3f}"
                 )
             else:
-                write(f"{label} top scores: no questions")
+                write(f"{label} top scores{title_suffix}: no questions")
 
-        current = settings.SCORE_THRESHOLD
+        current = (
+            settings.SCORE_THRESHOLD_BY_LANG.get(lang, settings.SCORE_THRESHOLD)
+            if lang
+            else settings.SCORE_THRESHOLD
+        )
         if in_scores:
             kept = sum(s >= current for s in in_scores)
             write(
-                f"At the current SCORE_THRESHOLD={current}: {kept}/{len(in_scores)} in-scope pass"
+                f"At the current SCORE_THRESHOLD{title_suffix}={current}: "
+                f"{kept}/{len(in_scores)} in-scope pass"
             )
         if out_scores:
             blocked = sum(s < current for s in out_scores)
             write(
-                f"At the current SCORE_THRESHOLD={current}: {blocked}/{len(out_scores)} out blocked"
+                f"At the current SCORE_THRESHOLD{title_suffix}={current}: "
+                f"{blocked}/{len(out_scores)} out blocked"
             )
 
         if not (in_scores and out_scores):
-            write(self.style.WARNING("\nNo SUGGESTED SCORE_THRESHOLD: both groups are needed."))
+            write(
+                self.style.WARNING(
+                    f"\nNo SUGGESTED SCORE_THRESHOLD{title_suffix}: both groups are needed."
+                )
+            )
+            for label, scores in (("in-scope", in_scores), ("out-of-scope", out_scores)):
+                if len(scores) < MIN_GROUP_SIZE:
+                    write(
+                        self.style.WARNING(
+                            f"WARNING: only {len(scores)} {label} questions{title_suffix} "
+                            f"(need at least {MIN_GROUP_SIZE}). The suggestion is not reliable yet."
+                        )
+                    )
             return
         low_in = percentile(in_scores, 10)
         high_out = percentile(out_scores, 90)
-        suggested = (low_in + high_out) / 2
+        if low_in <= high_out:
+            suggested = max((low_in + high_out) / 2, high_out)
+        else:
+            suggested = (low_in + high_out) / 2
         write(
-            f"\n10th percentile of in-scope top scores:     {low_in:.3f}\n"
-            f"90th percentile of out-of-scope top scores: {high_out:.3f}"
+            f"\n10th percentile of in-scope top scores{title_suffix}:     {low_in:.3f}\n"
+            f"90th percentile of out-of-scope top scores{title_suffix}: {high_out:.3f}"
         )
-        write(self.style.SUCCESS(f"SUGGESTED SCORE_THRESHOLD={suggested:.2f}"))
+        write(self.style.SUCCESS(f"SUGGESTED SCORE_THRESHOLD{title_suffix}={suggested:.2f}"))
         if low_in <= high_out:
             write(
                 self.style.WARNING(
-                    "WARNING: the score ranges overlap, so no threshold separates in-scope from "
-                    "out-of-scope questions cleanly. Do not trust the suggestion: improve "
-                    "retrieval or the question set first."
+                    f"WARNING: the score ranges overlap{title_suffix}, so no threshold "
+                    "separates in-scope from out-of-scope questions cleanly. Do not trust the "
+                    "suggestion: improve retrieval or the question set first."
                 )
             )
         for label, scores in (("in-scope", in_scores), ("out-of-scope", out_scores)):
             if len(scores) < MIN_GROUP_SIZE:
                 write(
                     self.style.WARNING(
-                        f"WARNING: only {len(scores)} {label} questions (need at least "
-                        f"{MIN_GROUP_SIZE}). The suggestion is not reliable yet."
+                        f"WARNING: only {len(scores)} {label} questions{title_suffix} "
+                        f"(need at least {MIN_GROUP_SIZE}). The suggestion is not reliable yet."
                     )
                 )

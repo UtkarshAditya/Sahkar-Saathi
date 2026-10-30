@@ -238,6 +238,11 @@ HELPLINE_DETAIL = (
 BHASHINI_API_KEY = os.environ.get("BHASHINI_API_KEY", "")
 BHASHINI_USER_ID = os.environ.get("BHASHINI_USER_ID", "")
 
+# Chunking configuration (member B)
+CHUNK_MAX_CHARS = int(os.environ.get("CHUNK_MAX_CHARS", "900"))
+CHUNK_MIN_CHARS = int(os.environ.get("CHUNK_MIN_CHARS", "80"))
+CHUNK_TAIL_MERGE_CHARS = int(os.environ.get("CHUNK_TAIL_MERGE_CHARS", "150"))
+
 # Retrieval (member B). Recorded in every evaluation run.
 EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "intfloat/multilingual-e5-small")
 TOP_K = int(os.environ.get("TOP_K", "4"))

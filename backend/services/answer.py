@@ -100,6 +100,7 @@ class GroundedAnswerService:
         self,
         retriever: Retriever,
         min_score: float = 0.0,
+        min_score_by_lang: dict[str, float] | None = None,
         retries: int = 1,
         top_k: int = 4,
         contact: Contact | None = None,
@@ -109,6 +110,7 @@ class GroundedAnswerService:
         # whenever B changes the embedding model.
         self.retriever = retriever
         self.min_score = min_score
+        self.min_score_by_lang = min_score_by_lang or {}
         self.retries = retries
         self.top_k = top_k
         # Who a declined answer points to; the API wiring passes HELPLINE_LABEL/DETAIL.
@@ -138,7 +140,12 @@ class GroundedAnswerService:
         top_score = max((p.score for p in passages), default=None)
 
         # Check 1: is the evidence strong enough to even try?
-        if top_score is None or top_score < self.min_score:
+        effective_min_score = (
+            self.min_score_by_lang.get(language, self.min_score)
+            if self.min_score_by_lang
+            else self.min_score
+        )
+        if top_score is None or top_score < effective_min_score:
             return self._declined(language, top_score, "low_score")
 
         user = build_user_prompt(text, passages, language)

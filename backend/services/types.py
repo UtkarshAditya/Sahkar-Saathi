@@ -47,6 +47,7 @@ class Retriever(Protocol):  # implemented by B
         language: str | None,
         top_k: int = 4,
         document_id: str | None = None,
+        score_threshold: float | None = None,
     ) -> list[Passage]: ...
 
 
