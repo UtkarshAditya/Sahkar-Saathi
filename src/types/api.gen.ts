@@ -372,6 +372,12 @@ export interface components {
              */
             status: "answered" | "partial" | "declined";
             /**
+             * Confidence
+             * @description "related" when no passage was strong enough for a confident answer and the closest passages are quoted instead (label it as such); otherwise "high".
+             * @enum {string}
+             */
+            confidence: "high" | "related";
+            /**
              * Needs State
              * @description True when the user must choose a state first.
              */
@@ -417,6 +423,11 @@ export interface components {
             url: string | null;
             /** Excerpt */
             excerpt: string | null;
+            /**
+             * Fetched At
+             * @description ISO datetime a web-page source was fetched; null for PDFs.
+             */
+            fetched_at?: string | null;
         };
         /** ContactOut */
         ContactOut: {
@@ -766,6 +777,35 @@ export interface components {
             source_url: string | null;
             /** Is Sample */
             is_sample: boolean;
+            /**
+             * Source Kind
+             * @description Where the text came from.
+             * @default pdf
+             * @enum {string}
+             */
+            source_kind: "pdf" | "web";
+            /**
+             * Fetched At
+             * @description When a web page was last fetched; null for PDFs.
+             */
+            fetched_at?: string | null;
+        };
+        /** AnswerTiersOut */
+        AnswerTiersOut: {
+            /**
+             * Confident
+             * @description Answered from the passages (confidence high).
+             */
+            confident: number;
+            /**
+             * Related
+             * @description Closest passages quoted (confidence related).
+             */
+            related: number;
+            /** Declined */
+            declined: number;
+            /** Total */
+            total: number;
         };
         /** EvalMetricOut */
         EvalMetricOut: {
@@ -834,6 +874,8 @@ export interface components {
              * @description True until real EvalRun rows exist.
              */
             is_sample: boolean;
+            /** @description Stored chat answers per tier (live traffic, not an evaluation run). */
+            answer_tiers?: components["schemas"]["AnswerTiersOut"] | null;
         };
         /** FailedQuestionOut */
         FailedQuestionOut: {
@@ -942,7 +984,7 @@ export interface operations {
                     "application/json": components["schemas"]["AskOut"];
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -1023,7 +1065,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorOut"];
                 };
             };
-            /** @description Request Entity Too Large */
+            /** @description Content Too Large */
             413: {
                 headers: {
                     [name: string]: unknown;
@@ -1041,7 +1083,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorOut"];
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -1101,7 +1143,7 @@ export interface operations {
                     "audio/wav": string;
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -1170,7 +1212,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorOut"];
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -1241,7 +1283,7 @@ export interface operations {
                     "application/json": components["schemas"]["GrievanceGuideOut"];
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -1352,7 +1394,7 @@ export interface operations {
                     "application/json": components["schemas"]["LessonsOut"];
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;

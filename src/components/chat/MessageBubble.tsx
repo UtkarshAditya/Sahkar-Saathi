@@ -1,5 +1,14 @@
 import { useState, type ReactNode } from 'react';
-import { Check, CircleCheck, CircleDot, Copy, MapPin, Phone, SearchX } from 'lucide-react';
+import {
+  Check,
+  CircleCheck,
+  CircleDot,
+  Copy,
+  Lightbulb,
+  MapPin,
+  Phone,
+  SearchX,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge, type BadgeTone } from '@/components/common/Badge';
 import { Button } from '@/components/common/Button';
@@ -30,6 +39,13 @@ const STATUS: Record<AnswerStatus, { labelKey: string; tone: BadgeTone; icon: Re
     tone: 'neutral',
     icon: <SearchX className="size-3.5" aria-hidden />,
   },
+};
+
+/** A related answer (confidence 'related'): the closest passages, quoted. Calm, not an error. */
+const RELATED = {
+  labelKey: 'chat.status.related',
+  tone: 'saffron' as BadgeTone,
+  icon: <Lightbulb className="size-3.5" aria-hidden />,
 };
 
 function CopyButton({ text }: { text: string }) {
@@ -96,7 +112,8 @@ export function MessageBubble({
   const response = message.response;
   if (!response) return null;
   const declined = response.status === 'declined';
-  const status = STATUS[response.status];
+  const related = !declined && response.confidence === 'related';
+  const status = related ? RELATED : STATUS[response.status];
   const asksForState = response.needs_state && Boolean(message.pendingQuestion);
 
   return (
@@ -123,9 +140,16 @@ export function MessageBubble({
         </p>
       )}
 
-      <p className={declined ? 'whitespace-pre-wrap text-ink-soft' : 'whitespace-pre-wrap'}>
-        {response.answer_text}
-      </p>
+      {related ? (
+        <div className="rounded-xl border border-saffron-200 bg-saffron-50 px-3 py-2.5">
+          <p className="whitespace-pre-wrap">{response.answer_text}</p>
+          <p className="mt-2 text-sm text-ink-soft">{t('chat.relatedNote')}</p>
+        </div>
+      ) : (
+        <p className={declined ? 'whitespace-pre-wrap text-ink-soft' : 'whitespace-pre-wrap'}>
+          {response.answer_text}
+        </p>
+      )}
 
       {response.is_demo && !response.needs_state && (
         <p className="mt-2 text-xs font-medium text-saffron-700">{t('chat.demoAnswer')}</p>

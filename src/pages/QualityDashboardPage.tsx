@@ -9,7 +9,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { LANGUAGES } from '@/i18n';
 import { formatDate, formatPercent } from '@/lib/format';
 import { ApiError, api } from '@/services/api';
-import type { EvalMetric, EvalMetricKey, EvalRun, FailureKind } from '@/types';
+import type { AnswerTiers, EvalMetric, EvalMetricKey, EvalRun, FailureKind } from '@/types';
 
 /** Django's admin login, which returns here afterwards. The session cookie is what the API checks. */
 const STAFF_LOGIN = '/admin/login/?next=/staff/quality';
@@ -99,6 +99,8 @@ export default function QualityDashboardPage() {
               </li>
             </ul>
           </section>
+
+          {data.answer_tiers && <AnswerTiersCard tiers={data.answer_tiers} />}
 
           <Card as="section" aria-labelledby="trend-heading">
             <CardTitle
@@ -207,6 +209,54 @@ export default function QualityDashboardPage() {
         </div>
       )}
     </>
+  );
+}
+
+const TIERS: {
+  key: keyof Omit<AnswerTiers, 'total'>;
+  label: string;
+  tone: BadgeTone;
+  note: string;
+}[] = [
+  {
+    key: 'confident',
+    label: 'Confident',
+    tone: 'brand',
+    note: 'Answered from passages above the main threshold.',
+  },
+  {
+    key: 'related',
+    label: 'Related',
+    tone: 'saffron',
+    note: 'Closest passages quoted; no confident match.',
+  },
+  { key: 'declined', label: 'Declined', tone: 'neutral', note: 'Nothing close enough was found.' },
+];
+
+/** Stored chat answers per tier. Live traffic, so it is not part of any evaluation run. */
+function AnswerTiersCard({ tiers }: { tiers: AnswerTiers }) {
+  return (
+    <Card as="section" aria-labelledby="tiers-heading">
+      <CardTitle
+        icon={<ChartColumn className="size-5" aria-hidden />}
+        title={<span id="tiers-heading">Answers by tier</span>}
+        description={`All ${tiers.total} stored chat answers (live traffic, not an evaluation run). State prompts count in the total only.`}
+      />
+      <ul className="grid gap-4 sm:grid-cols-3">
+        {TIERS.map((tier) => {
+          const count = tiers[tier.key];
+          return (
+            <li key={tier.key}>
+              <Badge tone={tier.tone}>{tier.label}</Badge>
+              <p className="mt-2 text-3xl font-bold tracking-tight tabular-nums">{count}</p>
+              <p className="text-sm text-ink-muted">
+                {tiers.total ? formatPercent(count / tiers.total) : '–'} · {tier.note}
+              </p>
+            </li>
+          );
+        })}
+      </ul>
+    </Card>
   );
 }
 

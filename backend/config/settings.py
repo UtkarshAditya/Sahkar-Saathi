@@ -265,7 +265,30 @@ SCORE_THRESHOLD_BY_LANG = {
     "hi": float(env_value("SCORE_THRESHOLD_HI") or SCORE_THRESHOLD),
     "ta": float(env_value("SCORE_THRESHOLD_TA") or SCORE_THRESHOLD),
 }
+# Related-answer tier, between a confident answer and a decline. OFF while empty (the
+# default): every question below SCORE_THRESHOLD is declined, exactly as before. When set,
+# a question whose best score is at least SCORE_THRESHOLD_RELATED (but below SCORE_THRESHOLD)
+# gets the closest passages, quoted verbatim and labelled as such, without calling the LLM.
+# A provisional starting point is 0.75; check it with `eval_retrieval --related-threshold`.
+SCORE_THRESHOLD_RELATED = (
+    float(value) if (value := env_value("SCORE_THRESHOLD_RELATED")) is not None else None
+)
+# Per question language; empty means SCORE_THRESHOLD_RELATED. Only languages with a value
+# get the tier (all three when SCORE_THRESHOLD_RELATED is set).
+SCORE_THRESHOLD_RELATED_BY_LANG = {
+    lang: float(value)
+    for lang in ("en", "hi", "ta")
+    if (value := env_value(f"SCORE_THRESHOLD_RELATED_{lang.upper()}") or SCORE_THRESHOLD_RELATED)
+    is not None
+}
+# How many passages a related answer quotes.
+RELATED_MAX_PASSAGES = int(env_value("RELATED_MAX_PASSAGES") or "2")
 QDRANT_URL = os.environ.get("QDRANT_URL", "http://qdrant:6333")
+
+# Web pages for `manage.py scrape_sources` (never run during a request). The delay is the
+# pause between two requests, to stay polite to government servers.
+SCRAPE_SOURCES = env_value("SCRAPE_SOURCES")  # default: data/scrape_sources.yaml
+SCRAPE_DELAY_SECONDS = float(env_value("SCRAPE_DELAY_SECONDS") or "2")
 HEALTH_CHECK_TIMEOUT_SECONDS = float(os.environ.get("HEALTH_CHECK_TIMEOUT_SECONDS", "1.5"))
 
 # Request limits.

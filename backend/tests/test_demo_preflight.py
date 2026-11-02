@@ -5,6 +5,7 @@ import importlib.util
 import json
 import threading
 import types
+from datetime import UTC, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -335,3 +336,48 @@ def test_unreadable_memory_warns(stack, capsys, monkeypatch):
 def test_free_memory_reader_returns_a_number_or_none():
     value = load_script().free_memory_bytes()
     assert value is None or value > 0
+
+
+# --- 7: web sources (WARN only) ---------------------------------------------------------
+
+
+def web_line(count: int, oldest: str) -> str:
+    return f"\nWeb documents: {count}   oldest fetched_at: {oldest}\n"
+
+
+def test_fresh_web_documents_pass(stack, capsys, monkeypatch):
+    fresh = (datetime.now(UTC) - timedelta(days=3)).isoformat()
+    output = corpus_output(12) + web_line(5, fresh)
+    code, out = preflight(stack, capsys, monkeypatch, "--docker", docker_output=output)
+    assert code == 0
+    passed = lines(out, "PASS", "web sources")
+    assert passed and "5 web document(s)" in passed[0] and "3 days ago" in passed[0]
+
+
+def test_stale_or_missing_web_documents_only_warn(stack, capsys, monkeypatch):
+    stale = (datetime.now(UTC) - timedelta(days=45)).isoformat()
+    for output, expected in (
+        (corpus_output(12) + web_line(2, stale), "older than 30 days"),
+        (corpus_output(12) + web_line(0, "none"), "run `manage.py scrape_sources`"),
+        (corpus_output(12), "does not list web documents"),
+    ):
+        code, out = preflight(stack, capsys, monkeypatch, "--docker", docker_output=output)
+        assert code == 0 and "READY" in out
+        warned = lines(out, "WARN", "web sources")
+        assert warned and expected in warned[0], out
+        assert not lines(out, "FAIL", "web sources")
+
+
+def test_without_docker_the_web_check_is_a_warning(stack, capsys, monkeypatch):
+    code, out = preflight(stack, capsys, monkeypatch)
+    assert code == 0
+    warned = lines(out, "WARN", "web sources")
+    assert warned and "--docker" in warned[0]
+
+
+def test_parse_web_documents():
+    module = load_script()
+    count, oldest = module.parse_web_documents(web_line(3, "2026-10-01T08:00:00+00:00"))
+    assert count == 3 and oldest == datetime(2026, 10, 1, 8, tzinfo=UTC)
+    assert module.parse_web_documents(web_line(0, "none")) == (0, None)
+    assert module.parse_web_documents("nothing here") is None

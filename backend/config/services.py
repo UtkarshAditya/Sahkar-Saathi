@@ -58,6 +58,8 @@ def _retriever(use_stub: bool) -> Retriever:
     # No score threshold here. The answer service declines below its per-language minimum,
     # and it can only report the real best score (and eval_retrieval can only measure it) if
     # the retriever returns weak hits too. Filtering in both places hid every low score.
+    # That also covers the related tier: it needs hits below SCORE_THRESHOLD, and an
+    # unfiltered retriever already returns them, so it is not given the related thresholds.
     return QdrantRetriever()
 
 
@@ -78,6 +80,10 @@ def _answer_service(use_stub: bool, use_stub_retriever: bool) -> AnswerService:
         min_score_by_lang=settings.SCORE_THRESHOLD_BY_LANG,
         top_k=settings.TOP_K,
         contact=Contact(label=settings.HELPLINE_LABEL, detail=settings.HELPLINE_DETAIL),
+        # The related tier; both empty (the default) means it is off.
+        related_min_score=settings.SCORE_THRESHOLD_RELATED,
+        related_min_score_by_lang=settings.SCORE_THRESHOLD_RELATED_BY_LANG,
+        related_max_passages=settings.RELATED_MAX_PASSAGES,
     )
     return _with_fast_path(grounded)
 

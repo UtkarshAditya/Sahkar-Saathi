@@ -130,12 +130,30 @@ function includesAny(text: string, words: string[]): boolean {
 }
 
 /** Rule-based stand-in for the agent. Mirrors the shape of POST /chat/ask. */
+/** A related answer: no confident match, so the closest passage is quoted (mock data). */
+export function buildMockRelatedAnswer(req: AskRequest): AskResponse {
+  return {
+    conversation_id: req.conversation_id ?? makeId('conv'),
+    message_id: makeId('msg'),
+    is_demo: true,
+    status: 'answered',
+    confidence: 'related',
+    needs_state: false,
+    answer_text:
+      'I could not find an exact answer. The closest information in the verified documents is:\n\n• “Demonstration excerpt. The verified passage will be shown here once the document is ingested.” (PMFBY Operational Guidelines, p. 34)',
+    citations: PMFBY_CITATIONS,
+    followups: [],
+    contact: null,
+  };
+}
+
 export function buildMockAnswer(req: AskRequest): AskResponse {
   const text = req.text.toLowerCase();
   const base = {
     conversation_id: req.conversation_id ?? makeId('conv'),
     message_id: makeId('msg'),
     is_demo: true,
+    confidence: 'high' as const,
   };
 
   if (includesAny(text, OUT_OF_SCOPE_WORDS)) {

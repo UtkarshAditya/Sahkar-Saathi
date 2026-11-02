@@ -201,6 +201,7 @@ class QdrantRetriever:
                     page=payload.get("page"),
                     score=float(hit.score),
                     state=payload.get("state"),
+                    fetched_at=payload.get("fetched_at"),
                 )
             )
 

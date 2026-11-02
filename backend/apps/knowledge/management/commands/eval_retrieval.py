@@ -1,6 +1,6 @@
 """Measure retrieval on a question set and suggest a SCORE_THRESHOLD from the data.
 
-    python manage.py eval_retrieval [--questions PATH] [--top-k N]
+    python manage.py eval_retrieval [--questions PATH] [--top-k N] [--related-threshold X]
 
 Reads data/eval/retrieval_questions.json (format: data/eval/README.md): a list of
 ``{"id", "question", "state", "in_scope", "expect_doc_ids"}``. Each question goes through
@@ -8,6 +8,11 @@ Reads data/eval/retrieval_questions.json (format: data/eval/README.md): a list o
 only exercises the tool). Prints the top score and top document per question, the hit rate
 (in-scope questions that list expect_doc_ids), and a threshold between the in-scope and
 out-of-scope top scores. Read-only: it never writes to the database.
+
+With --related-threshold (or SCORE_THRESHOLD_RELATED set) it also reports how many
+questions fall into each answer tier: confident (top score >= SCORE_THRESHOLD for the
+question's language), related (>= the related threshold) and decline, and flags in-scope
+questions that would still decline and out-of-scope questions that would get an answer.
 """
 
 import asyncio
@@ -22,6 +27,17 @@ from apps.evaluation.recording import Outcome, record_run
 from config.services import get_retriever
 
 MIN_GROUP_SIZE = 5
+
+
+def answer_tier(top_score: float | None, main: float, related: float | None) -> str:
+    """The tier GroundedAnswerService would pick: confident, related or decline."""
+    if top_score is None:
+        return "decline"
+    if top_score >= main:
+        return "confident"
+    if related is not None and top_score >= related:
+        return "related"
+    return "decline"
 
 
 def percentile(values: list[float], q: float) -> float:
@@ -40,6 +56,12 @@ class Command(BaseCommand):
         parser.add_argument("--questions", help="JSON question file (default: data/eval/...).")
         parser.add_argument(
             "--top-k", type=int, help="Passages to retrieve per question (default: TOP_K)."
+        )
+        parser.add_argument(
+            "--related-threshold",
+            type=float,
+            help="Report the answer tiers with this related threshold (default: "
+            "SCORE_THRESHOLD_RELATED and its per-language values, if set).",
         )
         record = parser.add_argument_group("recording (feeds the Quality dashboard)")
         record.add_argument(
@@ -145,8 +167,59 @@ class Command(BaseCommand):
                 lang=lang,
             )
 
+        self._tier_report(results, options["related_threshold"])
+
         if record:
             self._record(outcomes, options, top_k)
+
+    def _tier_report(self, results: list[tuple[dict, list]], related: float | None) -> None:
+        """How many questions are confident, related or declined at the main and related
+        thresholds, with the questions that land in the wrong tier."""
+        write = self.stdout.write
+        if related is None and not settings.SCORE_THRESHOLD_RELATED_BY_LANG:
+            write(
+                "\nAnswer tiers: the related tier is off. Pass --related-threshold to see "
+                "what it would do."
+            )
+            return
+        counts = {"confident": 0, "related": 0, "decline": 0}
+        in_declined: list[str] = []
+        out_answered: list[str] = []
+        for question, passages in results:
+            language = question.get("language") or "en"
+            main = settings.SCORE_THRESHOLD_BY_LANG.get(language, settings.SCORE_THRESHOLD)
+            low = (
+                related
+                if related is not None
+                else settings.SCORE_THRESHOLD_RELATED_BY_LANG.get(language)
+            )
+            tier = answer_tier(max((p.score for p in passages), default=None), main, low)
+            counts[tier] += 1
+            if question["in_scope"] and tier == "decline":
+                in_declined.append(question["id"])
+            elif not question["in_scope"] and tier != "decline":
+                out_answered.append(f"{question['id']} ({tier})")
+
+        source = f"{related}" if related is not None else "SCORE_THRESHOLD_RELATED_*"
+        write(f"\nAnswer tiers (main: SCORE_THRESHOLD per language, related: {source})")
+        for tier, count in counts.items():
+            write(f"  {tier:<10} {count}")
+        if in_declined:
+            write(
+                self.style.WARNING(
+                    f"In-scope questions that would still decline ({len(in_declined)}): "
+                    + ", ".join(in_declined)
+                )
+            )
+        if out_answered:
+            write(
+                self.style.WARNING(
+                    f"Out-of-scope questions that would wrongly get an answer "
+                    f"({len(out_answered)}): " + ", ".join(out_answered)
+                )
+            )
+        if not in_declined and not out_answered:
+            write(self.style.SUCCESS("Every question lands in the tier it should."))
 
     def _check_record_options(self, options) -> None:
         if settings.USE_STUB_RETRIEVER and not options["allow_stub"]:

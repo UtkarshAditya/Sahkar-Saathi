@@ -154,8 +154,10 @@
     "status": {
       "answered": "Answered",
       "partial": "Partial answer",
-      "declined": "Not found"
+      "declined": "Not found",
+      "related": "Closest information found"
     },
+    "relatedNote": "No exact answer was found. These are the closest passages, quoted word for word from the verified documents. Check the source before relying on them.",
     "sourceCount_one": "{{count}} source",
     "sourceCount_other": "{{count}} sources",
     "openSource": "Open source",
@@ -187,6 +189,7 @@
     "source": "Source",
     "asOf": "As of",
     "page": "Page",
+    "fetched": "Fetched",
     "sourcePending": "Source pending verification",
     "datePending": "Date pending",
     "dateNotStated": "Date not stated",

@@ -5,6 +5,10 @@ Implements AnswerService from services/types.py:
     question -> B's retriever -> score check -> LLM writes JSON
              -> validate JSON + citations (retry once) -> Answer, or an honest decline
 
+With the related tier on (related_min_score), a best score between the related threshold
+and min_score skips the LLM and returns the closest passages verbatim, labelled
+confidence="related". With it off (the default) nothing changes.
+
 Run the self-test from the backend/ folder (never run this file directly, or
 Python will pick up services/types.py instead of the standard library's):
 
@@ -32,6 +36,48 @@ DECLINE_TEXT = {
     # ta: machine-written, needs review by a fluent speaker.
     "ta": "சரிபார்க்கப்பட்ட ஆவணங்களில் இந்தத் தகவலை என்னால் கண்டுபிடிக்க முடியவில்லை.",
 }
+
+# The first line of a related answer (confidence "related"): the closest passages follow,
+# quoted verbatim. English is the fallback for any other language code.
+RELATED_LEAD_TEXT = {
+    "en": "I could not find an exact answer. The closest information in the verified documents is:",
+    # hi: machine-written, needs review by a fluent speaker.
+    "hi": "मुझे सटीक उत्तर नहीं मिला। सत्यापित दस्तावेज़ों में सबसे निकट की जानकारी यह है:",
+    # ta: machine-written, needs review by a fluent speaker.
+    "ta": "சரியான பதிலை என்னால் கண்டுபிடிக்க முடியவில்லை. சரிபார்க்கப்பட்ட ஆவணங்களில் மிக நெருக்கமான தகவல்:",
+}
+# "p." before a page number in a related answer's attribution.
+PAGE_LABEL = {"en": "p.", "hi": "पृ.", "ta": "ப."}  # hi, ta: machine-written, needs review
+RELATED_EXCERPT_CHARS = 300
+_SENTENCE_END = re.compile(r"[.!?।](?=\s|$)")
+
+
+def shorten_at_sentence(text: str, limit: int = RELATED_EXCERPT_CHARS) -> str:
+    """The text cut to about ``limit`` characters, at the last sentence end before it.
+
+    With no sentence end in the first ``limit`` characters, it is cut at a word boundary and
+    ends with "…". Text that already fits is returned whole. Never changes the words kept.
+    """
+    text = " ".join(text.split())
+    if len(text) <= limit:
+        return text
+    head = text[: limit + 1]
+    ends = [m.end() for m in _SENTENCE_END.finditer(head)]
+    if ends and ends[-1] >= limit // 3:
+        return head[: ends[-1]].strip()
+    cut = head.rsplit(" ", 1)[0] if " " in head else text[:limit]
+    return cut.rstrip(" ,;:") + "…"
+
+
+def build_related_text(passages: list[Passage], language: str) -> str:
+    """The lead line, then each passage shortened and attributed to its title and page."""
+    page_label = PAGE_LABEL.get(language, PAGE_LABEL["en"])
+    lines = [RELATED_LEAD_TEXT.get(language, RELATED_LEAD_TEXT["en"])]
+    for p in passages:
+        where = p.document_title + (f", {page_label} {p.page}" if p.page is not None else "")
+        lines.append(f"• “{shorten_at_sentence(p.text)}” ({where})")
+    return "\n\n".join(lines)
+
 
 # The instructions for the LLM. tests/test_answer_prompt.py checks that each rule is present,
 # so changing a rule means changing that test on purpose. The JSON shape at the end is what
@@ -105,12 +151,20 @@ class GroundedAnswerService:
         top_k: int = 4,
         contact: Contact | None = None,
         fast_path=None,
+        related_min_score: float | None = None,
+        related_min_score_by_lang: dict[str, float] | None = None,
+        related_max_passages: int = 2,
     ) -> None:
         # min_score depends on the embedding model's score scale, so re-tune it
         # whenever B changes the embedding model.
         self.retriever = retriever
         self.min_score = min_score
         self.min_score_by_lang = min_score_by_lang or {}
+        # The related tier: None (and no per-language value) means it is off, and every
+        # question below min_score is declined, as before.
+        self.related_min_score = related_min_score
+        self.related_min_score_by_lang = related_min_score_by_lang or {}
+        self.related_max_passages = max(1, related_max_passages)
         self.retries = retries
         self.top_k = top_k
         # Who a declined answer points to; the API wiring passes HELPLINE_LABEL/DETAIL.
@@ -145,7 +199,12 @@ class GroundedAnswerService:
             if self.min_score_by_lang
             else self.min_score
         )
-        if top_score is None or top_score < effective_min_score:
+        if top_score is None:
+            return self._declined(language, top_score, "low_score")
+        if top_score < effective_min_score:
+            related_min = self._related_min_score(language)
+            if related_min is not None and top_score >= related_min:
+                return self._related(passages, language, top_score, related_min)
             return self._declined(language, top_score, "low_score")
 
         user = build_user_prompt(text, passages, language)
@@ -177,6 +236,30 @@ class GroundedAnswerService:
                     model=model_name(),
                 )
         return self._declined(language, top_score, "failed_validation")
+
+    def _related_min_score(self, language: str) -> float | None:
+        """The related-tier threshold for this language, or None when the tier is off."""
+        return self.related_min_score_by_lang.get(language, self.related_min_score)
+
+    def _related(
+        self, passages: list[Passage], language: str, top_score: float, related_min: float
+    ) -> Answer:
+        """The closest passages that reach the related threshold, quoted verbatim, without
+        calling the LLM. Nothing is generated, so there is nothing to check for invented
+        numbers."""
+        strong = [p for p in passages if p.score >= related_min]
+        closest = sorted(strong, key=lambda p: p.score, reverse=True)
+        closest = closest[: self.related_max_passages]
+        logger.info("related answer (top_score=%s, passages=%d)", top_score, len(closest))
+        return Answer(
+            text=build_related_text(closest, language),
+            status="answered",
+            language=language,
+            citations=closest,
+            top_score=top_score,
+            model="",  # no model wrote it
+            confidence="related",
+        )
 
     def _declined(self, language: str, top_score: float | None, reason: str) -> Answer:
         logger.info("declined: %s (top_score=%s)", reason, top_score)

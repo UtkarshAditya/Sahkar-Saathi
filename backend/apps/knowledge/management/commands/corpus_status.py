@@ -5,7 +5,9 @@
 
 Read-only. Without options: chunks per document and the vectors in Qdrant. Use it after
 ``ingest_corpus`` to check that every document has chunks and that PostgreSQL and Qdrant
-agree. Works when Qdrant is down or qdrant-client is not installed.
+agree. Then, per document, its source kind (pdf or web), when a web page was fetched, and its
+chunk count; web pages fetched more than 30 days ago are flagged (re-run scrape_sources).
+Works when Qdrant is down or qdrant-client is not installed.
 
 With --files: for every ``use_in_corpus=Y`` row of sources.csv, whether its PDF is where
 ingest_corpus will look (the name is matched exactly, as in the Linux container, even on
@@ -17,15 +19,18 @@ can be run before the first ingest.
 
 import csv
 import os
+from datetime import timedelta
 from pathlib import Path
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db.models import Count
+from django.utils import timezone
 
 from apps.knowledge.models import Chunk, Document
 
 LOW_TEXT_CHARS_PER_PAGE = 100  # below this average, the PDF is probably a scan
+STALE_WEB_DAYS = 30  # a web page fetched longer ago than this is flagged
 
 
 def sources_csv_path() -> Path:
@@ -119,6 +124,44 @@ class Command(BaseCommand):
                 self.stdout.write(f"  {doc_id}")
         else:
             self.stdout.write(self.style.SUCCESS("\nEvery document has chunks."))
+
+        self.report_sources(documents)
+
+    # --- source kind and freshness ------------------------------------------------------
+
+    def report_sources(self, documents) -> None:
+        """Source kind, fetch time and chunk count per document; flags stale web pages.
+
+        Printed after the table above, which demo_preflight.py parses, so that one keeps its
+        three columns. These rows are indented, so that parser never reads them.
+        """
+        write = self.stdout.write
+        now = timezone.now()
+        stale_after = timedelta(days=STALE_WEB_DAYS)
+        write(f"\n  {'document':<44} {'kind':<5} {'fetched_at':<17} chunks")
+        web, stale = [], []
+        for doc in documents:
+            fetched = (
+                f"{timezone.localtime(doc.fetched_at):%Y-%m-%d %H:%M}" if doc.fetched_at else "-"
+            )
+            flag = ""
+            if doc.source_kind == Document.SourceKind.WEB:
+                web.append(doc)
+                if doc.fetched_at is None or now - doc.fetched_at > stale_after:
+                    stale.append(doc.id)
+                    flag = f"  STALE (older than {STALE_WEB_DAYS} days)"
+            write(f"  {doc.id:<44} {doc.source_kind:<5} {fetched:<17} {doc.chunk_count}{flag}")
+
+        dated = [d.fetched_at for d in web if d.fetched_at]
+        oldest = min(dated).isoformat() if dated else "none"
+        write(f"\nWeb documents: {len(web)}   oldest fetched_at: {oldest}")
+        if stale:
+            write(
+                self.style.WARNING(
+                    f"{len(stale)} web document(s) fetched more than {STALE_WEB_DAYS} days ago: "
+                    f"{', '.join(stale)}. Run `manage.py scrape_sources`."
+                )
+            )
 
     # --- --files ------------------------------------------------------------------------
 

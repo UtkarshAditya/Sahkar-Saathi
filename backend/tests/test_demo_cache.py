@@ -20,6 +20,7 @@ RESPONSE_KEYS = {
     "message_id",
     "answer_text",
     "status",
+    "confidence",
     "needs_state",
     "citations",
     "followups",

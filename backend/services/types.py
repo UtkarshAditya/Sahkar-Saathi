@@ -11,6 +11,8 @@ Additions to the original sketch in the Member A plan, all additive:
   are stored on each Message for evaluation.
 - ``AnswerService.ask`` accepts ``document_id`` for "Ask about this document".
 - ``Transcript`` carries ``is_demo``.
+- ``Answer.confidence`` is "related" for the related-answer tier (closest passages quoted,
+  no LLM), "high" otherwise. ``Passage.fetched_at`` is set for scraped web pages.
 - ``GrievanceResult.category`` is a small object (id, label, description) instead of a
   string, and ``GrievanceGuide`` also lists the categories for the page's chips.
 """
@@ -21,6 +23,7 @@ from dataclasses import dataclass, field
 from typing import Literal, Protocol
 
 AnswerStatus = Literal["answered", "partial", "declined"]
+AnswerConfidence = Literal["high", "related"]
 
 
 @dataclass
@@ -36,6 +39,7 @@ class Passage:
     score: float
     state: str | None  # None means a central document
     section: str | None = None
+    fetched_at: str | None = None  # ISO datetime a web page was fetched; None for PDFs
 
 
 class Retriever(Protocol):  # implemented by B
@@ -70,6 +74,9 @@ class Answer:
     # For evaluation and debugging; stored on the Message row, never shown to users.
     top_score: float | None = None  # best retrieval score, also when declined
     model: str = ""  # model name that wrote the answer
+    # "related": no passage was strong enough for a confident answer, so the closest
+    # passages are quoted verbatim instead (services/answer.py). Shown with its own label.
+    confidence: AnswerConfidence = "high"
 
 
 class AnswerService(Protocol):  # implemented by C

@@ -5,7 +5,7 @@ from config.errors import ApiError, ErrorOut
 
 from .sample import sample_summary
 from .schemas import EvalSummaryOut
-from .summary import real_summary
+from .summary import answer_tiers, real_summary
 
 # Staff only: Django session login (the same one as /admin/), then an is_staff check.
 router = Router(auth=django_auth)
@@ -25,4 +25,6 @@ def latest(request):
     # The docstring above is the frozen OpenAPI description: do not reword it.
     if not request.auth.is_staff:
         raise ApiError(403, "staff_only", "This page is for staff only.")
-    return real_summary() or sample_summary()
+    summary = real_summary() or sample_summary()
+    summary.answer_tiers = answer_tiers()
+    return summary

@@ -63,6 +63,9 @@ class CitationOut(Schema):
     section: str | None
     url: str | None = Field(..., description="Null until a verified source URL is recorded.")
     excerpt: str | None
+    fetched_at: str | None = Field(
+        None, description="ISO datetime a web-page source was fetched; null for PDFs."
+    )
 
 
 class ContactOut(Schema):
@@ -75,6 +78,11 @@ class AskOut(Schema):
     message_id: str
     answer_text: str
     status: Literal["answered", "partial", "declined"]
+    confidence: Literal["high", "related"] = Field(
+        ...,
+        description='"related" when no passage was strong enough for a confident answer and '
+        'the closest passages are quoted instead (label it as such); otherwise "high".',
+    )
     needs_state: bool = Field(..., description="True when the user must choose a state first.")
     citations: list[CitationOut] = Field(..., description="Always empty for a declined answer.")
     followups: list[str]

@@ -21,7 +21,8 @@ from config.services import get_answer_service, get_retriever  # noqa: E402
 RELAX = False  # change to True to try the relaxed prompt, without a rebuild
 
 if RELAX:
-    A.SYSTEM_PROMPT = """You answer questions about cooperative societies and farmer schemes in India.
+    A.SYSTEM_PROMPT = """\
+You answer questions about cooperative societies and farmer schemes in India.
 Rules:
 1. Use ONLY facts that appear in the numbered passages provided. Never use outside knowledge
    and never guess.
@@ -43,9 +44,12 @@ Rules:
 Reply with JSON only, in exactly this shape:
 {"status": "answered" or "declined", "answer_text": "...", "cited_ids": [1, 2]}"""
 QUESTIONS = [
-    "Where can a member of a multi-State cooperative society complain about a deposit that is not returned?",
-    "How do I file a request for information under the Right to Information Act with the Tamil Nadu Cooperation Department?",
-    "What is the minimum number of members needed to register a primary cooperative society in Tamil Nadu?",
+    "Where can a member of a multi-State cooperative society complain about a deposit "
+    "that is not returned?",
+    "How do I file a request for information under the Right to Information Act with the "
+    "Tamil Nadu Cooperation Department?",
+    "What is the minimum number of members needed to register a primary cooperative "
+    "society in Tamil Nadu?",
 ]
 svc = get_answer_service()
 # try 8 instead of 4

@@ -1,0 +1,87 @@
+# Official web pages that `manage.py scrape_sources` fetches into the knowledge base.
+#
+# Each entry becomes (or updates) one Document whose id is `id`, with source_kind "web".
+# Fields:
+#   id         slug used as Document.id. Reuse the doc_id from data/sources.csv when the page
+#              is listed there, so load_sources and scrape_sources update the same row.
+#   url        https only. Its host is added to the allowlist: nothing else is ever fetched,
+#              and a redirect to any other host (or to http) stops that source.
+#   title, publisher
+#   doc_type   one of: act, rules, model-bylaws, circular, scheme-guideline
+#   state      "central" or a state code such as TN
+#   language   en, hi, ta ...
+#   selector   optional CSS selector for the main content (default: <main>, else <body>)
+#
+# Only add pages from an official source you have opened yourself. Never invent a URL.
+# A link to a PDF is not scraped: download it to data/raw/ and use ingest_corpus.
+# `python manage.py scrape_sources --dry-run` checks this file and every page without
+# writing anything.
+
+sources:
+  # Seeded from data/sources.csv: the rows whose source_url is an https web page (not a
+  # .pdf link). Their local_path is an .html file, which ingest_corpus cannot read, so
+  # these pages had no chunks until now.
+  - id: CEN-CRCS-FAQ
+    url: https://crcs.gov.in/faq
+    title: "Central Registrar of Co-operative Societies: FAQs on multi-State societies"
+    publisher: Central Registrar of Co-operative Societies (crcs.gov.in)
+    doc_type: scheme-guideline
+    state: central
+    language: en
+
+  - id: GRV-CRCS-OMBUDSMAN
+    url: https://crcs.gov.in/ombudsman
+    title: "Cooperative Ombudsman: who can complain and how (CRCS web page)"
+    publisher: Central Registrar of Co-operative Societies (crcs.gov.in)
+    doc_type: scheme-guideline
+    state: central
+    language: en
+
+  - id: CEN-CRCS-ABOUT-CEA
+    url: https://crcs.gov.in/about-cea
+    title: "Co-operative Election Authority: about the Authority (CRCS web page)"
+    publisher: Central Registrar of Co-operative Societies (crcs.gov.in)
+    doc_type: scheme-guideline
+    state: central
+    language: en
+
+  - id: TN-RCS-ADMIN-DEPT
+    url: https://rcs.tn.gov.in/admindepartment.php
+    title: "Co-operative Department, Tamil Nadu: administrative set-up (Registrar's web page)"
+    publisher: Registrar of Co-operative Societies, Tamil Nadu (rcs.tn.gov.in)
+    doc_type: scheme-guideline
+    state: TN
+    language: en
+
+  - id: GRV-TN-GRIEVANCE-DAY
+    url: https://cra.tn.gov.in/griev_pet.php
+    title: "Tamil Nadu grievance day petitions to District Collectors, RDOs and Tahsildars (web page)"
+    publisher: Commissionerate of Revenue Administration, Government of Tamil Nadu (cra.tn.gov.in)
+    doc_type: scheme-guideline
+    state: TN
+    language: en
+
+  # Left out on purpose: the RBI Kisan Credit Card Directions pages in sources.csv
+  # (SCH-RBI-KCC-2026-RCB, -CB, -SFB, -RRB). Their text is already ingested from the PDFs
+  # in data/raw/, and the web page is mostly a wrapper around that PDF. Scraping it under the
+  # same id would replace the PDF chunks with the page. To scrape one anyway, give it a new
+  # id, for example:
+  #
+  # - id: SCH-RBI-KCC-2026-RCB-WEB
+  #   url: https://rbi.org.in/Scripts/BS_ViewMasDirections.aspx?id=13525
+  #   title: "RBI KCC Directions 2026, Rural Co-operative Banks (RBI web page)"
+  #   publisher: Reserve Bank of India
+  #   doc_type: circular
+  #   state: central
+  #   language: en
+  #
+  # Template for a new page. Replace EVERY placeholder with real, verified values:
+  #
+  # - id: REPLACE-WITH-A-SLUG
+  #   url: https://REPLACE-WITH-THE-OFFICIAL-HOST/REPLACE-WITH-THE-PAGE
+  #   title: "REPLACE WITH THE PAGE TITLE"
+  #   publisher: REPLACE WITH THE PUBLISHING OFFICE
+  #   doc_type: scheme-guideline
+  #   state: central
+  #   language: en
+  #   selector: "#content"   # optional

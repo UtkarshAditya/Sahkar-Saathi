@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Literal
 
 from ninja import Field, Schema
@@ -18,6 +18,10 @@ class DocumentOut(Schema):
     status: Literal["active", "retired"]
     source_url: str | None = Field(..., description="Null until a verified link is recorded.")
     is_sample: bool
+    source_kind: Literal["pdf", "web"] = Field("pdf", description="Where the text came from.")
+    fetched_at: datetime | None = Field(
+        None, description="When a web page was last fetched; null for PDFs."
+    )
 
     @staticmethod
     def resolve_source_url(obj) -> str | None:

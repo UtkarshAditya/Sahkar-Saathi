@@ -34,14 +34,20 @@ def _citation(p: Passage) -> CitationOut:
         section=p.section,
         url=p.source_url,
         excerpt=p.text[:300] if p.text else None,
+        fetched_at=p.fetched_at,
     )
 
 
 def _normalise(answer: Answer) -> Answer:
-    """Enforce the contract: a declined answer has no citations and names a contact."""
+    """Enforce the contract: a declined answer has no citations and names a contact.
+
+    A related answer (confidence "related") is an answer: its citations are the passages it
+    quotes, so they are kept.
+    """
     if answer.status == "declined":
         answer.citations = []
         answer.contact = answer.contact or DEFAULT_CONTACT
+        answer.confidence = "high"  # the tiers apply to answers only
     return answer
 
 
@@ -102,6 +108,7 @@ def _store(payload: AskIn, answer: Answer, latency_ms: int) -> tuple[uuid.UUID, 
             model_name=answer.model[:100],
             latency_ms=latency_ms,
             is_demo=answer.is_demo,
+            confidence=answer.confidence,
         )
         Citation.objects.bulk_create(
             Citation(
@@ -143,8 +150,10 @@ async def ask(request, payload: AskIn):
 
     # Log status and latency only, never the question or answer text.
     logger.info(
-        "chat.ask status=%s needs_state=%s citations=%d language=%s top_score=%s latency_ms=%d",
+        "chat.ask status=%s confidence=%s needs_state=%s citations=%d language=%s top_score=%s "
+        "latency_ms=%d",
         answer.status,
+        answer.confidence,
         answer.needs_state,
         len(answer.citations),
         payload.language,
@@ -157,6 +166,7 @@ async def ask(request, payload: AskIn):
         message_id=message_id.hex,
         answer_text=answer.text,
         status=answer.status,
+        confidence=answer.confidence,
         needs_state=answer.needs_state,
         citations=[_citation(p) for p in answer.citations],
         followups=answer.followups,

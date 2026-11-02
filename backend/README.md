@@ -218,6 +218,8 @@ are the ones the team shares:
 | `BHASHINI_*`                                                  | C        | Not used yet                                                            |
 | `EMBEDDING_MODEL`, `TOP_K`, `QDRANT_URL`                      | B        | Retrieval behaviour                                                     |
 | `SCORE_THRESHOLD`                                             | B        | Decline below this top score. Set it from `eval_retrieval`, not by guessing |
+| `SCORE_THRESHOLD_RELATED` (`_EN`, `_HI`, `_TA`), `RELATED_MAX_PASSAGES` | C | Related-answer tier: quote the closest passages instead of declining. Empty = off |
+| `SCRAPE_SOURCES`, `SCRAPE_DELAY_SECONDS`                      | B        | Page list and request pause for `scrape_sources`                        |
 | `SOURCES_CSV`                                                 | A, B     | The document list for `load_sources` and `ingest_corpus`                |
 | `DATABASE_URL`                                                | A        | PostgreSQL in Compose; SQLite when unset                                |
 | `NINJA_NUM_PROXIES`                                           | A        | Set to `1` behind Caddy                                                 |
@@ -230,8 +232,9 @@ Run commands from `backend/` (in Docker: `docker compose exec web python manage.
 | -------------------------------------------- | -------------------------------------------------------------------------- |
 | `load_sources [--dry-run] [--strict]`        | Loads document metadata from `data/sources.csv`; skips and reports bad rows |
 | `ingest_corpus`                              | Chunks the PDFs in `data/raw/`, embeds them, writes Chunk rows and Qdrant (needs `requirements-ml.txt`) |
-| `corpus_status`                              | Chunks per document, the Qdrant point count, documents with no chunks      |
-| `eval_retrieval [--questions] [--top-k]`     | Scores retrieval on `data/eval/retrieval_questions.json`; suggests `SCORE_THRESHOLD` |
+| `scrape_sources [--only] [--dry-run] [--delay] [--force]` | Fetches the web pages in `data/scrape_sources.yaml` (allowlisted, https only) and indexes new or changed ones (docs/running-with-docker.md § 12a) |
+| `corpus_status`                              | Chunks per document, the Qdrant point count, documents with no chunks; source kind, fetch date and stale web pages |
+| `eval_retrieval [--questions] [--top-k] [--related-threshold]` | Scores retrieval on `data/eval/retrieval_questions.json`; suggests `SCORE_THRESHOLD`; reports the answer tiers |
 | `eval_retrieval --record [--faithfulness X]` | Also saves the run (EvalRun, EvalResult) for the Quality dashboard; see `data/eval/README.md` |
 | `load_test_questions [--path]`               | Loads the evaluation questions into the TestQuestion table                 |
 | `warm_models`                                | Loads the Whisper and embedding models for the real services (start-up)    |

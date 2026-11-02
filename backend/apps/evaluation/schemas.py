@@ -41,9 +41,19 @@ class FailedQuestionOut(Schema):
     note: str
 
 
+class AnswerTiersOut(Schema):
+    confident: int = Field(..., description="Answered from the passages (confidence high).")
+    related: int = Field(..., description="Closest passages quoted (confidence related).")
+    declined: int
+    total: int
+
+
 class EvalSummaryOut(Schema):
     latest: EvalRunOut
     metrics: list[EvalMetricOut]
     runs: list[EvalRunOut] = Field(..., description="Oldest first.")
     failed_questions: list[FailedQuestionOut]
     is_sample: bool = Field(..., description="True until real EvalRun rows exist.")
+    answer_tiers: AnswerTiersOut | None = Field(
+        None, description="Stored chat answers per tier (live traffic, not an evaluation run)."
+    )

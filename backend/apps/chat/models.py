@@ -29,6 +29,10 @@ class Message(models.Model):
         PARTIAL = "partial"
         DECLINED = "declined"
 
+    class Confidence(models.TextChoices):
+        HIGH = "high"
+        RELATED = "related", "Related (closest passages)"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     conversation = models.ForeignKey(
         Conversation, on_delete=models.CASCADE, related_name="messages"
@@ -53,6 +57,8 @@ class Message(models.Model):
     model_name = models.CharField(max_length=100, blank=True)
     latency_ms = models.PositiveIntegerField()
     is_demo = models.BooleanField(default=False)
+    # "related" for the related-answer tier (closest passages quoted, no LLM).
+    confidence = models.CharField(max_length=8, choices=Confidence.choices, default=Confidence.HIGH)
 
     class Meta:
         ordering = ["-created_at"]

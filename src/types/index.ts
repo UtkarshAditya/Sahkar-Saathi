@@ -37,6 +37,12 @@ export interface MetaLanguage {
 
 export type AnswerStatus = 'answered' | 'partial' | 'declined';
 
+/**
+ * 'related': no passage was strong enough for a confident answer, so the closest passages
+ * are quoted verbatim instead. Shown with its own calm label, not as an error.
+ */
+export type AnswerConfidence = 'high' | 'related';
+
 export interface Citation {
   id: string;
   document_id: string;
@@ -49,6 +55,8 @@ export interface Citation {
   /** Null until a verified source URL is recorded for the document. */
   url: string | null;
   excerpt?: string | null;
+  /** ISO datetime a web-page source was fetched; null or absent for PDFs. */
+  fetched_at?: string | null;
 }
 
 export interface Contact {
@@ -70,6 +78,7 @@ export interface AskResponse {
   message_id: string;
   answer_text: string;
   status: AnswerStatus;
+  confidence: AnswerConfidence;
   needs_state: boolean;
   citations: Citation[];
   followups: string[];
@@ -221,6 +230,10 @@ export interface LibraryDocument {
   status: DocumentStatus;
   source_url: string | null;
   is_sample: boolean;
+  /** 'web' for pages fetched by scrape_sources; 'pdf' otherwise. */
+  source_kind?: 'pdf' | 'web';
+  /** When a web page was last fetched; null for PDFs. */
+  fetched_at?: string | null;
 }
 
 export interface DocumentFilters {
@@ -300,12 +313,21 @@ export interface FailedQuestion {
   note: string;
 }
 
+/** Stored chat answers per tier (live traffic, not an evaluation run). */
+export interface AnswerTiers {
+  confident: number;
+  related: number;
+  declined: number;
+  total: number;
+}
+
 export interface EvalSummary {
   latest: EvalRun;
   metrics: EvalMetric[];
   runs: EvalRun[];
   failed_questions: FailedQuestion[];
   is_sample: boolean;
+  answer_tiers?: AnswerTiers | null;
 }
 
 /* ----- Errors ----- */

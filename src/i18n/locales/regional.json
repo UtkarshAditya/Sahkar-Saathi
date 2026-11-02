@@ -1,5 +1,8 @@
 {
   "_untranslated": {
+    "chat.status.related": "Machine-written, needs review by a fluent speaker; do not ship as final.",
+    "chat.relatedNote": "Machine-written, needs review by a fluent speaker; do not ship as final.",
+    "common.fetched": "Machine-written, needs review by a fluent speaker; do not ship as final.",
     "common.dateNotStated": "English placeholder. Needs a translation by a native speaker; do not ship as final.",
     "nav.groups.library": "English placeholder. Needs a translation by a native speaker; do not ship as final.",
     "nav.collapseSidebar": "English placeholder. Needs a translation by a native speaker; do not ship as final.",
@@ -221,8 +224,10 @@
     "status": {
       "answered": "Answered",
       "partial": "Partial answer",
-      "declined": "Not found"
+      "declined": "Not found",
+      "related": "மிக நெருக்கமான தகவல் கிடைத்தது"
     },
+    "relatedNote": "சரியான பதில் கிடைக்கவில்லை. இவை சரிபார்க்கப்பட்ட ஆவணங்களிலிருந்து அப்படியே மேற்கோள் காட்டப்பட்ட மிக நெருக்கமான பகுதிகள். நம்புவதற்கு முன் மூலத்தைச் சரிபார்க்கவும்.",
     "sourceCount_one": "{{count}} source",
     "sourceCount_other": "{{count}} sources",
     "openSource": "Open source",
@@ -261,6 +266,7 @@
     "source": "மூலம்",
     "asOf": "தேதி",
     "page": "பக்கம்",
+    "fetched": "பெறப்பட்டது",
     "close": "மூடு",
     "search": "தேடு",
     "all": "அனைத்தும்",

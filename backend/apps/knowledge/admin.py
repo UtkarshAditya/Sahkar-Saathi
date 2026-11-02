@@ -16,11 +16,13 @@ class DocumentAdmin(admin.ModelAdmin):
         "version",
         "status",
         "is_sample",
+        "source_kind",
+        "fetched_at",
         "chunk_count",
     ]
-    list_filter = ["status", "doc_type", "state", "language", "is_sample"]
+    list_filter = ["status", "doc_type", "state", "language", "is_sample", "source_kind"]
     search_fields = ["id", "title", "publisher"]
-    readonly_fields = ["created_at", "updated_at"]
+    readonly_fields = ["created_at", "updated_at", "fetched_at", "content_hash"]
     actions = ["retire"]
 
     @admin.display(description="Chunks")

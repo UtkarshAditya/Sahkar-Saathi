@@ -287,7 +287,108 @@ def build_chunk_payload(
         "language": document.language,
         "page": page,
         "text": text.removeprefix(PASSAGE_PREFIX),
+        # Set for scraped web pages: when the text was fetched, as an ISO string.
+        "fetched_at": document.fetched_at.isoformat() if document.fetched_at else None,
     }
+
+
+def chunk_pages(pages: list[tuple[int | None, str]]) -> list[tuple[int | None, str]]:
+    """(page, chunk text) for every chunk of every cleaned page, using the CHUNK_* settings."""
+    return [
+        (page, chunk)
+        for page, page_text in pages
+        for chunk in chunk_text(
+            page_text,
+            max_chars=settings.CHUNK_MAX_CHARS,
+            min_chars=settings.CHUNK_MIN_CHARS,
+            tail_merge_chars=settings.CHUNK_TAIL_MERGE_CHARS,
+        )
+    ]
+
+
+def index_document_pages(
+    document: Document,
+    pages: list[tuple[int | None, str]],
+    model,
+    client,
+    *,
+    collection_name: str = "sahkar_saathi_chunks",
+) -> int:
+    """Chunk, embed and store one document's cleaned pages; returns the chunks written.
+
+    ``pages`` is a list of (page number or None, cleaned text). Everything is chunked and
+    embedded first; only then are the document's old Chunk rows and Qdrant points replaced,
+    inside one PostgreSQL transaction, so a failed write keeps the old rows. With no chunks,
+    nothing is written and the document keeps what it has (returns 0). Shared by
+    ingest_corpus (PDFs) and scrape_sources (web pages).
+    """
+    from qdrant_client.http import models as qdrant_models  # CI has no ML packages
+
+    chunk_records = []
+    qdrant_points = []
+    for page_num, chunk_str in chunk_pages(pages):
+        vector_id = str(uuid.uuid4())
+        embedding = model.encode(embedding_input(chunk_str)).tolist()
+        chunk_records.append(
+            Chunk(
+                document=document,
+                text=chunk_str,
+                page=page_num,
+                state=document.state,
+                language=document.language,
+                vector_id=vector_id,
+            )
+        )
+        qdrant_points.append(
+            qdrant_models.PointStruct(
+                id=vector_id,
+                vector=embedding,
+                payload=build_chunk_payload(document=document, page=page_num, text=chunk_str),
+            )
+        )
+    if not chunk_records:
+        return 0
+
+    with transaction.atomic():
+        # Clear existing chunks for this doc to prevent duplication on re-runs
+        Chunk.objects.filter(document=document).delete()
+        Chunk.objects.bulk_create(chunk_records)
+        # Clear existing points for this document from Qdrant before upserting
+        client.delete(
+            collection_name=collection_name,
+            points_selector=qdrant_models.FilterSelector(
+                filter=qdrant_models.Filter(
+                    must=[
+                        qdrant_models.FieldCondition(
+                            key="doc_id",
+                            match=qdrant_models.MatchValue(value=document.id),
+                        )
+                    ]
+                )
+            ),
+        )
+        client.upsert(collection_name=collection_name, points=qdrant_points)
+    return len(chunk_records)
+
+
+def ensure_collection(client, model, collection_name: str, log=None) -> bool:
+    """Create the Qdrant collection if it does not exist; True if it was created.
+    ``log``, if given, is called with a line saying so before the collection is created."""
+    from qdrant_client.http import models as qdrant_models  # CI has no ML packages
+
+    if any(c.name == collection_name for c in client.get_collections().collections):
+        return False
+    vector_size = model.get_embedding_dimension()
+    if log is not None:
+        log(f"Creating Qdrant collection '{collection_name}' with size {vector_size}...")
+    client.create_collection(
+        collection_name=collection_name,
+        vectors_config=qdrant_models.VectorParams(
+            size=vector_size,
+            distance=qdrant_models.Distance.COSINE,
+        ),
+    )
+    return True
 
 
 class Command(BaseCommand):
@@ -307,7 +408,6 @@ class Command(BaseCommand):
         try:
             import pdfplumber
             from qdrant_client import QdrantClient
-            from qdrant_client.http import models as qdrant_models
             from sentence_transformers import SentenceTransformer
         except ImportError as exc:
             raise CommandError(
@@ -323,22 +423,7 @@ class Command(BaseCommand):
         qdrant_url = getattr(settings, "QDRANT_URL", "http://localhost:6333")
         client = QdrantClient(url=qdrant_url)
 
-        # Ensure Qdrant collection exists
-        collections = client.get_collections().collections
-        exists = any(c.name == collection_name for c in collections)
-        vector_size = model.get_embedding_dimension()
-
-        if not exists:
-            self.stdout.write(
-                f"Creating Qdrant collection '{collection_name}' with size {vector_size}..."
-            )
-            client.create_collection(
-                collection_name=collection_name,
-                vectors_config=qdrant_models.VectorParams(
-                    size=vector_size,
-                    distance=qdrant_models.Distance.COSINE,
-                ),
-            )
+        ensure_collection(client, model, collection_name, log=self.stdout.write)
 
         sources_csv_env = os.environ.get("SOURCES_CSV")
         if sources_csv_env:
@@ -403,7 +488,7 @@ class Command(BaseCommand):
 
                 # Read the whole PDF first, so an unreadable file changes nothing. Only the
                 # read is guarded: a failure while writing below must raise, not be swallowed.
-                pages_and_chunks: list[tuple[int, str]] = []
+                pages: list[tuple[int, str]] = []
                 try:
                     with pdfplumber.open(pdf_file) as pdf:
                         for page_num, page in enumerate(pdf.pages, start=1):
@@ -415,15 +500,8 @@ class Command(BaseCommand):
                                 if fallback and not is_mostly_glyph_garbage(fallback):
                                     raw_text = fallback
                             page_text = clean_page_text(raw_text)
-                            if not page_text:
-                                continue
-                            for chunk_str in chunk_text(
-                                page_text,
-                                max_chars=settings.CHUNK_MAX_CHARS,
-                                min_chars=settings.CHUNK_MIN_CHARS,
-                                tail_merge_chars=settings.CHUNK_TAIL_MERGE_CHARS,
-                            ):
-                                pages_and_chunks.append((page_num, chunk_str))
+                            if page_text:
+                                pages.append((page_num, page_text))
                 except Exception as exc:  # corrupt or encrypted PDF
                     self.stdout.write(
                         self.style.WARNING(f"Could not read the PDF for {doc_id}: {exc}")
@@ -432,75 +510,19 @@ class Command(BaseCommand):
                     continue
 
                 documents_processed += 1
-                if not pages_and_chunks:
+                written = index_document_pages(
+                    document, pages, model, client, collection_name=collection_name
+                )
+                if not written:
                     # Nothing to write: keep whatever this document already has.
                     problems.append((doc_id, "PDF yielded zero chunks (scanned, no text?)"))
                     continue
-
-                chunk_records = []
-                qdrant_points = []
-
-                for page_num, chunk_str in pages_and_chunks:
-                    vector_id = str(uuid.uuid4())
-                    embedding = model.encode(embedding_input(chunk_str)).tolist()
-
-                    chunk_records.append(
-                        Chunk(
-                            document=document,
-                            text=chunk_str,
-                            page=page_num,
-                            state=document.state,
-                            language=document.language,
-                            vector_id=vector_id,
-                        )
-                    )
-                    qdrant_points.append(
-                        qdrant_models.PointStruct(
-                            id=vector_id,
-                            vector=embedding,
-                            payload=build_chunk_payload(
-                                document=document,
-                                page=page_num,
-                                text=chunk_str,
-                            ),
-                        )
-                    )
-
-                # Everything is read and embedded; only now replace the old chunks. The
-                # PostgreSQL part is one transaction, so a failed write keeps the old rows.
-                with transaction.atomic():
-                    # Clear existing chunks for this doc to prevent duplication on re-runs
-                    Chunk.objects.filter(document=document).delete()
-                    Chunk.objects.bulk_create(chunk_records)
-                    chunks_written += len(chunk_records)
-                    self.stdout.write(
-                        f"Saved {len(chunk_records)} chunks to PostgreSQL for {doc_id}."
-                    )
-
-                    # Clear existing points for this document from Qdrant before upserting
-                    client.delete(
-                        collection_name=collection_name,
-                        points_selector=qdrant_models.FilterSelector(
-                            filter=qdrant_models.Filter(
-                                must=[
-                                    qdrant_models.FieldCondition(
-                                        key="doc_id",
-                                        match=qdrant_models.MatchValue(value=doc_id),
-                                    )
-                                ]
-                            )
-                        ),
-                    )
-                    client.upsert(
-                        collection_name=collection_name,
-                        points=qdrant_points,
-                    )
-                    vectors_upserted += len(qdrant_points)
-                    self.stdout.write(
-                        self.style.SUCCESS(
-                            f"Upserted {len(qdrant_points)} vectors to Qdrant for {doc_id}."
-                        )
-                    )
+                chunks_written += written
+                vectors_upserted += written
+                self.stdout.write(f"Saved {written} chunks to PostgreSQL for {doc_id}.")
+                self.stdout.write(
+                    self.style.SUCCESS(f"Upserted {written} vectors to Qdrant for {doc_id}.")
+                )
 
         self.stdout.write(
             f"\nIngest summary: documents processed {documents_processed}, "

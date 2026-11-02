@@ -9,6 +9,9 @@ psycopg[binary]>=3.2,<4
 openai>=3.35,<4
 av>=11,<19
 faster-whisper>=1.2,<2 # faster-whisper 1.2.x breaks on PyAV 19+
+# `manage.py scrape_sources` (services/scraper.py): fetching and HTML cleaning.
+httpx>=0.27,<1
+beautifulsoup4>=4.12,<5
 
 qdrant-client>=1.13.0,<1.14.0
 sentence-transformers>=2.2.0

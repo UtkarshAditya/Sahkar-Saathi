@@ -146,6 +146,9 @@ Common changes:
 | `INSTALL_ML=false`                     | A smaller, stub-only image: no PyTorch, so no real retrieval      |
 | `SCORE_THRESHOLD`                      | Default 0.82, provisional; re-tune with `eval_retrieval` (§ 12)   |
 | `SCORE_THRESHOLD_EN`, `_HI`, `_TA`     | Per question language; empty = same as `SCORE_THRESHOLD`          |
+| `SCORE_THRESHOLD_RELATED` (and `_EN`, `_HI`, `_TA`) | Related-answer tier; empty = off (the default). See § 12b |
+| `RELATED_MAX_PASSAGES`                 | Passages a related answer quotes; empty = 2                       |
+| `SCRAPE_DELAY_SECONDS`                 | Pause between requests in `scrape_sources`; empty = 2 (§ 12a)     |
 | `CHUNK_MAX_CHARS`, `CHUNK_MIN_CHARS`, `CHUNK_TAIL_MERGE_CHARS` | `ingest_corpus` chunk sizes; empty = 900, 80, 150 |
 | `WARM_ON_START=true`                   | Also load the LLM at start-up (up to `WARM_TIMEOUT` s); default false |
 | `BHASHINI_API_KEY`, `BHASHINI_USER_ID` | Speech keys (member C)                                            |
@@ -361,6 +364,120 @@ chunks) and Qdrant (their vectors). Do these steps in order:
 | `ingest_corpus` lists "no Document row"            | `load_sources` skipped that row of the CSV as invalid. `load_sources --dry-run` shows why; the CSV owner fixes the row.                                                        |
 | `ingest_corpus` lists "PDF not found"              | The file in `data/raw/` is missing or named differently from `local_path` in `data/sources.csv`.                                                                               |
 | `ingest_corpus` says it needs the ML packages      | The image was built with `INSTALL_ML=false`. Rebuild with `INSTALL_ML=true`.                                                                                                   |
+
+## 12a. Adding official web pages (`scrape_sources`)
+
+Some official sources are web pages, not PDFs (the CRCS FAQ and Ombudsman pages, the Tamil
+Nadu Registrar's pages). `manage.py scrape_sources` fetches the pages listed in
+`data/scrape_sources.yaml`, cleans them and indexes them with the same chunking and
+embedding as `ingest_corpus`. It is a command you run by hand (or from a scheduled job on
+the host); it never runs while someone is asking a question.
+
+**The page list.** `data/scrape_sources.yaml` is mounted read-only into the container.
+Each entry has `id` (the Document id: reuse the `doc_id` from `data/sources.csv` when the
+page is listed there), `url` (https only), `title`, `publisher`, `doc_type` (`act`,
+`rules`, `model-bylaws`, `circular` or `scheme-guideline`), `state` (`central` or a state
+code), `language`, and an optional `selector` (a CSS selector for the main content; the
+default is the page's `<main>`, else `<body>`). The command refuses to start if a field is
+missing, a `doc_type` is unknown, an id appears twice or a URL is not https. Only add pages
+from an official site that you have opened yourself; never guess a URL. A link to a PDF is
+not scraped: download it to `data/raw/` and use `ingest_corpus`.
+
+**Run it.** Check first, then index:
+
+```bash
+docker compose exec web python manage.py scrape_sources --dry-run
+docker compose exec web python manage.py scrape_sources
+```
+
+`--dry-run` fetches and cleans every page and prints the table below, but writes nothing
+(and does not load the embedding model). Other options: `--only ID` (repeatable) for one
+source, `--delay SECONDS` for the pause between requests (default 2), and `--force` to
+re-index a page whose text has not changed.
+
+The command ends with one line per source:
+
+| Column    | Meaning                                                                                 |
+| --------- | --------------------------------------------------------------------------------------- |
+| status    | `new`, `updated`, `unchanged` (same text as last time: skipped), `blocked`, or `error` |
+| chars     | Characters of cleaned text                                                              |
+| chunks    | Chunks written (or that would be written, with `--dry-run`)                             |
+| injection | Lines dropped because they looked like instructions to a language model                 |
+| reason    | Why a source was blocked or failed, or where it was redirected                          |
+
+A source that is blocked or fails keeps its existing chunks, and the others carry on; the
+command then exits with an error so a scheduled job notices. Pages that changed replace
+their old chunks and Qdrant points in one step, like a re-ingested PDF.
+
+`corpus_status` now also lists each document's kind (`pdf` or `web`), when a web page was
+fetched and its chunk count, and flags web pages fetched more than 30 days ago.
+`scripts/demo_preflight.py --docker` shows the number of web documents and the oldest
+fetch date as a WARN-only check, so a stale corpus is visible before a demo.
+
+### Security of the scraper
+
+Scraped text is untrusted. `services/scraper.py` enforces these rules, and
+`backend/tests/test_scraper.py` tests each one:
+
+1. **Allowlist.** Only hosts that appear in `data/scrape_sources.yaml` are fetched.
+   Redirects are followed by hand, and every hop must stay on an allowlisted host over
+   https; otherwise that source stops with `blocked`.
+2. **No internal addresses (SSRF guard).** The host name is resolved first, and private,
+   loopback, link-local, reserved and other non-public addresses are refused.
+3. **Limits.** 15 s timeout, 2 MB maximum body (streamed; reading stops at the cap), and the
+   content type must be `text/html` (a PDF link is reported, not read).
+4. **Polite.** User-Agent `SahkarSaathiBot/1.0 (research prototype)`, `robots.txt` is
+   honoured (a `robots.txt` that cannot be read blocks the host), and there is a pause
+   between requests (2 s by default).
+5. **Clean text.** Scripts, styles, navigation, headers, footers, forms, cookie banners and
+   hidden elements are removed; headings stay on their own line; whitespace is collapsed.
+6. **Prompt-injection filter.** Lines such as "ignore previous instructions", "you are
+   now", "system prompt", "act as an AI" or "reveal your instructions" are dropped before
+   chunking and counted per source. Read a page by hand when its count is not zero. The
+   list is deliberately narrow, so ordinary legal wording ("the Registrar may act as an
+   arbitrator") is kept.
+7. **No disk writes.** Everything stays in memory; only PostgreSQL and Qdrant are written,
+   which suits the read-only web container.
+
+Known limit: the address check resolves the name just before the request, and the HTTP
+client resolves it again; DNS that changes between the two is not caught. The allowlist of
+official hosts is the main protection.
+
+## 12b. The related-answer tier (optional)
+
+By default a question whose best retrieval score is below `SCORE_THRESHOLD` is declined.
+The related tier adds a middle step: if the best score is at least
+`SCORE_THRESHOLD_RELATED`, the assistant does not call the LLM; it says it found no exact
+answer and quotes the closest one or two passages word for word (each shortened to about
+300 characters at a sentence end), with their document and page. The chat shows these with
+a calm amber "Closest information found" label and the usual sources and thumbs. Staff can
+see each message's `confidence` (`high` or `related`) in the admin site, and the counts per
+tier on `/staff/quality`.
+
+It is **off** while `SCORE_THRESHOLD_RELATED` is empty. To turn it on:
+
+1. See what a value would do on the question set (0.75 is a provisional starting point):
+
+   ```bash
+   docker compose exec web python manage.py eval_retrieval --related-threshold 0.75
+   ```
+
+   The "Answer tiers" block counts confident, related and declined questions, and lists
+   in-scope questions that would still decline and out-of-scope questions that would wrongly
+   get an answer. Pick a value with no out-of-scope question in the related tier.
+
+2. Put it in `.env` and restart:
+
+   ```bash
+   # .env
+   SCORE_THRESHOLD_RELATED=0.75
+   # optional, per question language: SCORE_THRESHOLD_RELATED_EN=, _HI=, _TA=
+   # optional: RELATED_MAX_PASSAGES=2
+   docker compose up -d
+   ```
+
+Empty the value (and restart) to turn it off again. The Hindi and Tamil lead lines and
+labels are machine-written and need review by a fluent speaker before a public release.
 
 ## 13. Troubleshooting
 

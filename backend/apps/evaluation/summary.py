@@ -5,9 +5,20 @@ A run that lacks faithfulness (nobody has checked answers by hand yet) is stored
 in the admin site; the endpoint falls back to the sample data until a complete run exists.
 """
 
+from django.db.models import Count, Q
+
+from apps.chat.models import Message
+
 from .models import EvalResult, EvalRun
 from .sample import TARGETS
-from .schemas import EvalMetricOut, EvalRunConfigOut, EvalRunOut, EvalSummaryOut, FailedQuestionOut
+from .schemas import (
+    AnswerTiersOut,
+    EvalMetricOut,
+    EvalRunConfigOut,
+    EvalRunOut,
+    EvalSummaryOut,
+    FailedQuestionOut,
+)
 
 MAX_RUNS = 10
 
@@ -29,6 +40,20 @@ def run_out(run: EvalRun) -> EvalRunOut:
         correct_refusal=run.correct_refusal,
         questions=run.question_count,
     )
+
+
+def answer_tiers() -> AnswerTiersOut:
+    """Stored chat messages per answer tier: confident, related (closest passages), declined.
+    Questions that only asked for a state count in the total only."""
+    declined = Q(status=Message.Status.DECLINED)
+    answered = ~declined & Q(needs_state=False)
+    counts = Message.objects.aggregate(
+        total=Count("id"),
+        declined=Count("id", filter=declined),
+        related=Count("id", filter=answered & Q(confidence=Message.Confidence.RELATED)),
+        confident=Count("id", filter=answered & Q(confidence=Message.Confidence.HIGH)),
+    )
+    return AnswerTiersOut(**counts)
 
 
 def real_summary() -> EvalSummaryOut | None:

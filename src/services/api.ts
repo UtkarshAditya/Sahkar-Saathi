@@ -7,7 +7,7 @@
  * /api to it). Every endpoint in the frozen contract, backend/openapi.json, is here, and
  * src/types/contract-check.ts fails the build if the types drift from it.
  */
-import { buildMockAnswer } from '@/data/mockChat';
+import { buildMockAnswer, buildMockRelatedAnswer } from '@/data/mockChat';
 import { CROP_FACTS } from '@/data/mockCropInsurance';
 import { MOCK_DOCUMENTS } from '@/data/mockDocuments';
 import { MOCK_EVAL_SUMMARY } from '@/data/mockEvaluation';
@@ -43,6 +43,8 @@ export const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true';
 
 /** Typing this exact text in Ask triggers the error state, to test it in the UI. */
 export const MOCK_ERROR_TRIGGER = '/error';
+/** Typing this exact text in Ask shows a related answer (closest information found). */
+export const MOCK_RELATED_TRIGGER = '/related';
 
 export class ApiError extends Error {
   readonly code: string;
@@ -125,6 +127,7 @@ export const api = {
       await delay(null, 400);
       throw new ApiError({ code: 'mock_error', message: 'Simulated error for testing the UI.' });
     }
+    if (body.text.trim() === MOCK_RELATED_TRIGGER) return delay(buildMockRelatedAnswer(body), 900);
     return delay(buildMockAnswer(body), 900);
   },
 

@@ -23,6 +23,9 @@ per check and a final READY or NOT READY. Exits 1 if any check FAILed (WARN does
    POST /api/v1/chat/ask. Each must meet that turn's expectations (the acceptance.py checks);
    WARN if it took over 30 s or the answer is a demo answer (is_demo=true).
 6. Memory: free RAM on this machine, WARN below 3 GB (the LLM and Whisper are large).
+7. Web sources (WARN only, never FAIL): how many scraped web documents exist and the oldest
+   fetched_at, read from the same corpus_status output (needs --docker). WARN when there are
+   none or the oldest is more than 30 days old: run `manage.py scrape_sources`.
 
 It cannot tell whether an answer is correct or fluent, whether the LLM runs on this machine
 or another one, or which flags are set; a person still reads the answers. Standard library
@@ -33,6 +36,7 @@ from __future__ import annotations
 
 import argparse
 import ctypes
+import datetime as dt
 import importlib.util
 import json
 import os
@@ -50,6 +54,7 @@ DEFAULT_CONVERSATIONS = ROOT / "data" / "eval" / "conversations.json"
 HTTP_TIMEOUT = 10
 SLOW_SECONDS = 30
 MIN_DOCUMENTS = 10
+STALE_WEB_DAYS = 30
 LANGUAGES = ("en", "hi", "ta")
 DEFAULT_LLM_BASE_URL = "http://localhost:11434/v1"
 DEFAULT_LLM_MODEL = "llama3.1:8b"  # the docker-compose.yml default
@@ -234,7 +239,8 @@ def run_corpus_status() -> tuple[int, str]:
     return done.returncode, done.stdout + done.stderr
 
 
-def check_corpus(report: Report, base_url: str, use_docker: bool) -> None:
+def check_corpus(report: Report, base_url: str, use_docker: bool) -> str | None:
+    """Check 4. Returns the corpus_status output when it ran, for check 7."""
     if not use_docker:
         status, body = get_json(f"{base_url}/api/v1/documents")
         if isinstance(body, list):
@@ -246,13 +252,13 @@ def check_corpus(report: Report, base_url: str, use_docker: bool) -> None:
             f"{listed}, ingested or not. Chunk and ingested document counts need --docker "
             "(runs manage.py corpus_status in the container).",
         )
-        return
+        return None
     code, output = run_corpus_status()
     stats = parse_corpus_status(output) if code == 0 else None
     if stats is None:
         reason = output.strip().splitlines()[-1] if output.strip() else "no output"
         report.fail("corpus", f"corpus_status did not run ({reason}). Is the stack up?")
-        return
+        return None
     detail = (
         f"{stats['ingested']} of {stats['documents']} document(s) have chunks, "
         f"{stats['chunks']} chunk row(s), Qdrant {stats['qdrant']}"
@@ -265,6 +271,52 @@ def check_corpus(report: Report, base_url: str, use_docker: bool) -> None:
         report.pass_("corpus", detail)
     if stats["mismatch"]:
         report.warn("corpus", "PostgreSQL and Qdrant disagree: run ingest_corpus again")
+    return output
+
+
+# --- 7: web sources ---------------------------------------------------------------------
+
+
+def parse_web_documents(text: str) -> tuple[int, dt.datetime | None] | None:
+    """(web documents, oldest fetched_at) from corpus_status, or None if it does not say."""
+    found = re.search(r"Web documents:\s*(\d+)\s+oldest fetched_at:\s*(\S+)", text)
+    if not found:
+        return None
+    try:
+        oldest = None if found.group(2) == "none" else dt.datetime.fromisoformat(found.group(2))
+    except ValueError:
+        oldest = None
+    return int(found.group(1)), oldest
+
+
+def check_web_sources(
+    report: Report, corpus_output: str | None, now: dt.datetime | None = None
+) -> None:
+    """WARN only: a stale or missing set of scraped pages must be visible, not fatal."""
+    name = "web sources"
+    if corpus_output is None:
+        report.warn(name, "not checked: needs --docker (reads manage.py corpus_status)")
+        return
+    parsed = parse_web_documents(corpus_output)
+    if parsed is None:
+        report.warn(name, "corpus_status does not list web documents (rebuild the web image)")
+        return
+    count, oldest = parsed
+    if count == 0:
+        report.warn(name, "no scraped web documents: run `manage.py scrape_sources`")
+        return
+    if oldest is None:
+        report.warn(name, f"{count} web document(s), fetch date unknown: run scrape_sources")
+        return
+    now = now or dt.datetime.now(dt.UTC)
+    if oldest.tzinfo is None:
+        oldest = oldest.replace(tzinfo=dt.UTC)
+    age_days = (now - oldest).days
+    detail = f"{count} web document(s), oldest fetched {oldest:%Y-%m-%d} ({age_days} days ago)"
+    if age_days > STALE_WEB_DAYS:
+        report.warn(name, f"{detail}: older than {STALE_WEB_DAYS} days, run scrape_sources")
+    else:
+        report.pass_(name, detail)
 
 
 # --- 5: questions -----------------------------------------------------------------------
@@ -398,9 +450,10 @@ def main(argv: list[str] | None = None, env: dict[str, str] | None = None) -> in
     health = check_health(report, base_url)
     check_flags(report, health)
     check_llm(report, llm_url, llm_model)
-    check_corpus(report, base_url, args.docker)
+    corpus_output = check_corpus(report, base_url, args.docker)
     check_questions(report, base_url, turns, api_up=health is not None)
     check_memory(report, args.min_free_gb)
+    check_web_sources(report, corpus_output)
 
     counts = report.counts
     ready = counts["FAIL"] == 0

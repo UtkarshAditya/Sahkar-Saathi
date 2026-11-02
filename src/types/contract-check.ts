@@ -9,6 +9,7 @@
  */
 import type { components } from './api.gen';
 import type {
+  AnswerTiers,
   AskRequest,
   AskResponse,
   EvalSummary,
@@ -43,6 +44,7 @@ export type ContractChecks = [
   Assert<Fits<S['LanguageOut'], MetaLanguage>>,
   Assert<Fits<S['StateOut'], StateOption>>,
   Assert<Fits<S['EvalSummaryOut'], EvalSummary>>,
+  Assert<Fits<S['AnswerTiersOut'], AnswerTiers>>,
   // Requests: UI type -> contract
   Assert<Fits<AskRequest, S['AskIn']>>,
   Assert<Fits<SynthesizeRequest, S['SynthesizeIn']>>,

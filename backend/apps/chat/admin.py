@@ -16,7 +16,9 @@ class MessageInline(admin.TabularInline):
     extra = 0
     can_delete = False
     show_change_link = True
-    fields = ["created_at", "status", "language", "state", "top_score", "latency_ms"]
+    fields = [
+        "created_at", "status", "confidence", "language", "state", "top_score", "latency_ms",
+    ]  # fmt: skip
     readonly_fields = fields
 
 
@@ -38,6 +40,7 @@ class MessageAdmin(admin.ModelAdmin):
     list_display = [
         "created_at",
         "status",
+        "confidence",
         "needs_state",
         "language",
         "state",
@@ -46,7 +49,7 @@ class MessageAdmin(admin.ModelAdmin):
         "model_name",
         "is_demo",
     ]
-    list_filter = ["status", "language", "state", "is_demo", "needs_state"]
+    list_filter = ["status", "confidence", "language", "state", "is_demo", "needs_state"]
     search_fields = ["question_text", "answer_text"]
     date_hierarchy = "created_at"
     inlines = [CitationInline]

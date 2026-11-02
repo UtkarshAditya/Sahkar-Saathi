@@ -20,6 +20,10 @@ class Document(models.Model):
         ACTIVE = "active"
         RETIRED = "retired"
 
+    class SourceKind(models.TextChoices):
+        PDF = "pdf", "PDF"
+        WEB = "web", "Web page"
+
     # A readable, stable id ("doc-tn-act"). Citations and "Ask about this document" use it.
     id = models.SlugField(primary_key=True, max_length=64)
     title = models.CharField(max_length=300)
@@ -39,6 +43,14 @@ class Document(models.Model):
     )
     is_sample = models.BooleanField(
         default=False, help_text="Placeholder metadata for the demo; replace before evaluation."
+    )
+    # Web pages come from `manage.py scrape_sources` (data/scrape_sources.yaml).
+    source_kind = models.CharField(max_length=8, choices=SourceKind.choices, default=SourceKind.PDF)
+    fetched_at = models.DateTimeField(
+        null=True, blank=True, help_text="When a web page was last fetched; empty for PDFs."
+    )
+    content_hash = models.CharField(
+        max_length=64, blank=True, help_text="SHA-256 of the cleaned page text (web pages)."
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

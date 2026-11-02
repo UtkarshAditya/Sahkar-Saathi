@@ -15,6 +15,7 @@ function SourceItem({ citation, index }: { citation: Citation; index: number }) 
     citation.section,
     citation.page != null ? `${t('common.page')} ${citation.page}` : null,
     citation.published_date ? formatDate(citation.published_date) : t('common.dateNotStated'),
+    citation.fetched_at ? `${t('common.fetched')} ${formatDate(citation.fetched_at)}` : null,
   ].filter(Boolean);
 
   return (

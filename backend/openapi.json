@@ -98,7 +98,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -181,7 +181,7 @@
             }
           },
           "413": {
-            "description": "Request Entity Too Large",
+            "description": "Content Too Large",
             "content": {
               "application/json": {
                 "schema": {
@@ -201,7 +201,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -288,7 +288,7 @@
         "parameters": [],
         "responses": {
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -382,7 +382,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -472,7 +472,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -650,7 +650,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -976,6 +976,15 @@
             "title": "Status",
             "type": "string"
           },
+          "confidence": {
+            "description": "\"related\" when no passage was strong enough for a confident answer and the closest passages are quoted instead (label it as such); otherwise \"high\".",
+            "enum": [
+              "high",
+              "related"
+            ],
+            "title": "Confidence",
+            "type": "string"
+          },
           "needs_state": {
             "description": "True when the user must choose a state first.",
             "title": "Needs State",
@@ -1018,6 +1027,7 @@
           "message_id",
           "answer_text",
           "status",
+          "confidence",
           "needs_state",
           "citations",
           "followups",
@@ -1101,6 +1111,18 @@
               }
             ],
             "title": "Excerpt"
+          },
+          "fetched_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ISO datetime a web-page source was fetched; null for PDFs.",
+            "title": "Fetched At"
           }
         },
         "required": [
@@ -1936,6 +1958,29 @@
           "is_sample": {
             "title": "Is Sample",
             "type": "boolean"
+          },
+          "source_kind": {
+            "default": "pdf",
+            "description": "Where the text came from.",
+            "enum": [
+              "pdf",
+              "web"
+            ],
+            "title": "Source Kind",
+            "type": "string"
+          },
+          "fetched_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When a web page was last fetched; null for PDFs.",
+            "title": "Fetched At"
           }
         },
         "required": [
@@ -1952,6 +1997,36 @@
           "is_sample"
         ],
         "title": "DocumentOut",
+        "type": "object"
+      },
+      "AnswerTiersOut": {
+        "properties": {
+          "confident": {
+            "description": "Answered from the passages (confidence high).",
+            "title": "Confident",
+            "type": "integer"
+          },
+          "related": {
+            "description": "Closest passages quoted (confidence related).",
+            "title": "Related",
+            "type": "integer"
+          },
+          "declined": {
+            "title": "Declined",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "confident",
+          "related",
+          "declined",
+          "total"
+        ],
+        "title": "AnswerTiersOut",
         "type": "object"
       },
       "EvalMetricOut": {
@@ -2114,6 +2189,17 @@
             "description": "True until real EvalRun rows exist.",
             "title": "Is Sample",
             "type": "boolean"
+          },
+          "answer_tiers": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnswerTiersOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Stored chat answers per tier (live traffic, not an evaluation run)."
           }
         },
         "required": [
